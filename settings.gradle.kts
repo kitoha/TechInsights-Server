@@ -5,4 +5,3 @@ rootProject.name = "techinsights"
 include("api")
 include("domain")
 include("batch")
-include("batch")
