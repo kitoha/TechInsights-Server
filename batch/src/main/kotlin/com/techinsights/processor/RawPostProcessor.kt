@@ -1,8 +1,8 @@
 package com.techinsights.processor
 
 import com.techinsights.crawling.PostCrawlingService
-import com.techinsights.dto.PostDto
-import com.techinsights.entity.Company
+import com.techinsights.dto.post.PostDto
+import com.techinsights.entity.company.Company
 import kotlinx.coroutines.runBlocking
 import org.springframework.batch.item.ItemProcessor
 import org.springframework.stereotype.Component

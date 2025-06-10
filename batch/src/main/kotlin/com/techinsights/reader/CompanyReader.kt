@@ -1,7 +1,7 @@
 package com.techinsights.reader
 
-import com.techinsights.entity.Company
-import com.techinsights.repository.CompanyRepository
+import com.techinsights.entity.company.Company
+import com.techinsights.repository.company.CompanyRepository
 import org.springframework.batch.item.ItemReader
 import org.springframework.stereotype.Component
 

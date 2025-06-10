@@ -1,6 +1,6 @@
 package com.techinsights.crawling
 
-import com.techinsights.dto.PostDto
+import com.techinsights.dto.post.PostDto
 import com.techinsights.parser.RssParser
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient

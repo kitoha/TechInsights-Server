@@ -1,7 +1,7 @@
 package com.techinsights.config
 
-import com.techinsights.dto.PostDto
-import com.techinsights.entity.Company
+import com.techinsights.dto.post.PostDto
+import com.techinsights.entity.company.Company
 import com.techinsights.processor.RawPostProcessor
 import com.techinsights.reader.CompanyReader
 import com.techinsights.writer.RawPostWriter
