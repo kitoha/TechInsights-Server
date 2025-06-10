@@ -1,0 +1,5 @@
+spring:
+  application:
+    name: techinsights
+  profiles:
+    active: local

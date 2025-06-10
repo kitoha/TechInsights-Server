@@ -1,0 +1,6 @@
+batch:
+  post-crawling:
+    job-name: crawlPostJob
+    step-name: crawlPostStep
+    chunk-size: 10
+    retry-limit: 3
