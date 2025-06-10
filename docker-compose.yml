@@ -1,0 +1,19 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-local
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${ROOT_DB_PASSWORD}
+      MYSQL_DATABASE: techinsights_db
+      MYSQL_USER: local-user
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Seoul
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./initdb:/docker-entrypoint-initdb.d
+
+volumes:
+  db_data:

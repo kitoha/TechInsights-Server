@@ -1,5 +1,7 @@
 package com.techinsights.crawling
 
+import com.techinsights.dto.PostDto
+import com.techinsights.parser.RssParser
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.awaitBody
@@ -10,13 +12,12 @@ class PostCrawlingServiceImpl (
   private val rssParser: RssParser
 ): PostCrawlingService {
 
-    override suspend fun processCrawledData(feedUrl: String): List<RawPost> {
+    override suspend fun processCrawledData(feedUrl: String): List<PostDto> {
       try {
         val rssContent = fetchRssContent(feedUrl)
         val rawPosts = rssParser.parseList(feedUrl, rssContent)
 
         return rawPosts
-
       }catch (e: Exception) {
         println("Error processing crawled data: ${e.message}")
         return emptyList()
