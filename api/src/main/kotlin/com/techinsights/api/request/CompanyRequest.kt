@@ -6,7 +6,7 @@ import com.techinsights.utils.Tsid
 data class CompanyRequest(
   val name: String,
   val blogUrl: String,
-  val logoUrl: String,
+  val logoImageName: String,
   val rssSupported: Boolean = false,
 ){
   fun toDto(): CompanyDto {
@@ -14,7 +14,7 @@ data class CompanyRequest(
       id = Tsid.generate(),
       name = name,
       blogUrl = blogUrl,
-      logoUrl = logoUrl,
+      logoImageName = logoImageName,
       rssSupported = rssSupported
     )
   }
@@ -23,7 +23,7 @@ data class CompanyRequest(
       id = id,
       name = name,
       blogUrl = blogUrl,
-      logoUrl = logoUrl,
+      logoImageName = logoImageName,
       rssSupported = rssSupported
     )
   }

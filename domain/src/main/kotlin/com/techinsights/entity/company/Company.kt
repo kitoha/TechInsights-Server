@@ -1,12 +1,9 @@
 package com.techinsights.entity.company
 
-import jakarta.persistence.Column
-import jakarta.persistence.Entity
-import jakarta.persistence.Id
-import jakarta.persistence.Table
+import jakarta.persistence.*
 
 @Entity
-@Table(name = "company")
+@Table(name = "company", uniqueConstraints = [UniqueConstraint(columnNames = ["name"])])
 class Company(
   @Id
   val id : Long,
@@ -14,8 +11,8 @@ class Company(
   val name: String,
   @Column(name = "blog_url")
   val blogUrl: String,
-  @Column(name = "logo_url")
-  val logoUrl: String,
+  @Column(name = "logo_image_name")
+  val logoImageName: String,
   @Column(name = "rss_supported")
   val rssSupported: Boolean = false
 )

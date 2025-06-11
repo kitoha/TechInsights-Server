@@ -7,7 +7,7 @@ data class CompanyDto(
   val id : String,
   val name: String,
   val blogUrl: String,
-  val logoUrl: String,
+  val logoImageName: String,
   val rssSupported: Boolean = false,
 ){
 
@@ -16,7 +16,7 @@ data class CompanyDto(
       id = Tsid.decode(id),
       name = name,
       blogUrl = blogUrl,
-      logoUrl = logoUrl,
+      logoImageName = logoImageName,
       rssSupported = rssSupported
     )
   }
@@ -27,7 +27,7 @@ data class CompanyDto(
         id = Tsid.encode(entity.id),
         name = entity.name,
         blogUrl = entity.blogUrl,
-        logoUrl = entity.logoUrl,
+        logoImageName = entity.logoImageName,
         rssSupported = entity.rssSupported
       )
     }

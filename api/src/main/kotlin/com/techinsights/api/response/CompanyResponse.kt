@@ -6,7 +6,7 @@ data class CompanyResponse(
     val id: String,
     val name: String,
     val blogUrl: String,
-    val logoUrl: String
+    val logoImageName: String
 ) {
     companion object {
         fun fromDto(dto: CompanyDto): CompanyResponse {
@@ -14,7 +14,7 @@ data class CompanyResponse(
                 id = dto.id,
                 name = dto.name,
                 blogUrl = dto.blogUrl,
-                logoUrl = dto.logoUrl
+                logoImageName = dto.logoImageName
             )
         }
     }

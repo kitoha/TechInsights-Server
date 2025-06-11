@@ -24,6 +24,12 @@ class CompanyRepositoryImpl(
     return CompanyDto.fromEntity(savedEntity)
   }
 
+  override fun saveAll(companies: List<CompanyDto>): List<CompanyDto> {
+    val entities: List<Company> = companies.map { it.toEntity() }
+    val savedEntities: List<Company> = companyJpaRepository.saveAll(entities)
+    return savedEntities.map { CompanyDto.fromEntity(it) }
+  }
+
   override fun findById(id: String): CompanyDto {
     val entity: Company = companyJpaRepository.findById(id.toLong())
       .orElseThrow { NoSuchElementException("Company with ID $id not found") }
@@ -52,6 +58,11 @@ class CompanyRepositoryImpl(
 
   override fun existsById(id: String): Boolean {
     return companyJpaRepository.existsById(Tsid.decode(id))
+  }
+
+  override fun findAllByNameIn(names: List<String>): List<CompanyDto> {
+    val companies: List<Company> = companyJpaRepository.findAllByNameIn(names)
+    return companies.map { CompanyDto.fromEntity(it) }
   }
 
   override fun existsByName(name: String): Boolean {

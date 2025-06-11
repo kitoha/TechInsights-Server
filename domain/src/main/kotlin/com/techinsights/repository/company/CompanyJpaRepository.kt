@@ -5,4 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface CompanyJpaRepository : JpaRepository<Company, Long> {
   fun existsByName(name: String): Boolean
+  fun findAllByNameIn(names: List<String>): List<Company>
 }

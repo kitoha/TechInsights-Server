@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -27,11 +28,11 @@ class CompanyController(
   }
 
   @PostMapping("/api/v1/companies")
-  fun saveCompany(request: CompanyRequest): ResponseEntity<CompanyResponse> {
-    val companyDto = request.toDto()
+  fun saveCompany(@RequestBody requests : List<CompanyRequest>): ResponseEntity<List<CompanyResponse>> {
+    val companyDto = requests.map{it.toDto()}
     val savedCompany = companyService.saveCompany(companyDto)
-
-    return ResponseEntity.ok(CompanyResponse.fromDto(savedCompany))
+    val response = savedCompany.map { CompanyResponse.fromDto(it) }
+    return ResponseEntity.ok(response)
   }
 
   @DeleteMapping("/api/v1/companies/{companyId}")
@@ -40,7 +41,7 @@ class CompanyController(
   }
 
   @PutMapping("/api/v1/companies/{companyId}")
-  fun updateCompany(@PathVariable companyId: String, companyRequest: CompanyRequest): ResponseEntity<CompanyResponse> {
+  fun updateCompany(@PathVariable companyId: String, @RequestBody companyRequest: CompanyRequest): ResponseEntity<CompanyResponse> {
     val companyDto = companyRequest.toDtoWithId(companyId)
     val savedCompanyDto = companyService.updateCompany(companyDto)
     return ResponseEntity.ok(CompanyResponse.fromDto(savedCompanyDto))

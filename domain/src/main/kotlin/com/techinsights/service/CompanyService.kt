@@ -4,6 +4,7 @@ import com.techinsights.dto.company.CompanyDto
 import com.techinsights.exeption.CompanyNotFoundException
 import com.techinsights.exeption.DuplicateCompanyNameException
 import com.techinsights.repository.company.CompanyRepository
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
@@ -29,14 +30,15 @@ class CompanyService(
   }
 
   @Transactional
-  fun saveCompany(companyDto: CompanyDto): CompanyDto {
-
-    // 중복 회사명 체크
-    if (companyRepository.existsByName(companyDto.name)) {
-      throw DuplicateCompanyNameException("Company with name '${companyDto.name}' already exists")
+  fun saveCompany(companyDtos: List<CompanyDto>): List<CompanyDto> {
+    val names = companyDtos.map { it.name }
+    val existingNames = companyRepository.findAllByNameIn(names).map { it.name }.toSet()
+    val newCompanyDtos = companyDtos.filter { it.name !in existingNames }
+    return try{
+      companyRepository.saveAll(newCompanyDtos)
+    }catch (e: DataIntegrityViolationException) {
+      throw DuplicateCompanyNameException("Duplicate company name found")
     }
-
-    return companyRepository.save(companyDto)
   }
 
   @Transactional
