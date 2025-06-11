@@ -1,6 +1,6 @@
 package com.techinsights.parser
 
-import com.techinsights.dto.PostDto
+import com.techinsights.dto.post.PostDto
 import com.techinsights.utils.Tsid
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

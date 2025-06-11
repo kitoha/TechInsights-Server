@@ -1,6 +1,6 @@
 package com.techinsights.parser
 
-import com.techinsights.dto.PostDto
+import com.techinsights.dto.post.PostDto
 
 interface BlogParser {
   fun supports(feedUrl: String): Boolean

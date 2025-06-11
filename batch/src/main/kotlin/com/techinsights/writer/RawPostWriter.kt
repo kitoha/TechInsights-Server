@@ -1,7 +1,7 @@
 package com.techinsights.writer
 
-import com.techinsights.dto.PostDto
-import com.techinsights.repository.PostRepository
+import com.techinsights.dto.post.PostDto
+import com.techinsights.repository.post.PostRepository
 import org.slf4j.LoggerFactory
 import org.springframework.batch.item.Chunk
 import org.springframework.batch.item.ItemWriter

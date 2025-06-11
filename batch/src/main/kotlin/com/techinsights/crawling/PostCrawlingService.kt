@@ -1,6 +1,6 @@
 package com.techinsights.crawling
 
-import com.techinsights.dto.PostDto
+import com.techinsights.dto.post.PostDto
 
 interface PostCrawlingService {
   suspend fun processCrawledData(feedUrl: String): List<PostDto>
