@@ -13,6 +13,11 @@ class CompanyRepositoryImpl(
   private val companyJpaRepository: CompanyJpaRepository
 ) : CompanyRepository {
 
+  override fun findAll(): List<CompanyDto> {
+    val companies: List<Company> = companyJpaRepository.findAll()
+    return companies.map { CompanyDto.fromEntity(it) }
+  }
+
   override fun save(company: CompanyDto): CompanyDto {
     val entity = company.toEntity()
     val savedEntity: Company = companyJpaRepository.save(entity)

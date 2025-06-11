@@ -1,6 +1,6 @@
 package com.techinsights.reader
 
-import com.techinsights.entity.company.Company
+import com.techinsights.dto.company.CompanyDto
 import com.techinsights.repository.company.CompanyRepository
 import org.springframework.batch.item.ItemReader
 import org.springframework.stereotype.Component
@@ -8,11 +8,11 @@ import org.springframework.stereotype.Component
 @Component
 class CompanyReader(
   private val companyRepository: CompanyRepository
-) : ItemReader<Company> {
+) : ItemReader<CompanyDto> {
 
-  private var iterator: Iterator<Company>? = null
+  private var iterator: Iterator<CompanyDto>? = null
 
-  override fun read(): Company? {
+  override fun read(): CompanyDto? {
     if (iterator == null) {
       iterator = companyRepository.findAll().iterator()
     }

@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 
 interface CompanyRepository {
+  fun findAll(): List<CompanyDto>
   fun save(company: CompanyDto): CompanyDto
   fun findById(id: String): CompanyDto
   fun getList(pageable: Pageable): Page<CompanyDto>
