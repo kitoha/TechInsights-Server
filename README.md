@@ -25,3 +25,115 @@ Tech Insights는 최신 IT 기술 관련 회사들의 기술 블로그 게시글
 - JDK 21
 - Gradle 빌드 시스템
 - Docker (개발/배포용)
+
+## Initial Design
+
+### 데이터베이스 ERD
+
+```mermaid
+erDiagram
+    USER {
+        BIGINT id PK "내부 사용자 ID"
+        VARCHAR username
+        VARCHAR email "대표 이메일"
+        VARCHAR profileImageUrl "대표 프로필 이미지"
+        VARCHAR role "ADMIN, USER"
+        DATETIME createdAt
+        DATETIME updatedAt
+    }
+
+    USER_AUTH_PROVIDER {
+        BIGINT id PK
+        BIGINT userId FK
+        VARCHAR provider "GOOGLE, KAKAO, NAVER 등"
+        VARCHAR providerUserId "Provider별 고유 식별자"
+        VARCHAR providerEmail "해당 Provider에서 제공하는 이메일"
+        VARCHAR providerProfileImageUrl "해당 Provider에서 제공하는 이미지"
+        DATETIME createdAt
+        DATETIME updatedAt
+    }
+
+    COMPANY {
+        BIGINT id PK
+        VARCHAR name
+        INT totalPostsCount
+        INT totalViewCount
+        VARCHAR blogUrl
+        VARCHAR logoUrl
+        DATETIME createdAt
+        DATETIME updatedAt
+    }
+
+    CATEGORY {
+        BIGINT id PK
+        VARCHAR name
+    }
+
+    TAG {
+        BIGINT id PK
+        VARCHAR name
+    }
+
+    POST {
+        BIGINT id PK
+        BIGINT companyId FK
+        BIGINT categoryId FK
+        VARCHAR title
+        TEXT content
+        VARCHAR authorName
+        DATETIME publishedAt
+        INT viewCount "실시간 집계(캐시/배치 갱신)"
+        INT likeCount "실시간 집계(캐시/배치 갱신)"
+        INT shareCount
+        DATETIME createdAt
+        DATETIME updatedAt
+        VARCHAR originalUrl
+    }
+
+    POST_TAG {
+        BIGINT postId FK
+        BIGINT tagId FK
+    }
+
+    COMMENT {
+        BIGINT id PK
+        BIGINT postId FK
+        BIGINT userId FK
+        BIGINT parentId FK
+        TEXT content
+        DATETIME createdAt
+        DATETIME updatedAt
+    }
+
+    POST_VIEW {
+        BIGINT id PK
+        BIGINT postId FK
+        BIGINT userId FK
+        DATETIME viewedAt
+        VARCHAR sessionOrIp
+    }
+
+    POST_LIKE {
+        BIGINT id PK
+        BIGINT postId FK
+        BIGINT userId FK
+        DATETIME likedAt
+    }
+
+    USER ||--o{ USER_AUTH_PROVIDER : has_provider
+    USER ||--o{ COMMENT : writes
+    POST ||--o{ COMMENT : has
+    COMPANY ||--o{ POST : owns
+    CATEGORY ||--o{ POST : categorizes
+    POST ||--o{ POST_TAG : post_tag
+    TAG ||--o{ POST_TAG : tag_link
+    COMMENT ||--o{ COMMENT : reply
+    POST ||--o{ POST_VIEW : viewed
+    POST ||--o{ POST_LIKE : liked
+```
+
+### Design
+
+Home
+
+![Image](https://github.com/user-attachments/assets/d5533bfa-e6cb-46af-9c32-16a3d9b98aa0)
