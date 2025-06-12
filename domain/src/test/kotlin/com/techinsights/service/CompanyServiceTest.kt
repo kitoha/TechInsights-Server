@@ -1,15 +1,17 @@
 package com.techinsights.service
 
-import com.techinsights.dto.company.CompanyDto
-import com.techinsights.exeption.CompanyNotFoundException
-import com.techinsights.exeption.DuplicateCompanyNameException
-import com.techinsights.repository.company.CompanyRepository
+import com.techinsights.domain.dto.company.CompanyDto
+import com.techinsights.domain.exeption.CompanyNotFoundException
+import com.techinsights.domain.exeption.DuplicateCompanyNameException
+import com.techinsights.domain.repository.company.CompanyRepository
+import com.techinsights.domain.service.CompanyService
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 
@@ -21,7 +23,7 @@ class CompanyServiceTest : FunSpec({
         id = "1",
         name = "Test Company",
         blogUrl = "http://testcompany.com/blog",
-        logoUrl = "http://testcompany.com/logo.png",
+        logoImageName = "http://testcompany.com/logo.png",
     )
 
     test("회사 상세 정보 조회 - 성공") {
@@ -50,18 +52,28 @@ class CompanyServiceTest : FunSpec({
     }
 
     test("회사 저장 - 성공") {
-        every { companyRepository.existsByName(any()) } returns false
-        every { companyRepository.save(sampleCompanyDto) } returns sampleCompanyDto
+        every { companyRepository.findAllByNameIn(any()) } returns emptyList() // DB에 중복 없음
+        every { companyRepository.saveAll(any<List<CompanyDto>>()) } returns listOf(sampleCompanyDto)
 
-        val result = companyService.saveCompany(sampleCompanyDto)
-        result shouldBe sampleCompanyDto
+        val result = companyService.saveCompany(listOf(sampleCompanyDto))
+
+        result shouldBe listOf(sampleCompanyDto)
     }
 
-    test("회사 저장 - 중복 회사명") {
-        every { companyRepository.existsByName(any()) } returns true
+    test("회사 저장 - 중복 회사명(사전 중복)") {
+        every { companyRepository.findAllByNameIn(any()) } returns listOf(sampleCompanyDto)
+        every { companyRepository.saveAll(emptyList()) } returns emptyList()
+
+        val result = companyService.saveCompany(listOf(sampleCompanyDto))
+        result shouldBe emptyList()
+    }
+
+    test("회사 저장 - 중복 회사명(저장시 unique 제약 위반)") {
+        every { companyRepository.findAllByNameIn(any()) } returns emptyList()
+        every { companyRepository.saveAll(any<List<CompanyDto>>()) } throws DataIntegrityViolationException("Duplicate")
 
         shouldThrow<DuplicateCompanyNameException> {
-            companyService.saveCompany(sampleCompanyDto)
+            companyService.saveCompany(listOf(sampleCompanyDto))
         }
     }
 

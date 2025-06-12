@@ -1,6 +1,6 @@
 package com.techinsights.api.response
 
-import com.techinsights.dto.company.CompanyDto
+import com.techinsights.domain.dto.company.CompanyDto
 
 data class CompanyResponse(
     val id: String,

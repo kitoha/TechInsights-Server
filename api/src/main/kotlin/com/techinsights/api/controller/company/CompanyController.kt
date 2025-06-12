@@ -2,7 +2,7 @@ package com.techinsights.api.controller.company
 
 import com.techinsights.api.request.CompanyRequest
 import com.techinsights.api.response.CompanyResponse
-import com.techinsights.service.CompanyService
+import com.techinsights.domain.service.CompanyService
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.http.ResponseEntity

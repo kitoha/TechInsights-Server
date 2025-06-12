@@ -1,7 +1,7 @@
 package com.techinsights.api.request
 
-import com.techinsights.dto.company.CompanyDto
-import com.techinsights.utils.Tsid
+import com.techinsights.domain.dto.company.CompanyDto
+import com.techinsights.domain.utils.Tsid
 
 data class CompanyRequest(
   val name: String,
