@@ -32,4 +32,18 @@ class PostRepositoryImpl(
       )
     }
   }
+
+  override fun findAllByUrlIn(originalUrls: List<String>): List<PostDto> {
+    val posts: List<Post> = postJpaRepository.findAllByUrlIn(originalUrls)
+    return posts.map { post ->
+      PostDto(
+        id = Tsid.encode(post.id),
+        title = post.title,
+        url = post.url,
+        content = post.content,
+        publishedAt = post.publishedAt,
+        thumbnail = post.thumbnail
+      )
+    }
+  }
 }

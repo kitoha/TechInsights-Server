@@ -21,8 +21,17 @@ class RawPostWriter(
     try {
       val allPosts = chunk.items.flatten()
 
-      val savedPosts = postRepository.saveAll(allPosts)
-      log.info("Successfully saved ${savedPosts.size} posts from ${chunk.size()} companies")
+      val originalUrls = allPosts.map { it.url }
+      val existUrls = postRepository.findAllByUrlIn(originalUrls).map { it.url }.toSet()
+
+      val filteredPosts = allPosts.filter { it.url !in existUrls }
+
+      if (filteredPosts.isNotEmpty()) {
+        val savedPosts = postRepository.saveAll(filteredPosts)
+        log.info("Saved ${savedPosts.size} new posts (filtered from ${allPosts.size})")
+      } else {
+        log.info("No new posts to save (all duplicates)")
+      }
 
     } catch (e: Exception) {
       log.error("Unexpected error while saving posts from ${chunk.size()} companies: ${e.message}", e)

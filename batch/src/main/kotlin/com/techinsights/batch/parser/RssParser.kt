@@ -52,13 +52,6 @@ class RssParser : BlogParser {
     return if (nodeList.length > 0) nodeList.item(0).textContent.trim() else ""
   }
 
-  private fun Element.getCategoryList(): List<String> {
-    val categories = this.getElementsByTagName("category")
-    return (0 until categories.length).map { idx ->
-      categories.item(idx).textContent.trim()
-    }
-  }
-
   private fun parseRssDate(dateString: String): LocalDateTime {
     return try {
       val formatter = DateTimeFormatter.RFC_1123_DATE_TIME

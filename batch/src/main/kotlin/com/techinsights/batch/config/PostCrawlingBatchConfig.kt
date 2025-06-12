@@ -41,7 +41,9 @@ class PostCrawlingBatchConfig (
     .processor(rawPostProcessor)
     .writer(rawPostWriter)
     .faultTolerant()
+    .retry(Exception::class.java)
     .retryLimit(properties.retryLimit)
-    .retry(IOException::class.java)
+    .skip(Exception::class.java)
+    .skipLimit(10)
     .build()
 }

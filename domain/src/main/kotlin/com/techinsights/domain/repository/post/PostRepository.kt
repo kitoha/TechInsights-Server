@@ -4,4 +4,5 @@ import com.techinsights.domain.dto.post.PostDto
 
 interface PostRepository {
   fun saveAll(posts: List<PostDto>): List<PostDto>
+  fun findAllByUrlIn(urls: List<String>): List<PostDto>
 }
