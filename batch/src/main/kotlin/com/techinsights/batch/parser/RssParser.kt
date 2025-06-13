@@ -1,5 +1,8 @@
 package com.techinsights.batch.parser
 
+import com.techinsights.batch.extract.CompositeThumbnailExtractor
+import com.techinsights.batch.util.FeedParseUtil.getSingleTagText
+import com.techinsights.batch.util.FeedParseUtil.parseRssDate
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.utils.Tsid
 import kotlinx.coroutines.Dispatchers
@@ -8,56 +11,49 @@ import org.springframework.stereotype.Component
 import org.w3c.dom.Element
 import org.xml.sax.InputSource
 import java.io.StringReader
-import java.time.LocalDateTime
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
 import javax.xml.parsers.DocumentBuilderFactory
 
 @Component
-class RssParser : BlogParser {
+class RssParser(
+  private val thumbnailExtractor: CompositeThumbnailExtractor
+) : BlogParser {
 
   override fun supports(feedUrl: String): Boolean =
     feedUrl.endsWith(".rss") || feedUrl.endsWith(".xml") || feedUrl.contains("feed")
 
-  override suspend fun parseList(feedUrl: String, content: String): List<PostDto> = withContext(Dispatchers.IO) {
-    try {
-      val document = DocumentBuilderFactory
-        .newInstance()
-        .newDocumentBuilder()
-        .parse(InputSource(StringReader(content)))
+  override suspend fun parseList(feedUrl: String, content: String): List<PostDto> =
+    withContext(Dispatchers.IO) {
+      try {
+        val document = DocumentBuilderFactory
+          .newInstance()
+          .newDocumentBuilder()
+          .parse(InputSource(StringReader(content)))
 
-      val extractor = ThumbnailExtractorRegistry.extractorFor(feedUrl)
+        val entryParser = FeedEntryParserResolver.resolve(document)
 
-      val items = document.getElementsByTagName("item")
-      (0 until items.length).map { index ->
-        val item = items.item(index) as Element
-        PostDto(
-          id = Tsid.generate(),
-          title = item.getSingleTagText("title"),
-          url = item.getSingleTagText("link"),
-          content = item.getSingleTagText("description"),
-          publishedAt = parseRssDate(item.getSingleTagText("pubDate")),
-          thumbnail = extractor.extractThumbnail(item) ?: PostHtmlThumbnailExtractor.extractFromUrl(
-            item.getSingleTagText("link")
+        entryParser.parseEntries(document).map { element ->
+          PostDto(
+            id = Tsid.generate(),
+            title = element.getSingleTagText("title"),
+            url = element.getSingleTagText("link", "id"),
+            content = element.getSingleTagText("description", "content"),
+            publishedAt = parseRssDate(element.getSingleTagText("pubDate", "updated", "published")),
+            thumbnail = extractBestThumbnail(element)
           )
-        )
+        }
+      } catch (e: Exception) {
+        emptyList()
       }
-    } catch (e: Exception) {
-      emptyList()
     }
-  }
 
-  private fun Element.getSingleTagText(tag: String): String {
-    val nodeList = this.getElementsByTagName(tag)
-    return if (nodeList.length > 0) nodeList.item(0).textContent.trim() else ""
-  }
+  private fun extractBestThumbnail(element: Element): String? {
+    val feedThumbnail = thumbnailExtractor.extract(element)
+    if (!feedThumbnail.isNullOrBlank()) return feedThumbnail
 
-  private fun parseRssDate(dateString: String): LocalDateTime {
-    return try {
-      val formatter = DateTimeFormatter.RFC_1123_DATE_TIME
-      ZonedDateTime.parse(dateString, formatter).toLocalDateTime()
-    } catch (e: Exception) {
-      LocalDateTime.now()
-    }
+    val url = element.getSingleTagText("link", "id")
+    return runCatching {
+      val doc = org.jsoup.Jsoup.connect(url).get()
+      thumbnailExtractor.extract(doc)
+    }.getOrNull()
   }
 }
