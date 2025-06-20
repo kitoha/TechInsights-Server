@@ -1,4 +1,4 @@
-package com.techinsights.domain.service
+package com.techinsights.domain.service.company
 
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.exeption.CompanyNotFoundException

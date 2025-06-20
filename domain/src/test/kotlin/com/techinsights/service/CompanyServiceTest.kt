@@ -4,7 +4,7 @@ import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.exeption.CompanyNotFoundException
 import com.techinsights.domain.exeption.DuplicateCompanyNameException
 import com.techinsights.domain.repository.company.CompanyRepository
-import com.techinsights.domain.service.CompanyService
+import com.techinsights.domain.service.company.CompanyService
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
