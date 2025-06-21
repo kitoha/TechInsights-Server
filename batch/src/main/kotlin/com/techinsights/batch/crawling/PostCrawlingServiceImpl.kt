@@ -1,6 +1,7 @@
 package com.techinsights.batch.crawling
 
 import com.techinsights.batch.parser.BlogParserResolver
+import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
@@ -12,10 +13,10 @@ class PostCrawlingServiceImpl (
   private val parserResolver: BlogParserResolver
 ): PostCrawlingService {
 
-  override suspend fun processCrawledData(feedUrl: String): List<PostDto> {
-    val rssContent = fetchRssContent(feedUrl)
-    val parser = parserResolver.resolve(feedUrl)
-    return parser.parseList(feedUrl, rssContent)
+  override suspend fun processCrawledData(companyDto: CompanyDto): List<PostDto> {
+    val rssContent = fetchRssContent(companyDto.blogUrl)
+    val parser = parserResolver.resolve(companyDto.blogUrl)
+    return parser.parseList(companyDto, rssContent)
   }
 
   private suspend fun fetchRssContent(feedUrl: String): String {

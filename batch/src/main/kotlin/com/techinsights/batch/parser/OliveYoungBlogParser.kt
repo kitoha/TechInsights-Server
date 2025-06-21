@@ -2,6 +2,7 @@ package com.techinsights.batch.parser
 
 import com.techinsights.batch.extract.CompositeThumbnailExtractor
 import com.techinsights.batch.util.FeedParseUtil.parseHtmlDate
+import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.utils.Tsid
 import kotlinx.coroutines.Dispatchers
@@ -16,10 +17,10 @@ class OliveYoungBlogParser(
   override fun supports(feedUrl: String): Boolean =
     feedUrl.contains("oliveyoung.tech")
 
-  override suspend fun parseList(feedUrl: String, content: String): List<PostDto> = withContext(
+  override suspend fun parseList(companyDto: CompanyDto, content: String): List<PostDto> = withContext(
     Dispatchers.IO) {
     try {
-      val document = Jsoup.parse(content, feedUrl)
+      val document = Jsoup.parse(content, companyDto.blogUrl)
       val posts = document.select("li.PostList-module--item--95839")
       posts.map { el ->
         val linkEl = el.selectFirst("a.PostList-module--wrapper--f39d6")
@@ -34,6 +35,7 @@ class OliveYoungBlogParser(
           content = el.selectFirst("p.PostList-module--sub--424ed")?.text().orEmpty(),
           publishedAt = parseHtmlDate(dateText),
           thumbnail = extractBestThumbnail(linkEl?.absUrl("href").orEmpty()),
+          company = companyDto
         )
       }.filter { it.title.isNotEmpty() && it.url.isNotEmpty() }
     } catch (e: Exception) {

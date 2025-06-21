@@ -2,6 +2,7 @@ package com.techinsights.batch.parser
 
 import com.techinsights.batch.extract.CompositeThumbnailExtractor
 import com.techinsights.batch.util.FeedParseUtil.parseHtmlDate
+import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.utils.Tsid
 import kotlinx.coroutines.Dispatchers
@@ -17,11 +18,11 @@ class ElevenStBlogParser(
   override fun supports(feedUrl: String): Boolean =
     feedUrl.contains("11st")
 
-  override suspend fun parseList(feedUrl: String, content: String): List<PostDto> = withContext(
+  override suspend fun parseList(companyDto: CompanyDto, content: String): List<PostDto> = withContext(
     Dispatchers.IO
   ) {
     try {
-      val document = Jsoup.parse(content, feedUrl)
+      val document = Jsoup.parse(content, companyDto.blogUrl)
 
       val posts = document.select("ul#post-list > li.post-item")
       posts.map { el ->
@@ -39,7 +40,8 @@ class ElevenStBlogParser(
           url = url,
           content = description,
           publishedAt = parseHtmlDate(date),
-          thumbnail = extractBestThumbnail(url)
+          thumbnail = extractBestThumbnail(url),
+          company = companyDto
         )
       }.filter { it.title.isNotEmpty() && it.url.isNotEmpty() }
     } catch (e: Exception) {

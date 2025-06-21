@@ -13,7 +13,7 @@ class RawPostProcessor(
 ) : ItemProcessor<CompanyDto, List<PostDto>> {
   override fun process(company: CompanyDto): List<PostDto> = runBlocking {
     try {
-      postCrawlingService.processCrawledData(company.blogUrl)
+      postCrawlingService.processCrawledData(company)
     } catch (e: Exception) {
       log.error("Feed 파싱 실패 [${company.name}] - ${e.message}")
       throw e

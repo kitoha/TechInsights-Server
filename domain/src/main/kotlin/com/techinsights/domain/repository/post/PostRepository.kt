@@ -8,4 +8,5 @@ interface PostRepository {
   fun saveAll(posts: List<PostDto>): List<PostDto>
   fun findAllByUrlIn(urls: List<String>): List<PostDto>
   fun getPosts(pageable: Pageable): Page<PostDto>
+  fun getPostById(id: String): PostDto
 }

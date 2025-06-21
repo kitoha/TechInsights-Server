@@ -1,10 +1,8 @@
 package com.techinsights.domain.entity.post
 
-import jakarta.persistence.Column
-import jakarta.persistence.Id
+import com.techinsights.domain.entity.company.Company
+import jakarta.persistence.*
 import java.time.LocalDateTime
-import jakarta.persistence.Entity
-import jakarta.persistence.Table
 
 @Entity
 @Table(name = "posts")
@@ -21,5 +19,8 @@ class Post(
   val publishedAt: LocalDateTime,
   @Column(name = "thumbnail")
   var thumbnail: String? = null,
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "company_id", nullable = false)
+  val company: Company
 ) {
 }

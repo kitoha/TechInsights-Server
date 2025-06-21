@@ -3,6 +3,7 @@ package com.techinsights.batch.parser
 import com.techinsights.batch.extract.CompositeThumbnailExtractor
 import com.techinsights.batch.util.FeedParseUtil.getSingleTagText
 import com.techinsights.batch.util.FeedParseUtil.parseRssDate
+import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.utils.Tsid
 import kotlinx.coroutines.Dispatchers
@@ -21,7 +22,7 @@ class RssParser(
   override fun supports(feedUrl: String): Boolean =
     feedUrl.endsWith(".rss") || feedUrl.endsWith(".xml") || feedUrl.contains("feed")
 
-  override suspend fun parseList(feedUrl: String, content: String): List<PostDto> =
+  override suspend fun parseList(companyDto: CompanyDto, content: String): List<PostDto> =
     withContext(Dispatchers.IO) {
       try {
         val document = DocumentBuilderFactory
@@ -38,7 +39,8 @@ class RssParser(
             url = element.getSingleTagText("link", "id"),
             content = element.getSingleTagText("description", "content"),
             publishedAt = parseRssDate(element.getSingleTagText("pubDate", "updated", "published")),
-            thumbnail = extractBestThumbnail(element)
+            thumbnail = extractBestThumbnail(element),
+            company = companyDto
           )
         }
       } catch (e: Exception) {
