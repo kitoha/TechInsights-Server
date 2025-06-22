@@ -1,6 +1,9 @@
 package com.techinsights.batch.parser
 
 import com.techinsights.batch.extract.CompositeThumbnailExtractor
+import com.techinsights.batch.util.FeedParseUtil
+import com.techinsights.batch.util.FeedParseUtil.extractFullContent
+import com.techinsights.batch.util.FeedParseUtil.extractStructuredText
 import com.techinsights.batch.util.FeedParseUtil.parseHtmlDate
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
@@ -29,16 +32,15 @@ class ElevenStBlogParser(
         val anchor = el.selectFirst("a")
         val url = anchor?.absUrl("href").orEmpty()
         val title = anchor?.selectFirst("h3.post-title")?.text().orEmpty()
-        val description = anchor?.selectFirst("p.post-excerpt")?.text().orEmpty()
+        val contents = anchor?.selectFirst("p.post-excerpt")?.text().orEmpty()
         val date = el.selectFirst("div.post-meta > p.post-date")?.text()?.trim()
-        val tagElements = el.select("p.post-tags > a.tag")
-        val tags = tagElements.map { it.text() }
+        val fullContent = extractFullContent(url, contents)
 
         PostDto(
           id = Tsid.generate(),
           title = title,
           url = url,
-          content = description,
+          content = fullContent,
           publishedAt = parseHtmlDate(date),
           thumbnail = extractBestThumbnail(url),
           company = companyDto
@@ -52,7 +54,7 @@ class ElevenStBlogParser(
   fun extractBestThumbnail(detailUrl: String): String? {
     return runCatching {
       if (detailUrl.isBlank()) return@runCatching null
-      val doc = org.jsoup.Jsoup.connect(detailUrl).get()
+      val doc = Jsoup.connect(detailUrl).get()
       thumbnailExtractor.extract(doc)
     }.getOrNull()
   }
