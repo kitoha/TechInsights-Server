@@ -1,6 +1,7 @@
 package com.techinsights.batch.parser
 
 import com.techinsights.batch.extract.CompositeThumbnailExtractor
+import com.techinsights.batch.util.FeedParseUtil.extractFullContent
 import com.techinsights.batch.util.FeedParseUtil.parseHtmlDate
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
@@ -24,17 +25,20 @@ class OliveYoungBlogParser(
       val posts = document.select("li.PostList-module--item--95839")
       posts.map { el ->
         val linkEl = el.selectFirst("a.PostList-module--wrapper--f39d6")
-        val imageEl = linkEl?.selectFirst("img[data-main-image]")
         val dateText = el.selectFirst(".PostList-module--date--21238")?.text()?.trim()
-        val tagEls = el.select("div.PostList-module--tag--0b5cb span")
+        val contents =  el.selectFirst("p.PostList-module--sub--424ed")?.text().orEmpty()
+        val title = el.selectFirst("h1.PostList-module--title--a2e55")?.text().orEmpty()
+        val url = linkEl?.absUrl("href").orEmpty()
+        val fullContent = extractFullContent(url, contents)
+
 
         PostDto(
           id = Tsid.generate(),
-          title = el.selectFirst("h1.PostList-module--title--a2e55")?.text().orEmpty(),
-          url = linkEl?.absUrl("href").orEmpty(),
-          content = el.selectFirst("p.PostList-module--sub--424ed")?.text().orEmpty(),
+          title = title,
+          url = url,
+          content = fullContent,
           publishedAt = parseHtmlDate(dateText),
-          thumbnail = extractBestThumbnail(linkEl?.absUrl("href").orEmpty()),
+          thumbnail = extractBestThumbnail(url),
           company = companyDto
         )
       }.filter { it.title.isNotEmpty() && it.url.isNotEmpty() }
