@@ -1,5 +1,8 @@
 package com.techinsights.domain.dto.post
 
+import com.techinsights.domain.dto.company.CompanyDto
+import com.techinsights.domain.entity.post.Post
+import com.techinsights.domain.utils.Tsid
 import java.time.LocalDateTime
 
 data class PostDto(
@@ -8,6 +11,32 @@ data class PostDto(
     val url: String,
     val content: String,
     val publishedAt: LocalDateTime,
-    var thumbnail: String? = null
+    var thumbnail: String? = null,
+    val company: CompanyDto
 ){
+    fun toEntity(): Post {
+        return Post(
+            id = Tsid.decode(id),
+            title = title,
+            url = url,
+            content = content,
+            publishedAt = publishedAt,
+            thumbnail = thumbnail,
+            company = company.toEntity()
+        )
+    }
+
+    companion object{
+        fun fromEntity(entity: Post): PostDto {
+            return PostDto(
+                id = Tsid.encode(entity.id),
+                title = entity.title,
+                url = entity.url,
+                content = entity.content,
+                publishedAt = entity.publishedAt,
+                thumbnail = entity.thumbnail,
+                company = CompanyDto.fromEntity(entity.company)
+            )
+        }
+    }
 }

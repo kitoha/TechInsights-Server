@@ -1,8 +1,9 @@
 package com.techinsights.batch.parser
 
+import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
 
 interface BlogParser {
   fun supports(feedUrl: String): Boolean
-  suspend fun parseList(feedUrl: String, content: String): List<PostDto>
+  suspend fun parseList(companyDto: CompanyDto, content: String): List<PostDto>
 }

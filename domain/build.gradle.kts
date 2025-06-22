@@ -4,6 +4,7 @@ plugins {
     kotlin("jvm")
     kotlin("plugin.spring")
     kotlin("plugin.jpa")
+    kotlin("kapt")
 }
 
 group = "com.techinsights"
@@ -25,6 +26,9 @@ dependencies {
     implementation("io.hypersistence:hypersistence-tsid:2.1.4")
     implementation("javax.annotation:javax.annotation-api:1.3.2")
     implementation("mysql:mysql-connector-java:8.0.33")
+    implementation("com.querydsl:querydsl-core:5.1.0")
+    implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
+    kapt("com.querydsl:querydsl-apt:5.1.0:jakarta")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("io.kotest:kotest-runner-junit5:5.8.0")
     testImplementation("io.kotest:kotest-assertions-core:5.8.0")
@@ -36,4 +40,9 @@ dependencies {
 
 kotlin {
     jvmToolchain(21)
+}
+
+tasks {
+    bootJar { enabled = false }
+    jar { enabled = true }
 }
