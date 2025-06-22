@@ -7,6 +7,7 @@ import com.techinsights.domain.enums.PostSortType
 import com.techinsights.domain.service.post.PostService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
@@ -31,9 +32,9 @@ class PostController(
     )
   }
 
-  @GetMapping("/api/v1/posts/{id}")
-  fun getPostById(id: String): ResponseEntity<PostResponse> {
-    val postDto: PostDto = postService.getPostById(id)
+  @GetMapping("/api/v1/posts/{postId}")
+  fun getPostById(@PathVariable postId: String): ResponseEntity<PostResponse> {
+    val postDto: PostDto = postService.getPostById(postId)
     return ResponseEntity.ok(PostResponse.fromPostDto(postDto))
   }
 
