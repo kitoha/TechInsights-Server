@@ -28,6 +28,7 @@ dependencies {
     implementation("mysql:mysql-connector-java:8.0.33")
     implementation("com.querydsl:querydsl-core:5.1.0")
     implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
+    implementation("io.github.microutils:kotlin-logging:2.1.23")
     kapt("com.querydsl:querydsl-apt:5.1.0:jakarta")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("io.kotest:kotest-runner-junit5:5.8.0")
