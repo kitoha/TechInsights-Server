@@ -9,6 +9,8 @@ data class CompanyDto(
   val blogUrl: String,
   val logoImageName: String,
   val rssSupported: Boolean = false,
+  val totalViewCount: Long = 0L,
+  val postCount: Long = 0L
 ){
 
   fun toEntity(): Company {
@@ -17,7 +19,9 @@ data class CompanyDto(
       name = name,
       blogUrl = blogUrl,
       logoImageName = logoImageName,
-      rssSupported = rssSupported
+      rssSupported = rssSupported,
+      totalViewCount = totalViewCount,
+      postCount = postCount
     )
   }
 
@@ -28,7 +32,9 @@ data class CompanyDto(
         name = entity.name,
         blogUrl = entity.blogUrl,
         logoImageName = entity.logoImageName,
-        rssSupported = entity.rssSupported
+        rssSupported = entity.rssSupported,
+        totalViewCount = entity.totalViewCount,
+        postCount = entity.postCount
       )
     }
   }

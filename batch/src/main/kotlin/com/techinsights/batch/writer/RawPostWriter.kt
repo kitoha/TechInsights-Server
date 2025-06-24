@@ -2,6 +2,7 @@ package com.techinsights.batch.writer
 
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.repository.post.PostRepository
+import com.techinsights.domain.service.company.CompanyViewCountUpdater
 import org.slf4j.LoggerFactory
 import org.springframework.batch.item.Chunk
 import org.springframework.batch.item.ItemWriter
@@ -10,7 +11,8 @@ import org.springframework.stereotype.Component
 
 @Component
 class RawPostWriter(
-  private val postRepository: PostRepository
+  private val postRepository: PostRepository,
+  private val companyViewCountUpdater: CompanyViewCountUpdater
 ) : ItemWriter<List<PostDto>>{
 
   override fun write(chunk: Chunk<out List<PostDto>>) {
@@ -28,6 +30,13 @@ class RawPostWriter(
 
       if (filteredPosts.isNotEmpty()) {
         val savedPosts = postRepository.saveAll(filteredPosts)
+
+        val companyPostCountMap = savedPosts.groupingBy { it.company.id }.eachCount()
+
+        companyPostCountMap.forEach { (companyId, postCount) ->
+          companyViewCountUpdater.incrementPostCount(companyId, postCount)
+        }
+
         log.info("Saved ${savedPosts.size} new posts (filtered from ${allPosts.size})")
       } else {
         log.info("No new posts to save (all duplicates)")

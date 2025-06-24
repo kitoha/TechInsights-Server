@@ -31,8 +31,9 @@ class PostService(
 
   fun getPostById(id: String, ip: String): PostDto {
     val post = postRepository.getPostById(id)
+    val companyId = post.company.id
     try{
-      postViewService.recordView(id, ip)
+      postViewService.recordView(post, ip)
     }catch (e: Exception) {
       logger.error(e) { "Failed to increment view count for post with id: $id" }
     }

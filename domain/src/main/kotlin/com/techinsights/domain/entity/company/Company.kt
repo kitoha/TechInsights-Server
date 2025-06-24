@@ -14,5 +14,9 @@ class Company(
   @Column(name = "logo_image_name")
   val logoImageName: String,
   @Column(name = "rss_supported")
-  val rssSupported: Boolean = false
+  val rssSupported: Boolean = false,
+  @Column(name = "total_view_count", nullable = false)
+  var totalViewCount: Long = 0L,
+  @Column(name = "post_count", nullable = false)
+  var postCount: Long = 0L
 )
