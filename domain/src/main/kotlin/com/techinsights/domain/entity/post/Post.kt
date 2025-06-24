@@ -21,6 +21,8 @@ class Post(
   var thumbnail: String? = null,
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "company_id", nullable = false)
-  val company: Company
+  val company: Company,
+  @Column(name = "view_count", nullable = false)
+  var viewCount: Long = 0L
 ) {
 }

@@ -12,7 +12,8 @@ data class PostDto(
     val content: String,
     val publishedAt: LocalDateTime,
     var thumbnail: String? = null,
-    val company: CompanyDto
+    val company: CompanyDto,
+    val viewCount: Long = 0L
 ){
     fun toEntity(): Post {
         return Post(
@@ -22,7 +23,8 @@ data class PostDto(
             content = content,
             publishedAt = publishedAt,
             thumbnail = thumbnail,
-            company = company.toEntity()
+            company = company.toEntity(),
+            viewCount = viewCount
         )
     }
 
@@ -35,7 +37,8 @@ data class PostDto(
                 content = entity.content,
                 publishedAt = entity.publishedAt,
                 thumbnail = entity.thumbnail,
-                company = CompanyDto.fromEntity(entity.company)
+                company = CompanyDto.fromEntity(entity.company),
+                viewCount = entity.viewCount
             )
         }
     }
