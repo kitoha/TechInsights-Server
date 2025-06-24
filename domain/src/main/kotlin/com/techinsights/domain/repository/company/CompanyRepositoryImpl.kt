@@ -1,7 +1,9 @@
 package com.techinsights.domain.repository.company
 
+import com.querydsl.jpa.impl.JPAQueryFactory
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.entity.company.Company
+import com.techinsights.domain.entity.company.QCompany
 import com.techinsights.domain.utils.Tsid
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
@@ -10,7 +12,8 @@ import org.springframework.stereotype.Repository
 
 @Repository
 class CompanyRepositoryImpl(
-  private val companyJpaRepository: CompanyJpaRepository
+  private val companyJpaRepository: CompanyJpaRepository,
+  private val jpaQueryFactory: JPAQueryFactory
 ) : CompanyRepository {
 
   override fun findAll(): List<CompanyDto> {
@@ -67,5 +70,47 @@ class CompanyRepositoryImpl(
 
   override fun existsByName(name: String): Boolean {
     return companyJpaRepository.existsByName(name)
+  }
+
+  override fun getTopCompaniesByViews(pageable: Pageable): Page<CompanyDto> {
+    val company = QCompany.company
+
+    val query = jpaQueryFactory
+      .selectFrom(company)
+      .orderBy(company.totalViewCount.desc())
+      .offset(pageable.offset)
+      .limit(pageable.pageSize.toLong())
+
+    val results = query.fetch()
+
+    val total = jpaQueryFactory
+      .select(company.count())
+      .from(company)
+      .fetchOne() ?: 0L
+
+    val companyDtos = results.map { CompanyDto.fromEntity(it) }
+
+    return PageImpl(companyDtos, pageable, total)
+  }
+
+  override fun getTopCompaniesByPosts(pageable: Pageable): Page<CompanyDto> {
+    val company = QCompany.company
+
+    val query = jpaQueryFactory
+      .selectFrom(company)
+      .orderBy(company.postCount.desc())
+      .offset(pageable.offset)
+      .limit(pageable.pageSize.toLong())
+
+    val results = query.fetch()
+
+    val total = jpaQueryFactory
+      .select(company.count())
+      .from(company)
+      .fetchOne() ?: 0L
+
+    val companyDtos = results.map { CompanyDto.fromEntity(it) }
+
+    return PageImpl(companyDtos, pageable, total)
   }
 }

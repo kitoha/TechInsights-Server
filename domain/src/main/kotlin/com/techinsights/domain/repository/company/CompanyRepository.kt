@@ -15,4 +15,6 @@ interface CompanyRepository {
   fun existsById(id: String): Boolean
   fun findAllByNameIn(names: List<String>): List<CompanyDto>
   fun existsByName(name: String): Boolean
+  fun getTopCompaniesByViews(pageable: Pageable): Page<CompanyDto>
+  fun getTopCompaniesByPosts(pageable: Pageable): Page<CompanyDto>
 }

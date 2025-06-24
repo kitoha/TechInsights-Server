@@ -2,17 +2,12 @@ package com.techinsights.api.controller.company
 
 import com.techinsights.api.request.CompanyRequest
 import com.techinsights.api.response.CompanyResponse
+import com.techinsights.api.response.PageResponse
 import com.techinsights.domain.service.company.CompanyService
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.DeleteMapping
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.PutMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 
 @RestController
 class CompanyController(
@@ -45,5 +40,33 @@ class CompanyController(
     val companyDto = companyRequest.toDtoWithId(companyId)
     val savedCompanyDto = companyService.updateCompany(companyDto)
     return ResponseEntity.ok(CompanyResponse.fromDto(savedCompanyDto))
+  }
+
+  @GetMapping("/api/v1/companies/top-by-views")
+  fun getTopCompanies(@RequestParam(defaultValue = "0") page: Int,
+    @RequestParam(defaultValue = "10") size: Int): ResponseEntity<PageResponse<CompanyResponse>> {
+    val topCompanies = companyService.getTopCompaniesByViews(page, size)
+    val response = topCompanies.map { CompanyResponse.fromDto(it) }
+    return ResponseEntity.ok(PageResponse(
+      content = response.content,
+      page = response.number,
+      size = response.size,
+      totalElements = response.totalElements,
+      totalPages = response.totalPages
+    ))
+  }
+
+  @GetMapping("/api/v1/companies/top-by-posts")
+  fun getTopCompaniesByPosts(@RequestParam(defaultValue = "0") page: Int,
+    @RequestParam(defaultValue = "10") size: Int): ResponseEntity<PageResponse<CompanyResponse>> {
+    val topCompanies = companyService.getTopCompaniesByPosts(page, size)
+    val response = topCompanies.map { CompanyResponse.fromDto(it) }
+    return ResponseEntity.ok(PageResponse(
+      content = response.content,
+      page = response.number,
+      size = response.size,
+      totalElements = response.totalElements,
+      totalPages = response.totalPages
+    ))
   }
 }

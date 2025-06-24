@@ -6,6 +6,7 @@ import com.techinsights.domain.exeption.DuplicateCompanyNameException
 import com.techinsights.domain.repository.company.CompanyRepository
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -56,5 +57,16 @@ class CompanyService(
       throw CompanyNotFoundException("Company with id ${companyDto.id} not found")
     }
     return companyRepository.update(companyDto)
+  }
+
+  fun getTopCompaniesByViews(page :Int, size: Int): Page<CompanyDto> {
+    val pageable = PageRequest.of(page, size)
+
+    return companyRepository.getTopCompaniesByViews(pageable)
+  }
+
+  fun getTopCompaniesByPosts(page :Int, size: Int): Page<CompanyDto> {
+  val pageable = PageRequest.of(page, size)
+    return companyRepository.getTopCompaniesByPosts(pageable)
   }
 }

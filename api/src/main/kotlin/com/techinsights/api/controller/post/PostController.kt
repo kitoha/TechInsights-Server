@@ -23,16 +23,16 @@ class PostController(
   fun getPosts(@RequestParam(defaultValue = "0") page: Int,
     @RequestParam(defaultValue = "10") size: Int,
     @RequestParam(defaultValue = "RECENT") sort: PostSortType
-  ): PageResponse<PostResponse> {
+  ): ResponseEntity<PageResponse<PostResponse>> {
     val result = postService.getPosts(page, size, sort)
     val content = result.content.map { PostResponse.fromPostDto(it) }
-    return PageResponse(
+    return ResponseEntity.ok(PageResponse(
       content = content,
       page = result.number,
       size = result.size,
       totalElements = result.totalElements,
       totalPages = result.totalPages
-    )
+    ))
   }
 
   @GetMapping("/api/v1/posts/{postId}")
