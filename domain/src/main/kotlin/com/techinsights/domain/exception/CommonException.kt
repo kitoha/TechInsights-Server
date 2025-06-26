@@ -1,3 +1,3 @@
-package com.techinsights.domain.exeption
+package com.techinsights.domain.exception
 
 open class CommonException(message: String) : RuntimeException(message)

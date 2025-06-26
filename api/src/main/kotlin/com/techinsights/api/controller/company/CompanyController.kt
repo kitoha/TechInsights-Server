@@ -5,6 +5,7 @@ import com.techinsights.api.response.CompanyResponse
 import com.techinsights.api.response.PageResponse
 import com.techinsights.domain.service.company.CompanyService
 import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -31,8 +32,8 @@ class CompanyController(
   }
 
   @DeleteMapping("/api/v1/companies/{companyId}")
-  fun deleteCompany(companyId: String) {
-    companyService.deleteCompany(companyId)
+  fun deleteCompany(companyId: String): ResponseEntity<Boolean> {
+    return ResponseEntity.ok(companyService.deleteCompany(companyId))
   }
 
   @PutMapping("/api/v1/companies/{companyId}")
@@ -45,7 +46,8 @@ class CompanyController(
   @GetMapping("/api/v1/companies/top-by-views")
   fun getTopCompanies(@RequestParam(defaultValue = "0") page: Int,
     @RequestParam(defaultValue = "10") size: Int): ResponseEntity<PageResponse<CompanyResponse>> {
-    val topCompanies = companyService.getTopCompaniesByViews(page, size)
+    val pageable = PageRequest.of(page, size)
+    val topCompanies = companyService.getTopCompaniesByViews(pageable)
     val response = topCompanies.map { CompanyResponse.fromDto(it) }
     return ResponseEntity.ok(PageResponse(
       content = response.content,
@@ -59,7 +61,8 @@ class CompanyController(
   @GetMapping("/api/v1/companies/top-by-posts")
   fun getTopCompaniesByPosts(@RequestParam(defaultValue = "0") page: Int,
     @RequestParam(defaultValue = "10") size: Int): ResponseEntity<PageResponse<CompanyResponse>> {
-    val topCompanies = companyService.getTopCompaniesByPosts(page, size)
+    val pageable = PageRequest.of(page, size)
+    val topCompanies = companyService.getTopCompaniesByPosts(pageable)
     val response = topCompanies.map { CompanyResponse.fromDto(it) }
     return ResponseEntity.ok(PageResponse(
       content = response.content,

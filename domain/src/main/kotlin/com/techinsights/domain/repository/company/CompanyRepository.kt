@@ -10,7 +10,7 @@ interface CompanyRepository {
   fun saveAll(companies: List<CompanyDto>): List<CompanyDto>
   fun findById(id: String): CompanyDto
   fun getList(pageable: Pageable): Page<CompanyDto>
-  fun deleteById(id: String)
+  fun deleteById(id: String) : Boolean
   fun update(company: CompanyDto): CompanyDto
   fun existsById(id: String): Boolean
   fun findAllByNameIn(names: List<String>): List<CompanyDto>

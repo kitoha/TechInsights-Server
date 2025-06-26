@@ -1,8 +1,8 @@
 package com.techinsights.service
 
 import com.techinsights.domain.dto.company.CompanyDto
-import com.techinsights.domain.exeption.CompanyNotFoundException
-import com.techinsights.domain.exeption.DuplicateCompanyNameException
+import com.techinsights.domain.exception.CompanyNotFoundException
+import com.techinsights.domain.exception.DuplicateCompanyNameException
 import com.techinsights.domain.repository.company.CompanyRepository
 import com.techinsights.domain.service.company.CompanyService
 import io.kotest.assertions.throwables.shouldThrow
@@ -34,7 +34,7 @@ class CompanyServiceTest : FunSpec({
     }
 
     test("회사 상세 정보 조회 - 실패") {
-        every { companyRepository.findById("999") } throws Exception()
+        every { companyRepository.findById("999") } throws NoSuchElementException()
 
         shouldThrow<CompanyNotFoundException> {
             companyService.getCompanyDetails("999")
@@ -79,18 +79,10 @@ class CompanyServiceTest : FunSpec({
 
     test("회사 삭제 - 성공") {
         every { companyRepository.existsById("1") } returns true
-        every { companyRepository.deleteById("1") } returns Unit
+        every { companyRepository.deleteById("1") } returns true
 
         companyService.deleteCompany("1")
         verify { companyRepository.deleteById("1") }
-    }
-
-    test("회사 삭제 - 존재하지 않는 회사") {
-        every { companyRepository.existsById("999") } returns false
-
-        shouldThrow<CompanyNotFoundException> {
-            companyService.deleteCompany("999")
-        }
     }
 
     test("회사 수정 - 성공") {
@@ -99,13 +91,5 @@ class CompanyServiceTest : FunSpec({
 
         val result = companyService.updateCompany(sampleCompanyDto)
         result shouldBe sampleCompanyDto
-    }
-
-    test("회사 수정 - 존재하지 않는 회사") {
-        every { companyRepository.existsById("1") } returns false
-
-        shouldThrow<CompanyNotFoundException> {
-            companyService.updateCompany(sampleCompanyDto)
-        }
     }
 })

@@ -45,9 +45,13 @@ class CompanyRepositoryImpl(
     return PageImpl(companyDtos, pageable, page.totalElements)
   }
 
-  override fun deleteById(id: String) {
+  override fun deleteById(id: String) : Boolean {
     val companyId = Tsid.decode(id)
-    companyJpaRepository.deleteById(companyId)
+    if (companyJpaRepository.existsById(companyId)) {
+      companyJpaRepository.deleteById(companyId)
+      return true
+    }
+    return false
   }
 
   override fun update(company: CompanyDto): CompanyDto {

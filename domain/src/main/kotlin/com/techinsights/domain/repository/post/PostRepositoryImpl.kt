@@ -1,12 +1,11 @@
 package com.techinsights.domain.repository.post
 
 import com.querydsl.jpa.impl.JPAQueryFactory
-import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.entity.company.QCompany
 import com.techinsights.domain.entity.post.Post
 import com.techinsights.domain.entity.post.QPost
-import com.techinsights.domain.exeption.PostNotFoundException
+import com.techinsights.domain.exception.PostNotFoundException
 import com.techinsights.domain.utils.Tsid
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl

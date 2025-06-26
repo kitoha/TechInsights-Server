@@ -1,12 +1,11 @@
 package com.techinsights.domain.service.company
 
 import com.techinsights.domain.dto.company.CompanyDto
-import com.techinsights.domain.exeption.CompanyNotFoundException
-import com.techinsights.domain.exeption.DuplicateCompanyNameException
+import com.techinsights.domain.exception.CompanyNotFoundException
+import com.techinsights.domain.exception.DuplicateCompanyNameException
 import com.techinsights.domain.repository.company.CompanyRepository
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.Page
-import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -20,7 +19,7 @@ class CompanyService(
   fun getCompanyDetails(companyId: String): CompanyDto {
     try {
       return companyRepository.findById(companyId)
-    } catch (e: Exception) {
+    } catch (e: NoSuchElementException) {
       throw CompanyNotFoundException("Company with id $companyId not found")
     }
   }
@@ -43,30 +42,26 @@ class CompanyService(
   }
 
   @Transactional
-  fun deleteCompany(companyId: String) {
-    if (!companyRepository.existsById(companyId)) {
-      throw CompanyNotFoundException("Company with id $companyId not found")
-    }
-
-    companyRepository.deleteById(companyId)
+  fun deleteCompany(companyId: String) : Boolean {
+    return companyRepository.deleteById(companyId)
   }
 
   @Transactional
   fun updateCompany(companyDto: CompanyDto): CompanyDto {
-    if (!companyRepository.existsById(companyDto.id)) {
+    try {
+      return companyRepository.update(companyDto)
+    }catch (e: NoSuchElementException){
       throw CompanyNotFoundException("Company with id ${companyDto.id} not found")
+    } catch (e: DataIntegrityViolationException) {
+      throw DuplicateCompanyNameException("Duplicate company name found")
     }
-    return companyRepository.update(companyDto)
   }
 
-  fun getTopCompaniesByViews(page :Int, size: Int): Page<CompanyDto> {
-    val pageable = PageRequest.of(page, size)
-
+  fun getTopCompaniesByViews(pageable: Pageable): Page<CompanyDto> {
     return companyRepository.getTopCompaniesByViews(pageable)
   }
 
-  fun getTopCompaniesByPosts(page :Int, size: Int): Page<CompanyDto> {
-  val pageable = PageRequest.of(page, size)
+  fun getTopCompaniesByPosts(pageable: Pageable): Page<CompanyDto> {
     return companyRepository.getTopCompaniesByPosts(pageable)
   }
 }
