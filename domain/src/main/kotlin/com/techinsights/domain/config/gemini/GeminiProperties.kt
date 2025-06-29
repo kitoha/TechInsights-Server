@@ -8,4 +8,5 @@ import org.springframework.context.annotation.Configuration
 class GeminiProperties {
   var apiKey: String = ""
   var model: String = "gemini-2.0-flash-001"
+  var maxOutputTokens: Int = 2048
 }

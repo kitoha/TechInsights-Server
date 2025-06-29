@@ -24,10 +24,11 @@ class GeminiArticleSummarizer (
   override fun summarize(article: String): SummaryResult {
     val prompt  = promptTemplateEngine.buildPrompt(article, Category.entries.map { it.name })
     val schema  = promptTemplateEngine.buildSchema(Category.entries.map { it.name })
+    val schemaNode = mapper.readTree(schema)
     val config  = GenerateContentConfig.builder()
-      .responseJsonSchema(schema)
+      .responseJsonSchema(schemaNode)
       .responseMimeType("application/json")
-      .maxOutputTokens(256)
+      .maxOutputTokens(geminiProperties.maxOutputTokens)
       .build()
 
     val response = rateLimiter.executeCallable {
