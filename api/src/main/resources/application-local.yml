@@ -17,4 +17,4 @@ spring:
 gemini:
   api-key: ${GOOGLE_API_KEY}
   model: gemini-2.5-flash
-  max-output-tokens: 2048
+  max-output-tokens: 4096
