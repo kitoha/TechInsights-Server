@@ -43,7 +43,9 @@ class ElevenStBlogParser(
           content = fullContent,
           publishedAt = parseHtmlDate(date),
           thumbnail = extractBestThumbnail(url),
-          company = companyDto
+          company = companyDto,
+          viewCount = 0L,
+          category = emptySet()
         )
       }.filter { it.title.isNotEmpty() && it.url.isNotEmpty() }
     } catch (e: Exception) {

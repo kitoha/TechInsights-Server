@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string"
+    },
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": {{enumValues}}
+      },
+      "minItems": 1,
+      "uniqueItems": true
+      }
+},
+"required": ["summary", "categories"],
+"additionalProperties": false
+}

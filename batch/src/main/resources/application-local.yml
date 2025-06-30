@@ -8,3 +8,8 @@ spring:
     properties:
       hibernate:
         show_sql: true
+
+gemini:
+  api-key: ${GOOGLE_API_KEY}
+  model: gemini-2.5-flash
+  maxOutputTokens: 4096

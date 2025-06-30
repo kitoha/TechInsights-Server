@@ -1,8 +1,10 @@
 package com.techinsights.batch.writer
 
 import com.techinsights.domain.dto.post.PostDto
+import com.techinsights.domain.enums.Category
 import com.techinsights.domain.repository.post.PostRepository
 import com.techinsights.domain.service.company.CompanyViewCountUpdater
+import com.techinsights.domain.service.gemini.GeminiArticleSummarizer
 import org.slf4j.LoggerFactory
 import org.springframework.batch.item.Chunk
 import org.springframework.batch.item.ItemWriter
@@ -12,7 +14,8 @@ import org.springframework.stereotype.Component
 @Component
 class RawPostWriter(
   private val postRepository: PostRepository,
-  private val companyViewCountUpdater: CompanyViewCountUpdater
+  private val companyViewCountUpdater: CompanyViewCountUpdater,
+  private val geminiArticleSummarizer: GeminiArticleSummarizer
 ) : ItemWriter<List<PostDto>>{
 
   override fun write(chunk: Chunk<out List<PostDto>>) {
@@ -29,6 +32,13 @@ class RawPostWriter(
       val filteredPosts = allPosts.filter { it.url !in existUrls }
 
       if (filteredPosts.isNotEmpty()) {
+        filteredPosts.map { post ->
+          val summaryResult = geminiArticleSummarizer.summarize(post.content)
+          post.content = summaryResult.summary
+          post.category = summaryResult.categories.map { Category.valueOf(it) }.toSet()
+          post.toEntity()
+        }
+
         val savedPosts = postRepository.saveAll(filteredPosts)
 
         val companyPostCountMap = savedPosts.groupingBy { it.company.id }.eachCount()

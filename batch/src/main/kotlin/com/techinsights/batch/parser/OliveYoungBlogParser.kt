@@ -39,7 +39,9 @@ class OliveYoungBlogParser(
           content = fullContent,
           publishedAt = parseHtmlDate(dateText),
           thumbnail = extractBestThumbnail(url),
-          company = companyDto
+          company = companyDto,
+          viewCount = 0L,
+          category = emptySet()
         )
       }.filter { it.title.isNotEmpty() && it.url.isNotEmpty() }
     } catch (e: Exception) {
