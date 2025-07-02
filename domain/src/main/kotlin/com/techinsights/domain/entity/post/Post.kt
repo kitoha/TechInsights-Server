@@ -1,6 +1,7 @@
 package com.techinsights.domain.entity.post
 
 import com.techinsights.domain.entity.company.Company
+import com.techinsights.domain.enums.Category
 import jakarta.persistence.*
 import java.time.LocalDateTime
 
@@ -23,6 +24,11 @@ class Post(
   @JoinColumn(name = "company_id", nullable = false)
   val company: Company,
   @Column(name = "view_count", nullable = false)
-  var viewCount: Long = 0L
+  var viewCount: Long = 0L,
+  @ElementCollection(fetch = FetchType.LAZY, targetClass = Category::class)
+  @CollectionTable(name = "post_categories", joinColumns = [JoinColumn(name = "post_id")])
+  @Enumerated(EnumType.STRING)
+  @Column(name = "category", nullable = false)
+  var categories: MutableSet<Category> = mutableSetOf()
 ) {
 }

@@ -60,7 +60,9 @@ class RssParser(
             content = fullContent,
             publishedAt = publishedAt,
             thumbnail = thumbnail,
-            company = companyDto
+            company = companyDto,
+            viewCount = 0L,
+            category = emptySet()
           )
         }
       } catch (e: Exception) {

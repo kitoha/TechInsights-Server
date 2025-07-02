@@ -2,6 +2,7 @@ package com.techinsights.domain.dto.post
 
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.entity.post.Post
+import com.techinsights.domain.enums.Category
 import com.techinsights.domain.utils.Tsid
 import java.time.LocalDateTime
 
@@ -9,11 +10,12 @@ data class PostDto(
     val id: String,
     val title: String,
     val url: String,
-    val content: String,
+    var content: String,
     val publishedAt: LocalDateTime,
     var thumbnail: String? = null,
     val company: CompanyDto,
-    val viewCount: Long = 0L
+    val viewCount: Long = 0L,
+    var category: Set<Category>
 ){
     fun toEntity(): Post {
         return Post(
@@ -24,7 +26,8 @@ data class PostDto(
             publishedAt = publishedAt,
             thumbnail = thumbnail,
             company = company.toEntity(),
-            viewCount = viewCount
+            viewCount = viewCount,
+            categories = category.toMutableSet()
         )
     }
 
@@ -38,7 +41,8 @@ data class PostDto(
                 publishedAt = entity.publishedAt,
                 thumbnail = entity.thumbnail,
                 company = CompanyDto.fromEntity(entity.company),
-                viewCount = entity.viewCount
+                viewCount = entity.viewCount,
+                category = entity.categories.toSet()
             )
         }
     }
