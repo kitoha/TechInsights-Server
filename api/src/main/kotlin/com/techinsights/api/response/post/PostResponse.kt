@@ -1,4 +1,4 @@
-package com.techinsights.api.response
+package com.techinsights.api.response.post
 
 import com.techinsights.domain.dto.post.PostDto
 import java.time.LocalDateTime

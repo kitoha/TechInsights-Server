@@ -1,7 +1,7 @@
 package com.techinsights.api.controller.post
 
-import com.techinsights.api.response.PageResponse
-import com.techinsights.api.response.PostResponse
+import com.techinsights.api.response.post.PageResponse
+import com.techinsights.api.response.post.PostResponse
 import com.techinsights.api.util.ClientIpExtractor
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.enums.PostSortType
@@ -26,13 +26,15 @@ class PostController(
   ): ResponseEntity<PageResponse<PostResponse>> {
     val result = postService.getPosts(page, size, sort)
     val content = result.content.map { PostResponse.fromPostDto(it) }
-    return ResponseEntity.ok(PageResponse(
+    return ResponseEntity.ok(
+      PageResponse(
       content = content,
       page = result.number,
       size = result.size,
       totalElements = result.totalElements,
       totalPages = result.totalPages
-    ))
+    )
+    )
   }
 
   @GetMapping("/api/v1/posts/{postId}")

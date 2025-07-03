@@ -1,4 +1,4 @@
-package com.techinsights.api.response
+package com.techinsights.api.response.company
 
 import com.techinsights.domain.dto.company.CompanyDto
 

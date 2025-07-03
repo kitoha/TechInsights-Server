@@ -1,4 +1,4 @@
-package com.techinsights.api.response
+package com.techinsights.api.response.post
 
 data class PageResponse<T>(
   val content: List<T>,

@@ -1,8 +1,8 @@
 package com.techinsights.api.controller.company
 
 import com.techinsights.api.request.CompanyRequest
-import com.techinsights.api.response.CompanyResponse
-import com.techinsights.api.response.PageResponse
+import com.techinsights.api.response.company.CompanyResponse
+import com.techinsights.api.response.post.PageResponse
 import com.techinsights.domain.service.company.CompanyService
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
@@ -49,13 +49,15 @@ class CompanyController(
     val pageable = PageRequest.of(page, size)
     val topCompanies = companyService.getTopCompaniesByViews(pageable)
     val response = topCompanies.map { CompanyResponse.fromDto(it) }
-    return ResponseEntity.ok(PageResponse(
+    return ResponseEntity.ok(
+      PageResponse(
       content = response.content,
       page = response.number,
       size = response.size,
       totalElements = response.totalElements,
       totalPages = response.totalPages
-    ))
+    )
+    )
   }
 
   @GetMapping("/api/v1/companies/top-by-posts")
@@ -64,12 +66,14 @@ class CompanyController(
     val pageable = PageRequest.of(page, size)
     val topCompanies = companyService.getTopCompaniesByPosts(pageable)
     val response = topCompanies.map { CompanyResponse.fromDto(it) }
-    return ResponseEntity.ok(PageResponse(
+    return ResponseEntity.ok(
+      PageResponse(
       content = response.content,
       page = response.number,
       size = response.size,
       totalElements = response.totalElements,
       totalPages = response.totalPages
-    ))
+    )
+    )
   }
 }
