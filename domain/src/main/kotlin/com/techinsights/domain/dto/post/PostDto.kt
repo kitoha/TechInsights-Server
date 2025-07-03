@@ -15,7 +15,8 @@ data class PostDto(
     var thumbnail: String? = null,
     val company: CompanyDto,
     val viewCount: Long = 0L,
-    var category: Set<Category>
+    var categories: Set<Category>,
+    val isSummary: Boolean = false
 ){
     fun toEntity(): Post {
         return Post(
@@ -27,7 +28,8 @@ data class PostDto(
             thumbnail = thumbnail,
             company = company.toEntity(),
             viewCount = viewCount,
-            categories = category.toMutableSet()
+            categories = categories.toMutableSet(),
+            isSummary = isSummary
         )
     }
 
@@ -42,7 +44,8 @@ data class PostDto(
                 thumbnail = entity.thumbnail,
                 company = CompanyDto.fromEntity(entity.company),
                 viewCount = entity.viewCount,
-                category = entity.categories.toSet()
+                categories = entity.categories.toSet(),
+                isSummary = entity.isSummary
             )
         }
     }

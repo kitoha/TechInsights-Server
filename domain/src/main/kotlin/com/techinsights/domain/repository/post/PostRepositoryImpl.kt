@@ -59,4 +59,16 @@ class PostRepositoryImpl(
 
     return PostDto.fromEntity(post)
   }
+
+  override fun findOldestNotSummarized(limit: Long, offset: Long): List<PostDto> {
+    val post = QPost.post
+
+    return queryFactory.selectFrom(post)
+      .where(post.isSummary.isFalse)
+      .orderBy(post.publishedAt.asc())
+      .offset(offset)
+      .limit(limit)
+      .fetch()
+      .map { PostDto.fromEntity(it) }
+  }
 }

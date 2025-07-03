@@ -9,4 +9,5 @@ interface PostRepository {
   fun findAllByUrlIn(urls: List<String>): List<PostDto>
   fun getPosts(pageable: Pageable): Page<PostDto>
   fun getPostById(id: String): PostDto
+  fun findOldestNotSummarized(limit: Long, offset: Long): List<PostDto>
 }
