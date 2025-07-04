@@ -14,8 +14,7 @@ import org.springframework.stereotype.Component
 @Component
 class RawPostWriter(
   private val postRepository: PostRepository,
-  private val companyViewCountUpdater: CompanyViewCountUpdater,
-  private val geminiArticleSummarizer: GeminiArticleSummarizer
+  private val companyViewCountUpdater: CompanyViewCountUpdater
 ) : ItemWriter<List<PostDto>>{
 
   override fun write(chunk: Chunk<out List<PostDto>>) {
@@ -32,12 +31,6 @@ class RawPostWriter(
       val filteredPosts = allPosts.filter { it.url !in existUrls }
 
       if (filteredPosts.isNotEmpty()) {
-        filteredPosts.map { post ->
-          val summaryResult = geminiArticleSummarizer.summarize(post.content)
-          post.content = summaryResult.summary
-          post.category = summaryResult.categories.map { Category.valueOf(it) }.toSet()
-          post.toEntity()
-        }
 
         val savedPosts = postRepository.saveAll(filteredPosts)
 

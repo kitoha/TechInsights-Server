@@ -29,6 +29,8 @@ class Post(
   @CollectionTable(name = "post_categories", joinColumns = [JoinColumn(name = "post_id")])
   @Enumerated(EnumType.STRING)
   @Column(name = "category", nullable = false)
-  var categories: MutableSet<Category> = mutableSetOf()
+  var categories: MutableSet<Category> = mutableSetOf(),
+  @Column(name = "is_summary", nullable = false)
+  var isSummary: Boolean = false,
 ) {
 }
