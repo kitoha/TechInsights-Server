@@ -9,6 +9,7 @@ import org.springframework.batch.core.Step
 import org.springframework.batch.core.job.builder.JobBuilder
 import org.springframework.batch.core.repository.JobRepository
 import org.springframework.batch.core.step.builder.StepBuilder
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.transaction.PlatformTransactionManager
@@ -23,8 +24,8 @@ class SummarizePostJobConfig (
 ){
 
   @Bean
-  fun summarizePostJob(step: Step): Job = JobBuilder("summarizePostJob", jobRepository)
-      .start(step)
+  fun summarizePostJob(@Qualifier("summarizePostStep") summarizePostStep: Step): Job = JobBuilder("summarizePostJob", jobRepository)
+      .start(summarizePostStep)
       .build()
 
   @Bean

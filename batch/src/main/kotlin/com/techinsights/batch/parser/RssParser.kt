@@ -2,7 +2,6 @@ package com.techinsights.batch.parser
 
 import com.techinsights.batch.extract.CompositeThumbnailExtractor
 import com.techinsights.batch.util.FeedParseUtil.extractFullContent
-import com.techinsights.batch.util.FeedParseUtil.extractStructuredText
 import com.techinsights.batch.util.FeedParseUtil.getSingleTagText
 import com.techinsights.batch.util.FeedParseUtil.parseRssDate
 import com.techinsights.domain.dto.company.CompanyDto
@@ -15,7 +14,6 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
 import org.springframework.stereotype.Component
-import java.net.URI
 
 @Component
 class RssParser(
@@ -62,7 +60,7 @@ class RssParser(
             thumbnail = thumbnail,
             company = companyDto,
             viewCount = 0L,
-            category = emptySet()
+            categories = emptySet()
           )
         }
       } catch (e: Exception) {
