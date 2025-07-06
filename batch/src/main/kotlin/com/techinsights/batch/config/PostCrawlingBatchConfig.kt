@@ -9,6 +9,7 @@ import com.techinsights.batch.writer.RawPostWriter
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step
 import org.springframework.batch.core.job.builder.JobBuilder
+import org.springframework.batch.core.launch.support.RunIdIncrementer
 import org.springframework.batch.core.repository.JobRepository
 import org.springframework.batch.core.step.builder.StepBuilder
 import org.springframework.beans.factory.annotation.Qualifier
@@ -29,6 +30,7 @@ class PostCrawlingBatchConfig (
 
   @Bean
   fun crawlPostJob(@Qualifier("crawlPostStep") crawlPostStep: Step): Job = JobBuilder(properties.jobName, jobRepository)
+    .incrementer(RunIdIncrementer())
     .listener(loggingJobExecutionListener)
     .start(crawlPostStep)
     .build()

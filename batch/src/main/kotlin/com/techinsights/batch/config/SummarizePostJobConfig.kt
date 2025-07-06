@@ -7,6 +7,7 @@ import com.techinsights.domain.dto.post.PostDto
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step
 import org.springframework.batch.core.job.builder.JobBuilder
+import org.springframework.batch.core.launch.support.RunIdIncrementer
 import org.springframework.batch.core.repository.JobRepository
 import org.springframework.batch.core.step.builder.StepBuilder
 import org.springframework.beans.factory.annotation.Qualifier
@@ -25,6 +26,7 @@ class SummarizePostJobConfig (
 
   @Bean
   fun summarizePostJob(@Qualifier("summarizePostStep") summarizePostStep: Step): Job = JobBuilder("summarizePostJob", jobRepository)
+      .incrementer(RunIdIncrementer())
       .start(summarizePostStep)
       .build()
 
