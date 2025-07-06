@@ -28,6 +28,9 @@ jobs:
         run: ./gradlew :batch:build -x test
 
       - name: Run batch application
+        env:
+          SPRING_PROFILES_ACTIVE: local
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
           java -jar -Dspring.profiles.active=local \
                batch/build/libs/batch-0.0.1-SNAPSHOT.jar \
