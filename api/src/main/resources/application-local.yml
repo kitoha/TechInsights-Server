@@ -2,11 +2,6 @@ spring:
   config:
     import:
       - aws-parameterstore:/config/techinsights/dev/
-  batch:
-    job:
-      enabled: false
-    jdbc:
-      initialize-schema: never
 
 gemini:
   api-key: ${GOOGLE_API_KEY}

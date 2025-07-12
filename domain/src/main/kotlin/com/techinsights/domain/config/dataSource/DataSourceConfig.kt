@@ -10,7 +10,6 @@ import javax.sql.DataSource
 class DataSourceConfig (
   private val dataSourceProperties: DataSourceProperties
 ){
-
   @Bean
   fun dataSource() : DataSource =
     DataSourceBuilder.create()
