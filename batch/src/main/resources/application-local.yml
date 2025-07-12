@@ -1,13 +1,7 @@
 spring:
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3307/techinsights_db?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    username: local-user
-    password: ${DB_PASSWORD}
-  jpa:
-    properties:
-      hibernate:
-        show_sql: true
+  config:
+    import:
+      - aws-parameterstore:/config/techinsights/batch/dev/
 
 gemini:
   api-key: ${GOOGLE_API_KEY}
