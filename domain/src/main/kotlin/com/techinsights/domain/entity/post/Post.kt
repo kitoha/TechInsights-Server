@@ -3,6 +3,7 @@ package com.techinsights.domain.entity.post
 import com.techinsights.domain.entity.company.Company
 import com.techinsights.domain.enums.Category
 import jakarta.persistence.*
+import org.hibernate.annotations.BatchSize
 import java.time.LocalDateTime
 
 @Entity
@@ -25,6 +26,7 @@ class Post(
   val company: Company,
   @Column(name = "view_count", nullable = false)
   var viewCount: Long = 0L,
+  @BatchSize(size = 100)
   @ElementCollection(fetch = FetchType.LAZY, targetClass = Category::class)
   @CollectionTable(name = "post_categories", joinColumns = [JoinColumn(name = "post_id")])
   @Enumerated(EnumType.STRING)
