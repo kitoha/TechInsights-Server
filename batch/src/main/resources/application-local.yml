@@ -1,9 +1,9 @@
 spring:
   config:
     import:
-      - aws-parameterstore:/config/techinsights/batch/dev/
+      - aws-parameterstore:/config/techinsights/dev/
 
 gemini:
   api-key: ${GOOGLE_API_KEY}
   model: gemini-2.5-flash
-  maxOutputTokens: 4096
+  max-output-tokens: 8192
