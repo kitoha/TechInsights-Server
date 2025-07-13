@@ -43,12 +43,15 @@ class PostRepositoryImpl(
 
     val query = queryFactory.selectFrom(postEntity)
       .leftJoin(postEntity.company, companyEntity).fetchJoin()
+      .where(postEntity.isSummary.isTrue)
       .orderBy(postEntity.publishedAt.desc())
       .offset(pageable.offset)
       .limit(pageable.pageSize.toLong())
 
     val results = query.fetch()
-    val total = queryFactory.select(postEntity.id.count()).from(postEntity).fetchOne() ?: 0L
+    val total = queryFactory.select(postEntity.id.count())
+      .where(postEntity.isSummary.isTrue)
+      .from(postEntity).fetchOne() ?: 0L
 
     val resultsDto = results.map { post -> PostDto.fromEntity(post) }
 

@@ -33,7 +33,8 @@ class PostSummaryProcessor(
                         val summarized = summarizer.summarize(item.content)
                         val content = summarized.summary
                         val categories = summarized.categories.map { Category.valueOf(it) }.toSet()
-                        item.copy(content = content, categories = categories, isSummary = true)
+                        val preview = summarized.preview
+                        item.copy(content = content, preview = preview, categories = categories, isSummary = true)
                     }
                 }
             }

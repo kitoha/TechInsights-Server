@@ -13,6 +13,8 @@ class Post(
   val id: Long,
   @Column(name = "title")
   val title: String,
+  @Column(name = "preview", columnDefinition = "TEXT")
+  var preview: String?,
   @Column(name = "url")
   val url: String,
   @Column(name = "content")

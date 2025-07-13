@@ -39,6 +39,7 @@ class ElevenStBlogParser(
         PostDto(
           id = Tsid.generate(),
           title = title,
+          preview = null,
           url = url,
           content = fullContent,
           publishedAt = parseHtmlDate(date),
