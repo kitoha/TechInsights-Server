@@ -9,6 +9,7 @@ import java.time.LocalDateTime
 data class PostDto(
     val id: String,
     val title: String,
+    var preview: String?,
     val url: String,
     var content: String,
     val publishedAt: LocalDateTime,
@@ -22,6 +23,7 @@ data class PostDto(
         return Post(
             id = Tsid.decode(id),
             title = title,
+            preview = preview,
             url = url,
             content = content,
             publishedAt = publishedAt,
@@ -38,6 +40,7 @@ data class PostDto(
             return PostDto(
                 id = Tsid.encode(entity.id),
                 title = entity.title,
+                preview = entity.preview,
                 url = entity.url,
                 content = entity.content,
                 publishedAt = entity.publishedAt,

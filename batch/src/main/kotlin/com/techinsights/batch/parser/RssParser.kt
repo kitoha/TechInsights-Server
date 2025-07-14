@@ -54,6 +54,7 @@ class RssParser(
           PostDto(
             id = Tsid.generate(),
             title = title,
+            preview = null,
             url = url,
             content = fullContent,
             publishedAt = publishedAt,

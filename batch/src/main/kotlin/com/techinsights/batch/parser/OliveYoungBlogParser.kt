@@ -35,6 +35,7 @@ class OliveYoungBlogParser(
         PostDto(
           id = Tsid.generate(),
           title = title,
+          preview = null,
           url = url,
           content = fullContent,
           publishedAt = parseHtmlDate(dateText),

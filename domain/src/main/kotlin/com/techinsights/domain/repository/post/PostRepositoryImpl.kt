@@ -24,7 +24,14 @@ class PostRepositoryImpl(
   }
 
   override fun findAllByUrlIn(urls: List<String>): List<PostDto> {
-    val posts: List<Post> = postJpaRepository.findAllByUrlIn(urls)
+    val postEntity = QPost.post
+    val companyEntity = QCompany.company
+
+    val posts = queryFactory.selectFrom(postEntity)
+      .leftJoin(postEntity.company, companyEntity).fetchJoin()
+      .where(postEntity.url.`in`(urls))
+      .fetch()
+
     return posts.map { post -> PostDto.fromEntity(post) }
   }
 
@@ -36,12 +43,15 @@ class PostRepositoryImpl(
 
     val query = queryFactory.selectFrom(postEntity)
       .leftJoin(postEntity.company, companyEntity).fetchJoin()
+      .where(postEntity.isSummary.isTrue)
       .orderBy(postEntity.publishedAt.desc())
       .offset(pageable.offset)
       .limit(pageable.pageSize.toLong())
 
     val results = query.fetch()
-    val total = queryFactory.selectFrom(postEntity).fetchCount()
+    val total = queryFactory.select(postEntity.id.count())
+      .where(postEntity.isSummary.isTrue)
+      .from(postEntity).fetchOne() ?: 0L
 
     val resultsDto = results.map { post -> PostDto.fromEntity(post) }
 
@@ -62,8 +72,10 @@ class PostRepositoryImpl(
 
   override fun findOldestNotSummarized(limit: Long, offset: Long): List<PostDto> {
     val post = QPost.post
+    val company = QCompany.company
 
     return queryFactory.selectFrom(post)
+      .leftJoin(post.company, company).fetchJoin()
       .where(post.isSummary.isFalse)
       .orderBy(post.publishedAt.asc())
       .offset(offset)
