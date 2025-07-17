@@ -1,50 +1,20 @@
 #!/bin/bash
-# 이 스크립트는 CodeDeploy에 의해 EC2 인스턴스에서 실행됩니다.
-# AWS Secrets Manager를 사용하여 Docker Hub 인증 정보를 안전하게 가져옵니다.
 
-echo "Starting server with image tag: ${IMAGE_TAG}"
-
-# 스크립트 실행 위치로 이동
+echo "Navigating to the application directory..."
 cd /home/ec2-user/techinsights
 
-# 필요한 변수 설정
-AWS_REGION="ap-northeast-2"
-SECRET_NAME="techinsights/dockerhub-credentials"
+echo "Starting application using the pre-configured docker-compose file..."
+# docker-compose.prod.yml 파일에는 이미 CI 단계에서 완성된 이미지 이름이 들어있습니다.
+# (예: image: kitoha/tech-insights-api:202507171200)
 
-# JSON 파싱을 위한 jq 설치 (없는 경우)
-if ! command -v jq &> /dev/null
-then
-    echo "jq could not be found, installing..."
-    sudo yum install -y jq
-fi
+# 1. 최신 버전의 이미지를 Docker Hub에서 받아옵니다.
+docker-compose -f docker-compose.prod.yml pull
 
-# AWS Secrets Manager에서 Docker Hub 인증 정보 가져오기
-echo "Fetching Docker Hub credentials from AWS Secrets Manager..."
-SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id ${SECRET_NAME} --region ${AWS_REGION} --query SecretString --output text)
-
-# SecretString이 비어 있는지 확인
-if [ -z "${SECRET_JSON}" ]; then
-  echo "Error: Could not retrieve secret from AWS Secrets Manager."
-  exit 1
-fi
-
-# jq를 사용하여 사용자 이름과 토큰 추출
-DOCKERHUB_USERNAME=$(echo ${SECRET_JSON} | jq -r '.username')
-DOCKERHUB_TOKEN=$(echo ${SECRET_JSON} | jq -r '.password')
-
-# 추출된 값이 비어 있는지 확인
-if [ -z "${DOCKERHUB_USERNAME}" ] || [ -z "${DOCKERHUB_TOKEN}" ]; then
-  echo "Error: Username or password not found in the secret."
-  exit 1
-fi
-
-# Docker Hub에 로그인
-echo "Logging in to Docker Hub..."
-echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
-
-# docker-compose.prod.yml을 사용하여 애플리케이션 시작
-echo "Starting application using docker-compose..."
-docker-compose -f docker-compose.prod.yml pull api
+# 2. 컨테이너를 백그라운드에서 실행합니다.
+# --remove-orphans: docker-compose 파일에서 제거된 서비스의 컨테이너를 삭제합니다.
 docker-compose -f docker-compose.prod.yml up -d --remove-orphans
 
-echo "Server startup script finished."
+# 3. 사용하지 않는 이전 버전의 Docker 이미지를 정리하여 디스크 공간을 확보합니다.
+docker image prune -f
+
+echo "Server startup script finished successfully."
