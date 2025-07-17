@@ -1,9 +1,9 @@
 name: Deploy API to AWS EC2 with CodeDeploy
 
 on:
-  push:
-    branches:
-      - main
+#  push:
+#    branches:
+#      - main # 추후 prod 환경 점검 후 주석 해제
   workflow_dispatch:
     inputs:
       image_tag:
@@ -46,16 +46,20 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Set image tag
+      - name: Set image tags
         id: image
         run: |
-          TAG=""
+          SPECIFIC_TAG=""
           if [ "${{ github.event_name }}" = "push" ]; then
-            TAG="latest"
+            SPECIFIC_TAG=$(date -u +'%Y%m%d%H%M')
           elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            TAG="${{ github.event.inputs.image_tag }}"
+            SPECIFIC_TAG="${{ github.event.inputs.image_tag }}"
           fi
-          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          
+          TAGS="${{ env.DOCKERHUB_REPO }}:latest\n${{ env.DOCKERHUB_REPO }}:${SPECIFIC_TAG}"
+          
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "specific_tag=${SPECIFIC_TAG}" >> $GITHUB_OUTPUT
 
       - name: Build and push image to Docker Hub
         uses: docker/build-push-action@v5
@@ -63,7 +67,7 @@ jobs:
           context: .
           file: ./api/Dockerfile
           push: true
-          tags: ${{ env.DOCKERHUB_REPO }}:${{ steps.image.outputs.tag }}
+          tags: ${{ steps.image.outputs.tags }}
 
       - name: Configure AWS credentials using OIDC
         uses: aws-actions/configure-aws-credentials@v4
@@ -73,19 +77,18 @@ jobs:
 
       - name: Prepare deployment artifact
         run: |
-          # 배포 시점에 이미지 태그를 실제 값으로 치환합니다.
-          sed -i "s|${IMAGE_TAG}|${{ steps.image.outputs.tag }}|g" docker-compose.prod.yml
-          sed -i "s|${IMAGE_TAG}|${{ steps.image.outputs.tag }}|g" scripts/start_server.sh
+          sed -i "s|${IMAGE_TAG}|${{ steps.image.outputs.specific_tag }}|g" docker-compose.prod.yml
+          sed -i "s|${IMAGE_TAG}|${{ steps.image.outputs.specific_tag }}|g" scripts/start_server.sh
 
           zip -r deploy.zip . -x ".git/*" ".github/*" ".idea/*" "build/*" ".gradle/*"
 
       - name: Upload artifact to S3
-        run: aws s3 cp deploy.zip s3://${{ env.S3_BUCKET_NAME }}/techinsights-api/${{ steps.image.outputs.tag }}/deploy.zip
+        run: aws s3 cp deploy.zip s3://${{ env.S3_BUCKET_NAME }}/techinsights-api/${{ steps.image.outputs.specific_tag }}/deploy.zip
 
       - name: Start CodeDeploy deployment
         run: |
           aws deploy create-deployment \
             --application-name ${{ env.CODEDEPLOY_APP_NAME }} \
             --deployment-group-name ${{ env.CODEDEPLOY_DEPLOYMENT_GROUP }} \
-            --s3-location bucket=${{ env.S3_BUCKET_NAME }},key=techinsights-api/${{ steps.image.outputs.tag }}/deploy.zip,bundleType=zip \
-            --description "Deployment for image tag ${{ steps.image.outputs.tag }}"
+            --s3-location bucket=${{ env.S3_BUCKET_NAME }},key=techinsights-api/${{ steps.image.outputs.specific_tag }}/deploy.zip,bundleType=zip \
+            --description "Deployment for image tag ${{ steps.image.outputs.specific_tag }}"
