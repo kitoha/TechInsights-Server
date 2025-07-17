@@ -1,0 +1,91 @@
+name: Deploy API to AWS EC2 with CodeDeploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to build and deploy'
+        required: true
+        default: 'manual-deploy'
+
+env:
+  DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_USERNAME }}/techinsights-api
+  AWS_REGION: ap-northeast-2
+  CODEDEPLOY_APP_NAME: techinsights-api
+  CODEDEPLOY_DEPLOYMENT_GROUP: api-prod-group
+  S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Run tests with Gradle
+        run: ./gradlew test
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set image tag
+        id: image
+        run: |
+          TAG=""
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG="latest"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.image_tag }}"
+          fi
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
+      - name: Build and push image to Docker Hub
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./api/Dockerfile
+          push: true
+          tags: ${{ env.DOCKERHUB_REPO }}:${{ steps.image.outputs.tag }}
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_FOR_OIDC }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Prepare deployment artifact
+        run: |
+          # 배포 시점에 이미지 태그를 실제 값으로 치환합니다.
+          sed -i "s|${IMAGE_TAG}|${{ steps.image.outputs.tag }}|g" docker-compose.prod.yml
+          sed -i "s|${IMAGE_TAG}|${{ steps.image.outputs.tag }}|g" scripts/start_server.sh
+
+          zip -r deploy.zip . -x ".git/*" ".github/*" ".idea/*" "build/*" ".gradle/*"
+
+      - name: Upload artifact to S3
+        run: aws s3 cp deploy.zip s3://${{ env.S3_BUCKET_NAME }}/techinsights-api/${{ steps.image.outputs.tag }}/deploy.zip
+
+      - name: Start CodeDeploy deployment
+        run: |
+          aws deploy create-deployment \
+            --application-name ${{ env.CODEDEPLOY_APP_NAME }} \
+            --deployment-group-name ${{ env.CODEDEPLOY_DEPLOYMENT_GROUP }} \
+            --s3-location bucket=${{ env.S3_BUCKET_NAME }},key=techinsights-api/${{ steps.image.outputs.tag }}/deploy.zip,bundleType=zip \
+            --description "Deployment for image tag ${{ steps.image.outputs.tag }}"

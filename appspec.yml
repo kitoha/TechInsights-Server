@@ -1,0 +1,19 @@
+# CodeDeploy 배포 명세서
+version: 0.0
+os: linux
+
+# EC2 인스턴스에 복사할 파일들을 정의
+files:
+  - source: / # 프로젝트 루트의 모든 파일을
+    destination: /home/ec2-user/techinsights # EC2의 이 디렉토리로 복사
+
+# 배포의 각 단계(Lifecycle Hook)에서 실행할 스크립트를 정의
+hooks:
+  ApplicationStart: # '애플리케이션 시작' 단계
+    - location: scripts/start_server.sh # 이 스크립트를 실행
+      timeout: 300 # 타임아웃 (초)
+      runas: ec2-user # 이 사용자로 실행
+  ValidateService: # '서비스 검증' 단계
+    - location: scripts/validate_service.sh
+      timeout: 60
+      runas: ec2-user
