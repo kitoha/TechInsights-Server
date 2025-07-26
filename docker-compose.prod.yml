@@ -1,0 +1,28 @@
+# 운영 환경에서 사용할 Docker Compose 파일
+version: '3.8'
+
+services:
+  tech-insights-api:
+    image: DOCKERHUB_USERNAME_PLACEHOLDER/techinsights-api:IMAGE_TAG_PLACEHOLDER
+    container_name: techinsights-api-prod
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  nginx:
+    image: nginx:latest
+    container_name: techinsights-nginx-prod
+    ports:
+      - "80:80"
+      # - "443:443" # SSL/TLS 설정 시 주석 해제
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      tech-insights-api:
+        condition: service_healthy
+    restart: always
