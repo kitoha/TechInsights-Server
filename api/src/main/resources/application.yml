@@ -3,3 +3,7 @@ spring:
     name: techinsights
   profiles:
     active: local
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect

@@ -9,5 +9,5 @@ class DataSourceProperties {
     lateinit var url: String
     lateinit var username: String
     lateinit var password: String
-    var driverClassName: String = "com.mysql.cj.jdbc.Driver"
+    var driverClassName: String = "org.postgresql.Driver"
 }
