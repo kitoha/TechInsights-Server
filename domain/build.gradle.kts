@@ -25,7 +25,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("io.hypersistence:hypersistence-tsid:2.1.4")
     implementation("javax.annotation:javax.annotation-api:1.3.2")
-    implementation("mysql:mysql-connector-java:8.0.33")
+    implementation("org.postgresql:postgresql")
     implementation("com.querydsl:querydsl-core:5.1.0")
     implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
     implementation("io.github.microutils:kotlin-logging:2.1.23")

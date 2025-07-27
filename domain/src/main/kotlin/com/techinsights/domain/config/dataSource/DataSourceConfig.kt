@@ -14,7 +14,7 @@ class DataSourceConfig (
   fun dataSource() : DataSource =
     DataSourceBuilder.create()
       .type(HikariDataSource::class.java)
-      .driverClassName("com.mysql.cj.jdbc.Driver")
+      .driverClassName(dataSourceProperties.driverClassName)
       .url(dataSourceProperties.url)
       .username(dataSourceProperties.username)
       .password(dataSourceProperties.password)
