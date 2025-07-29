@@ -1,6 +1,7 @@
 package com.techinsights.domain.service.post
 
 import com.techinsights.domain.dto.post.PostDto
+import com.techinsights.domain.enums.Category
 import com.techinsights.domain.enums.PostSortType
 import com.techinsights.domain.repository.post.PostRepository
 import mu.KotlinLogging
@@ -20,13 +21,13 @@ class PostService(
   }
 
 
-  fun getPosts(page: Int, size: Int, sort: PostSortType): Page<PostDto> {
+  fun getPosts(page: Int, size: Int, sort: PostSortType, category: Category): Page<PostDto> {
     val sortSpec = when (sort) {
       PostSortType.RECENT -> Sort.by(Sort.Direction.DESC, "publishedAt")
       PostSortType.POPULAR -> Sort.by(Sort.Direction.DESC, "viewCount")
     }
     val pageable = PageRequest.of(page, size, sortSpec)
-    return postRepository.getPosts(pageable)
+    return postRepository.getPosts(pageable, category)
   }
 
   fun getPostById(id: String, ip: String): PostDto {

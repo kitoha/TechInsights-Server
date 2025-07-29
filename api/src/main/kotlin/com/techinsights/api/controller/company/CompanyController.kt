@@ -16,11 +16,19 @@ class CompanyController(
 ){
 
   @GetMapping("/api/v1/companies")
-  fun getCompanyList(pageable: Pageable): ResponseEntity<Page<CompanyResponse>> {
+  fun getCompanyList(pageable: Pageable): ResponseEntity<PageResponse<CompanyResponse>> {
     val companyPage = companyService.listCompanies(pageable)
     val responsePage = companyPage.map { CompanyResponse.fromDto(it) }
 
-    return ResponseEntity.ok(responsePage)
+    return ResponseEntity.ok(
+      PageResponse(
+        content = responsePage.content,
+        page = responsePage.number,
+        size = responsePage.size,
+        totalElements = responsePage.totalElements,
+        totalPages = responsePage.totalPages
+      )
+    )
   }
 
   @PostMapping("/api/v1/companies")

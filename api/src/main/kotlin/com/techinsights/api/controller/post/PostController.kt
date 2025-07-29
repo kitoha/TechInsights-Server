@@ -4,6 +4,7 @@ import com.techinsights.api.response.post.PageResponse
 import com.techinsights.api.response.post.PostResponse
 import com.techinsights.api.util.ClientIpExtractor
 import com.techinsights.domain.dto.post.PostDto
+import com.techinsights.domain.enums.Category
 import com.techinsights.domain.enums.PostSortType
 import com.techinsights.domain.service.post.PostService
 import jakarta.servlet.http.HttpServletRequest
@@ -22,9 +23,10 @@ class PostController(
   @GetMapping("/api/v1/posts")
   fun getPosts(@RequestParam(defaultValue = "0") page: Int,
     @RequestParam(defaultValue = "10") size: Int,
-    @RequestParam(defaultValue = "RECENT") sort: PostSortType
+    @RequestParam(defaultValue = "RECENT") sort: PostSortType,
+    @RequestParam(defaultValue = "All") category: Category
   ): ResponseEntity<PageResponse<PostResponse>> {
-    val result = postService.getPosts(page, size, sort)
+    val result = postService.getPosts(page, size, sort, category)
     val content = result.content.map { PostResponse.fromPostDto(it) }
     return ResponseEntity.ok(
       PageResponse(

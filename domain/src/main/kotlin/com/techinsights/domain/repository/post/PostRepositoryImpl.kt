@@ -5,6 +5,7 @@ import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.entity.company.QCompany
 import com.techinsights.domain.entity.post.Post
 import com.techinsights.domain.entity.post.QPost
+import com.techinsights.domain.enums.Category
 import com.techinsights.domain.exception.PostNotFoundException
 import com.techinsights.domain.utils.Tsid
 import org.springframework.data.domain.Page
@@ -37,13 +38,15 @@ class PostRepositoryImpl(
 
 
 
-  override fun getPosts(pageable: Pageable): Page<PostDto> {
+  override fun getPosts(pageable: Pageable, category: Category): Page<PostDto> {
     val postEntity = QPost.post
     val companyEntity = QCompany.company
 
     val query = queryFactory.selectFrom(postEntity)
       .leftJoin(postEntity.company, companyEntity).fetchJoin()
-      .where(postEntity.isSummary.isTrue)
+      .where(postEntity.isSummary.isTrue,
+        category.takeIf { it != Category.All }
+          ?.let { postEntity.categories.contains(it) })
       .orderBy(postEntity.publishedAt.desc())
       .offset(pageable.offset)
       .limit(pageable.pageSize.toLong())
