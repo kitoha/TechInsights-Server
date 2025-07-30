@@ -7,6 +7,3 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-
-cors:
-  allowed-origins: https://techinsights.io
