@@ -80,7 +80,6 @@ jobs:
           # 배포 시점에 이미지 태그와 사용자 이름을 실제 값으로 치환합니다.
           sed -i "s|DOCKERHUB_USERNAME_PLACEHOLDER|${{ secrets.DOCKERHUB_USERNAME }}|g" docker-compose.prod.yml
           sed -i "s|IMAGE_TAG_PLACEHOLDER|${{ steps.image.outputs.specific_tag }}|g" docker-compose.prod.yml
-          sed -i "s|IMAGE_TAG_PLACEHOLDER|${{ steps.image.outputs.specific_tag }}|g" scripts/start_server.sh
 
           zip -r deploy.zip . -x ".git/*" ".github/*" ".idea/*" "build/*" ".gradle/*"
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 for i in {1..12}; do
-  response=$(curl --write-out %{http_code} --silent --output /dev/null http://localhost/api/health)
+  response=$(curl --write-out %{http_code} --silent --output /dev/null http://localhost/actuator/health)
 
   if [[ "$response" -ge 200 && "$response" -lt 400 ]]; then
     echo "Service validation successful with status code $response."
