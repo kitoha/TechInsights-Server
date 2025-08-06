@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for i in {1..12}; do
+for i in {1..10}; do
   response=$(curl --write-out %{http_code} --silent --output /dev/null http://localhost/actuator/health)
 
   if [[ "$response" -ge 200 && "$response" -lt 400 ]]; then
