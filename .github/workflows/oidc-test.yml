@@ -1,0 +1,28 @@
+name: OIDC Connection Test
+
+on:
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-northeast-2
+
+jobs:
+  test-oidc-connection:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_FOR_OIDC }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS credentials by getting caller identity
+        run: |
+          echo "Attempting to verify AWS credentials..."
+          aws sts get-caller-identity
