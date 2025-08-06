@@ -56,9 +56,12 @@ jobs:
             SPECIFIC_TAG="${{ github.event.inputs.image_tag }}"
           fi
           
-          TAGS="${{ env.DOCKERHUB_REPO }}:latest\n${{ env.DOCKERHUB_REPO }}:${SPECIFIC_TAG}"
-          
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          {
+            echo 'tags<<EOF'
+            echo "${{ env.DOCKERHUB_REPO }}:latest"
+            echo "${{ env.DOCKERHUB_REPO }}:${SPECIFIC_TAG}"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
           echo "specific_tag=${SPECIFIC_TAG}" >> $GITHUB_OUTPUT
 
       - name: Build and push image to Docker Hub
