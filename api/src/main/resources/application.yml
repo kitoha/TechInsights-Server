@@ -7,3 +7,13 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+aid:
+  apply-paths: ["/api/**"]                     # 적용 라우트만
+  exclude-paths: ["/assets/**","/static/**","/actuator/**","/health","/favicon.ico"]
+  cookie:
+    name: aid
+    domain: ""
+    ttl-days: 365
+    same-site-default: Lax                     # Lax | Strict | None
+    secure-mode: AUTO                          # ALWAYS | NEVER | AUTO
