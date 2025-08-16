@@ -1,0 +1,16 @@
+package com.techinsights.domain.enums
+
+enum class GeminiModelType {
+  GEMINI_2_5_FLASH("gemini-2.5-flash"),
+  GEMINI_EMBEDDING("gemini-embedding");
+
+  private val modelName: String
+
+  constructor(modelName: String) {
+    this.modelName = modelName
+  }
+
+  fun getModelName(): String {
+    return modelName
+  }
+}

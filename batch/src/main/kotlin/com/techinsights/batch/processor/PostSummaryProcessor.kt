@@ -2,6 +2,7 @@ package com.techinsights.batch.processor
 
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.enums.Category
+import com.techinsights.domain.enums.GeminiModelType
 import com.techinsights.domain.service.gemini.ArticleSummarizer
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -30,7 +31,7 @@ class PostSummaryProcessor(
             val deferredSummaries = items.map { item ->
                 async {
                     semaphore.withPermit {
-                        val summarized = summarizer.summarize(item.content)
+                        val summarized = summarizer.summarize(item.content, GeminiModelType.GEMINI_2_5_FLASH)
                         val content = summarized.summary
                         val categories = summarized.categories.map { Category.valueOf(it) }.toSet()
                         val preview = summarized.preview

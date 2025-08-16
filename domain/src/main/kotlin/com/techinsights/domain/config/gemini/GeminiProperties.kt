@@ -5,8 +5,7 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 @ConfigurationProperties("gemini")
-class GeminiProperties {
-  var apiKey: String = ""
-  var model: String = "gemini-2.0-flash-001"
-  var maxOutputTokens: Int = 4096
-}
+data class GeminiProperties(
+    var apiKey: String = "",
+    var maxOutputTokens: Int = 4096
+)

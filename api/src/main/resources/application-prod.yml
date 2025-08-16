@@ -5,7 +5,3 @@ spring:
 
 cors:
   allowed-origins: https://techinsights.io
-
-gemini:
-  model: gemini-2.5-flash
-  max-output-tokens: 4096

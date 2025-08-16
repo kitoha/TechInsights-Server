@@ -6,6 +6,7 @@ import com.google.genai.types.GenerateContentConfig
 import com.techinsights.domain.config.gemini.GeminiProperties
 import com.techinsights.domain.dto.gemini.SummaryResult
 import com.techinsights.domain.enums.Category
+import com.techinsights.domain.enums.GeminiModelType
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry
 import org.springframework.stereotype.Service
 
@@ -21,7 +22,9 @@ class GeminiArticleSummarizer (
 
   private val rateLimiter = rateLimiterRegistry.rateLimiter("geminiArticleSummarizer")
 
-  override fun summarize(article: String): SummaryResult {
+  override fun summarize(article: String, modelType: GeminiModelType): SummaryResult {
+    val modelName = modelType.getModelName()
+
     val prompt  = promptTemplateEngine.buildPrompt(article, Category.entries.map { it.name })
     val schema  = promptTemplateEngine.buildSchema(Category.entries.map { it.name })
     val schemaNode = mapper.readTree(schema)
@@ -32,7 +35,7 @@ class GeminiArticleSummarizer (
       .build()
 
     val response = rateLimiter.executeCallable {
-      geminiClient.models.generateContent(geminiProperties.model, prompt, config)
+      geminiClient.models.generateContent(modelName, prompt, config)
     }
     return mapper.readValue(response.text(), SummaryResult::class.java)
   }
