@@ -5,3 +5,7 @@ spring:
 
 cors:
   allowed-origins: http://localhost:3000
+
+gemini:
+  api-key: ${GOOGLE_API_KEY}
+  max-output-tokens: 8192
