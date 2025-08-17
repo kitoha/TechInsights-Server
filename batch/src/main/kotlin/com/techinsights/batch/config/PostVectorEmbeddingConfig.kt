@@ -1,9 +1,9 @@
 package com.techinsights.batch.config
 
 import com.techinsights.batch.processor.PostEmbeddingProcessor
-import com.techinsights.batch.processor.PostSummaryProcessor
-import com.techinsights.batch.reader.PostReader
-import com.techinsights.batch.writer.PostWriter
+import com.techinsights.batch.reader.SummarizedPostReader
+import com.techinsights.batch.writer.PostEmbeddingWriter
+import com.techinsights.domain.dto.embedding.PostEmbeddingDto
 import com.techinsights.domain.dto.post.PostDto
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step
@@ -12,53 +12,42 @@ import org.springframework.batch.core.job.builder.JobBuilder
 import org.springframework.batch.core.launch.support.RunIdIncrementer
 import org.springframework.batch.core.repository.JobRepository
 import org.springframework.batch.core.step.builder.StepBuilder
-import org.springframework.batch.item.ItemProcessor
 import org.springframework.batch.item.ItemReader
-import org.springframework.batch.item.support.CompositeItemProcessor
-import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.transaction.PlatformTransactionManager
 
 @Configuration
-class SummarizePostJobConfig(
+class PostVectorEmbeddingConfig(
     private val jobRepository: JobRepository,
     private val transactionManager: PlatformTransactionManager,
-    private val reader: PostReader,
-    private val postSummaryProcessor: PostSummaryProcessor,
+    private val summarizedPostReader: SummarizedPostReader,
     private val postEmbeddingProcessor: PostEmbeddingProcessor,
-    private val writer: PostWriter
+    private val postEmbeddingWriter: PostEmbeddingWriter
 ) {
 
     @Bean
-    fun summarizePostJob(@Qualifier("summarizePostStep") summarizePostStep: Step): Job =
-        JobBuilder("summarizePostJob", jobRepository)
+    fun postVectorEmbeddingJob(): Job =
+        JobBuilder("postVectorEmbeddingJob", jobRepository)
             .incrementer(RunIdIncrementer())
-            .start(summarizePostStep)
+            .start(postVectorEmbeddingStep())
             .build()
 
     @Bean
-    fun summarizePostStep(): Step =
-        StepBuilder("summarizePostStep", jobRepository)
-            .chunk<List<PostDto>, List<PostDto>>(1, transactionManager)
-            .reader(chunkListItemReader(reader))
-            .processor(compositeProcessor())
-            .writer(writer)
+    fun postVectorEmbeddingStep(): Step =
+        StepBuilder("postVectorEmbeddingStep", jobRepository)
+            .chunk<List<PostDto>, List<PostEmbeddingDto>>(1, transactionManager)
+            .reader(chunkListItemReader(summarizedPostReader))
+            .processor(postEmbeddingProcessor)
+            .writer(postEmbeddingWriter)
             .faultTolerant()
             .retryLimit(3).retry(Exception::class.java)
             .skipLimit(10).skip(Exception::class.java)
             .build()
 
     @Bean
-    fun compositeProcessor(): ItemProcessor<List<PostDto>, List<PostDto>> {
-        return CompositeItemProcessor<List<PostDto>, List<PostDto>>().apply {
-            setDelegates(listOf(postSummaryProcessor, postEmbeddingProcessor))
-        }
-    }
-
-    @Bean
     @StepScope
-    fun chunkListItemReader(postReader: PostReader): ItemReader<List<PostDto>> {
+    fun chunkListItemReader(reader: SummarizedPostReader): ItemReader<List<PostDto>> {
         return object : ItemReader<List<PostDto>> {
             private var finished = false
 
@@ -69,7 +58,7 @@ class SummarizePostJobConfig(
 
                 val items = mutableListOf<PostDto>()
                 for (i in 0 until CHUNK_SIZE) {
-                    val item = postReader.read() ?: break
+                    val item = reader.read() ?: break
                     items.add(item)
                 }
 

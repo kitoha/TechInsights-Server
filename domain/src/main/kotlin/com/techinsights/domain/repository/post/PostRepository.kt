@@ -11,4 +11,5 @@ interface PostRepository {
   fun getPosts(pageable: Pageable, category: Category): Page<PostDto>
   fun getPostById(id: String): PostDto
   fun findOldestNotSummarized(limit: Long, offset: Long): List<PostDto>
+  fun findOldestSummarized(limit: Long, offset: Long): List<PostDto>
 }
