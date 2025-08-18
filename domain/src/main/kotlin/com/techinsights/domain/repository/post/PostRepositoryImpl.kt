@@ -86,4 +86,18 @@ class PostRepositoryImpl(
       .fetch()
       .map { PostDto.fromEntity(it) }
   }
+
+  override fun findOldestSummarized(limit: Long, offset: Long): List<PostDto> {
+    val post = QPost.post
+    val company = QCompany.company
+
+    return queryFactory.selectFrom(post)
+      .leftJoin(post.company, company).fetchJoin()
+      .where(post.isSummary.isTrue)
+      .orderBy(post.publishedAt.asc())
+      .offset(offset)
+      .limit(limit)
+      .fetch()
+      .map { PostDto.fromEntity(it) }
+  }
 }

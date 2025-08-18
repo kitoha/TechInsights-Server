@@ -7,5 +7,5 @@ cors:
   allowed-origins: http://localhost:3000
 
 gemini:
-  model: gemini-2.5-flash
-  max-output-tokens: 4096
+  api-key: ${GOOGLE_API_KEY}
+  max-output-tokens: 8192
