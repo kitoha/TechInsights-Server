@@ -36,8 +36,6 @@ class PostRepositoryImpl(
     return posts.map { post -> PostDto.fromEntity(post) }
   }
 
-
-
   override fun getPosts(pageable: Pageable, category: Category): Page<PostDto> {
     val postEntity = QPost.post
     val companyEntity = QCompany.company
@@ -96,6 +94,19 @@ class PostRepositoryImpl(
       .where(post.isSummary.isTrue)
       .orderBy(post.publishedAt.asc())
       .offset(offset)
+      .limit(limit)
+      .fetch()
+      .map { PostDto.fromEntity(it) }
+  }
+
+  override fun findTopViewedPosts(limit: Long): List<PostDto> {
+    val post = QPost.post
+    val company = QCompany.company
+
+    return queryFactory.selectFrom(post)
+      .leftJoin(post.company, company).fetchJoin()
+      .where(post.isSummary.isTrue)
+      .orderBy(post.viewCount.desc())
       .limit(limit)
       .fetch()
       .map { PostDto.fromEntity(it) }

@@ -12,4 +12,5 @@ interface PostRepository {
   fun getPostById(id: String): PostDto
   fun findOldestNotSummarized(limit: Long, offset: Long): List<PostDto>
   fun findOldestSummarized(limit: Long, offset: Long): List<PostDto>
+  fun findTopViewedPosts(limit: Long): List<PostDto>
 }
