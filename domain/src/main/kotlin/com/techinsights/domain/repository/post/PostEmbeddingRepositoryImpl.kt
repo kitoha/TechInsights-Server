@@ -11,17 +11,26 @@ class PostEmbeddingRepositoryImpl(
   private val queryFactory: JPAQueryFactory
 ) : PostEmbeddingRepository {
 
-    override fun findByPostIdIn(postIds: List<Long>): List<PostEmbeddingDto> {
-      val qPostEmbedding = QPostEmbedding.postEmbedding
+  override fun findByPostIdIn(postIds: List<Long>): List<PostEmbeddingDto> {
+    val qPostEmbedding = QPostEmbedding.postEmbedding
 
-      return queryFactory.selectFrom(qPostEmbedding)
-          .where(qPostEmbedding.postId.`in`(postIds))
-          .fetch()
-          .map { PostEmbeddingDto.fromEntity(it) }
-    }
+    return queryFactory.selectFrom(qPostEmbedding)
+      .where(qPostEmbedding.postId.`in`(postIds))
+      .fetch()
+      .map { PostEmbeddingDto.fromEntity(it) }
+  }
 
-    override fun findSimilarPosts(targetVector: String, excludeIds: List<Long>, limit: Int): List<PostEmbeddingDto> {
-        // Implementation to find similar posts based on the target vector
-        return emptyList() // Placeholder return
-    }
+  override fun findSimilarPosts(
+    targetVector: String,
+    excludeIds: List<Long>,
+    limit: Long
+  ): List<PostEmbeddingDto> {
+    val postEmbedding = postEmbeddingJpaRepository.findSimilarPosts(
+      targetVector = targetVector,
+      excludeIds = excludeIds,
+      limit = limit
+    )
+
+    return postEmbedding.map { PostEmbeddingDto.fromEntity(it) }
+  }
 }

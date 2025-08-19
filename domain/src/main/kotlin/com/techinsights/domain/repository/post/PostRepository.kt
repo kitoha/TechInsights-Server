@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable
 interface PostRepository {
   fun saveAll(posts: List<PostDto>): List<PostDto>
   fun findAllByUrlIn(urls: List<String>): List<PostDto>
+  fun findAllByIdIn(ids: List<String>): List<PostDto>
   fun getPosts(pageable: Pageable, category: Category): Page<PostDto>
   fun getPostById(id: String): PostDto
   fun findOldestNotSummarized(limit: Long, offset: Long): List<PostDto>

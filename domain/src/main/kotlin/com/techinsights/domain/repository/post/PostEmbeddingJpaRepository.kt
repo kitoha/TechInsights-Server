@@ -15,5 +15,5 @@ interface PostEmbeddingJpaRepository : JpaRepository<PostEmbedding, Long>{
   """,
     nativeQuery = true
   )
-  fun findSimilarPosts(targetVector: String, excludeIds: List<Long>, limit: Int): List<PostEmbedding>
+  fun findSimilarPosts(targetVector: String, excludeIds: List<Long>, limit: Long): List<PostEmbedding>
 }

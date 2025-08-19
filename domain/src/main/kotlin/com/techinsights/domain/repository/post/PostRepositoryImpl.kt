@@ -36,6 +36,20 @@ class PostRepositoryImpl(
     return posts.map { post -> PostDto.fromEntity(post) }
   }
 
+  override fun findAllByIdIn(ids: List<String>): List<PostDto> {
+    val postEntity = QPost.post
+    val companyEntity = QCompany.company
+
+    val postIds = ids.map { Tsid.decode(it) }
+
+    val posts = queryFactory.selectFrom(postEntity)
+      .leftJoin(postEntity.company, companyEntity).fetchJoin()
+      .where(postEntity.id.`in`(postIds))
+      .fetch()
+
+    return posts.map { post -> PostDto.fromEntity(post) }
+  }
+
   override fun getPosts(pageable: Pageable, category: Category): Page<PostDto> {
     val postEntity = QPost.post
     val companyEntity = QCompany.company
