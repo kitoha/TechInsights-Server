@@ -19,7 +19,7 @@ class RecommendationService(
    * @param userId The ID of the user or Anonymous User for whom recommendations are to be generated.
    * @return A list of recommended posts for the user.
    */
-  fun getRecommendationsForUser(anonymousId: String?, count: Long = 10): List<PostDto> {
+  fun getRecommendationsForUser(anonymousId: String?, count: Long = 5): List<PostDto> {
 
     if (anonymousId == null) {
       return postRepository.findTopViewedPosts(count)
@@ -37,16 +37,7 @@ class RecommendationService(
       return postRepository.findTopViewedPosts(count)
     }
 
-    val postEmbeddings = postEmbeddingRepository.findByPostIdIn(recentPostIds)
-
-    if (postEmbeddings.isEmpty()) {
-      return postRepository.findTopViewedPosts(count)
-    }
-
-
-
-
-    return emptyList()
+    return generateRecommendationsFromPostIds(recentPostIds.map { it.toString() }, count)
   }
 
   fun generateRecommendationsFromPostIds(
@@ -82,14 +73,14 @@ class RecommendationService(
     for (vector in vectors) {
       if (vector.size == vectorSize) {
         for (i in vector.indices) {
-          averageVector[i] += vector[i]
+          averageVector[i] = averageVector[i] + vector[i]
         }
       }
     }
 
     val vectorCount = vectors.size
     for (i in averageVector.indices) {
-      averageVector[i] /= vectorCount
+      averageVector[i] = averageVector[i] / vectorCount.toFloat()
     }
 
     return averageVector

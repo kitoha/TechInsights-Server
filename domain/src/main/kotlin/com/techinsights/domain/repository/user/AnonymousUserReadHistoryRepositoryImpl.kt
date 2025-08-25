@@ -1,5 +1,6 @@
 package com.techinsights.domain.repository.user
 
+import com.techinsights.domain.dto.user.AnonymousUserReadHistoryDto
 import com.techinsights.domain.entity.user.AnonymousUserReadHistory
 import com.techinsights.domain.utils.Tsid
 import org.springframework.data.domain.Pageable
@@ -16,7 +17,13 @@ class AnonymousUserReadHistoryRepositoryImpl(
     jpaRepository.save(history)
   }
 
-  override fun getRecentReadHistory(anonymousId: String, pageable: Pageable): List<AnonymousUserReadHistory> {
-    return jpaRepository.findTopNByAnonymousIdOrderByReadAtDesc(anonymousId, pageable)
+  override fun getRecentReadHistory(
+    anonymousId: String,
+    pageable: Pageable
+  ): List<AnonymousUserReadHistoryDto> {
+    val anonymousEntity =
+      jpaRepository.findTopNByAnonymousIdOrderByReadAtDesc(anonymousId, pageable)
+
+    return anonymousEntity.map { AnonymousUserReadHistoryDto.fromEntity(it) }
   }
 }
