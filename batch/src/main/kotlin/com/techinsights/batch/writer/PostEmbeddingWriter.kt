@@ -2,14 +2,14 @@ package com.techinsights.batch.writer
 
 import com.techinsights.domain.dto.embedding.PostEmbeddingDto
 import com.techinsights.domain.entity.post.PostEmbedding
-import com.techinsights.domain.repository.post.PostEmbeddingRepository
+import com.techinsights.domain.repository.post.PostEmbeddingJpaRepository
 import org.springframework.batch.item.Chunk
 import org.springframework.batch.item.ItemWriter
 import org.springframework.stereotype.Component
 
 @Component
 class PostEmbeddingWriter(
-    private val postEmbeddingRepository: PostEmbeddingRepository
+    private val postEmbeddingJpaRepository: PostEmbeddingJpaRepository
 ) : ItemWriter<List<PostEmbeddingDto>> {
 
     override fun write(chunk: Chunk<out List<PostEmbeddingDto>>) {
@@ -24,7 +24,7 @@ class PostEmbeddingWriter(
                     embeddingVector = dto.embeddingVector
                 )
             }
-            postEmbeddingRepository.saveAll(embeddings)
+            postEmbeddingJpaRepository.saveAll(embeddings)
         }
     }
 }

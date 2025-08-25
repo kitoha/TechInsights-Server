@@ -4,7 +4,7 @@ import com.techinsights.domain.dto.embedding.EmbeddingRequest
 import com.techinsights.domain.dto.embedding.PostEmbeddingDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.enums.GeminiModelType
-import com.techinsights.domain.repository.post.PostEmbeddingRepository
+import com.techinsights.domain.repository.post.PostEmbeddingJpaRepository
 import com.techinsights.domain.service.embedding.EmbeddingService
 import com.techinsights.domain.utils.Tsid
 import org.springframework.batch.item.ItemProcessor
@@ -13,12 +13,12 @@ import org.springframework.stereotype.Component
 @Component
 class PostEmbeddingProcessor(
     private val embeddingService: EmbeddingService,
-    private val postEmbeddingRepository: PostEmbeddingRepository
+    private val postEmbeddingJpaRepository: PostEmbeddingJpaRepository
 ) : ItemProcessor<List<PostDto>, List<PostEmbeddingDto>> {
 
     override fun process(items: List<PostDto>): List<PostEmbeddingDto> {
         val postIds = items.map { Tsid.decode(it.id) }.toSet()
-        val existingEmbeddings = postEmbeddingRepository.findAllById(postIds).map { it.postId }.toSet()
+        val existingEmbeddings = postEmbeddingJpaRepository.findAllById(postIds).map { it.postId }.toSet()
 
         val newEmbeddingDtos = mutableListOf<PostEmbeddingDto>()
 
