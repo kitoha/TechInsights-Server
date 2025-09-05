@@ -24,7 +24,6 @@ class PostEmbeddingProcessor(
 
         items.forEach { post ->
             val postId = Tsid.decode(post.id)
-            // 요약이 완료되었고, 미리보기가 있으며, 아직 임베딩이 없는 경우에만 처리합니다.
             if (post.isSummary && !post.preview.isNullOrBlank() && !existingEmbeddings.contains(postId)) {
 
                 val request = EmbeddingRequest(
@@ -36,7 +35,7 @@ class PostEmbeddingProcessor(
                 val vector = embeddingService.generateEmbedding(request, GeminiModelType.GEMINI_EMBEDDING)
 
                 val postEmbeddingDto = PostEmbeddingDto(
-                    postId = postId,
+                    postId = post.id,
                     companyName = post.company.name,
                     categories = post.categories.joinToString(",") { it.name },
                     content = post.preview!!,
