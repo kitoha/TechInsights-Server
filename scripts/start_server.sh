@@ -1,5 +1,17 @@
 #!/bin/bash
 
+echo "[prep] Ensuring cert directory..."
+sudo mkdir -p /etc/ssl/cloudflare
+sudo chmod 700 /etc/ssl/cloudflare
+
+echo "[pull] Fetching certs from SSM Parameter Store..."
+aws ssm get-parameter --name "/ti/nginx/api_cert_pem" --with-decryption \
+  --query 'Parameter.Value' --output text | sudo tee /etc/ssl/cloudflare/api.pem >/dev/null
+aws ssm get-parameter --name "/ti/nginx/api_key_pem"  --with-decryption \
+  --query 'Parameter.Value' --output text | sudo tee /etc/ssl/cloudflare/api.key >/dev/null
+sudo chmod 600 /etc/ssl/cloudflare/api.key
+sudo chown root:root /etc/ssl/cloudflare/api.pem /etc/ssl/cloudflare/api.key
+
 echo "Navigating to the application directory..."
 cd /home/ec2-user/techinsights
 
