@@ -1,0 +1,87 @@
+name: crawlPostJob Runner
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Spring profile'
+        type: choice
+        options: [ local, prod ]
+        default: prod
+        required: true
+      image_tag:
+        description: 'Docker image tag (latest or timestamp like 202507070912)'
+        type: string
+        default: latest
+        required: true
+
+env:
+  IMAGE: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/techinsights-batch
+
+jobs:
+  run-on-self-hosted:
+    runs-on: [ self-hosted, Linux, X64 ]
+    timeout-minutes: 30
+    concurrency:
+      group: crawlPostJob
+      cancel-in-progress: false
+
+    steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Pull image by tag (with fallback to latest)
+        id: pull
+        shell: bash
+        run: |
+          set -e
+          TAG="${{ inputs.image_tag }}"
+          if docker pull "${{ env.IMAGE }}:${TAG}"; then
+            echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          else
+            echo "[warn] Tag '${TAG}' not found. Falling back to 'latest'."
+            docker pull "${{ env.IMAGE }}:latest"
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run batch container (t2.micro-safe)
+        id: run
+        shell: bash
+        run: |
+          set -e
+          NAME=crawl-post-job
+          IMAGE_TAG="${{ env.IMAGE }}:${{ steps.pull.outputs.tag }}"
+          
+          docker rm -f "$NAME" >/dev/null 2>&1 || true
+
+          docker run --name "$NAME" \
+            --cpus="0.6" \
+            --memory="512m" --memory-swap="768m" \
+            -e SPRING_PROFILES_ACTIVE=${{ inputs.profile }} \
+            -e AWS_REGION=ap-northeast-2 \
+            -e PARAM_PREFIX=/config/techinsights/api/${{ inputs.profile }} \
+            -e JAVA_TOOL_OPTIONS="-Xms128m -Xmx256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=96m -XX:+ExitOnOutOfMemoryError" \
+            "$IMAGE_TAG" \
+            --spring.batch.job.name=crawlPostJob \
+            --spring.profiles.active=${{ inputs.profile }} \
+            run.id=${{ github.run_id }} || EXIT=$?
+
+          docker logs "$NAME" > app.log 2>&1 || true
+          docker inspect "$NAME" -f 'Exit={{.State.ExitCode}} OOM={{.State.OOMKilled}}' > result.txt || true
+          docker rm "$NAME" >/dev/null 2>&1 || true
+
+          if [ -n "$EXIT" ]; then exit $EXIT; fi
+
+      - name: Upload logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: batch-run-logs
+          path: |
+            app.log
+            result.txt
+
+      - name: Prune old images (optional)
+        run: docker image prune -f
