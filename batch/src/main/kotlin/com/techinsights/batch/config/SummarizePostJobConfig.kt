@@ -41,7 +41,7 @@ class SummarizePostJobConfig(
     fun summarizePostStep(): Step =
         StepBuilder("summarizePostStep", jobRepository)
             .chunk<List<PostDto>, List<PostDto>>(1, transactionManager)
-            .reader(chunkListItemReader(reader))
+            .reader(summarizeChunkListItemReader(reader))
             .processor(compositeProcessor())
             .writer(writer)
             .faultTolerant()
@@ -58,7 +58,7 @@ class SummarizePostJobConfig(
 
     @Bean
     @StepScope
-    fun chunkListItemReader(postReader: PostReader): ItemReader<List<PostDto>> {
+    fun summarizeChunkListItemReader(postReader: PostReader): ItemReader<List<PostDto>> {
         return object : ItemReader<List<PostDto>> {
             private var finished = false
 

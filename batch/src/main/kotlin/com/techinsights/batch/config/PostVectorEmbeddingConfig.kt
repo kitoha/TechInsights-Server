@@ -37,7 +37,7 @@ class PostVectorEmbeddingConfig(
     fun postVectorEmbeddingStep(): Step =
         StepBuilder("postVectorEmbeddingStep", jobRepository)
             .chunk<List<PostDto>, List<PostEmbeddingDto>>(1, transactionManager)
-            .reader(chunkListItemReader(summarizedPostReader))
+            .reader(embeddingChunkListItemReader(summarizedPostReader))
             .processor(postEmbeddingProcessor)
             .writer(postEmbeddingWriter)
             .faultTolerant()
@@ -47,7 +47,7 @@ class PostVectorEmbeddingConfig(
 
     @Bean
     @StepScope
-    fun chunkListItemReader(reader: SummarizedPostReader): ItemReader<List<PostDto>> {
+    fun embeddingChunkListItemReader(reader: SummarizedPostReader): ItemReader<List<PostDto>> {
         return object : ItemReader<List<PostDto>> {
             private var finished = false
 
