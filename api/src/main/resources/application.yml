@@ -7,6 +7,12 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  lifecycle:
+    timeout-per-shutdown-phase:10s
+
+server:
+  shutdown: graceful
+
 
 aid:
   apply-paths: ["/api/**"]                     # 적용 라우트만

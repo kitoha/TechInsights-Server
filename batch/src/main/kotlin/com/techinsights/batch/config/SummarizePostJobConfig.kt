@@ -1,6 +1,6 @@
 package com.techinsights.batch.config
 
-import com.techinsights.batch.processor.PostEmbeddingProcessor
+import com.techinsights.batch.listener.LoggingJobExecutionListener
 import com.techinsights.batch.processor.PostSummaryProcessor
 import com.techinsights.batch.reader.PostReader
 import com.techinsights.batch.writer.PostWriter
@@ -26,14 +26,15 @@ class SummarizePostJobConfig(
     private val transactionManager: PlatformTransactionManager,
     private val reader: PostReader,
     private val postSummaryProcessor: PostSummaryProcessor,
-    private val postEmbeddingProcessor: PostEmbeddingProcessor,
-    private val writer: PostWriter
+    private val writer: PostWriter,
+    private val loggingJobExecutionListener: LoggingJobExecutionListener
 ) {
 
     @Bean
     fun summarizePostJob(@Qualifier("summarizePostStep") summarizePostStep: Step): Job =
         JobBuilder("summarizePostJob", jobRepository)
             .incrementer(RunIdIncrementer())
+            .listener(loggingJobExecutionListener)
             .start(summarizePostStep)
             .build()
 
@@ -42,19 +43,12 @@ class SummarizePostJobConfig(
         StepBuilder("summarizePostStep", jobRepository)
             .chunk<List<PostDto>, List<PostDto>>(1, transactionManager)
             .reader(summarizeChunkListItemReader(reader))
-            .processor(compositeProcessor())
+            .processor(postSummaryProcessor)
             .writer(writer)
             .faultTolerant()
             .retryLimit(3).retry(Exception::class.java)
             .skipLimit(10).skip(Exception::class.java)
             .build()
-
-    @Bean
-    fun compositeProcessor(): ItemProcessor<List<PostDto>, List<PostDto>> {
-        return CompositeItemProcessor<List<PostDto>, List<PostDto>>().apply {
-            setDelegates(listOf(postSummaryProcessor, postEmbeddingProcessor))
-        }
-    }
 
     @Bean
     @StepScope
