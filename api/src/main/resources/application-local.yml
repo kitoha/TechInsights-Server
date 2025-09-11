@@ -4,7 +4,8 @@ spring:
       - aws-parameterstore:/config/techinsights/dev/
 
 cors:
-  allowed-origins: http://localhost:3000
+  allowed-origins:
+    - http://localhost:3000
 
 gemini:
   api-key: ${GOOGLE_API_KEY}

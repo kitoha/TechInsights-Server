@@ -4,4 +4,6 @@ spring:
       - aws-parameterstore:/config/techinsights/prod/
 
 cors:
-  allowed-origins: https://techinsights.io
+  allowed-origins:
+    - https://www.techinsights.shop
+    - https://techinsights.shop
