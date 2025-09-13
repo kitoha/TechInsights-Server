@@ -8,6 +8,7 @@ import com.techinsights.domain.dto.gemini.SummaryResult
 import com.techinsights.domain.enums.Category
 import com.techinsights.domain.enums.GeminiModelType
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
@@ -17,6 +18,8 @@ class GeminiArticleSummarizer (
   rateLimiterRegistry: RateLimiterRegistry,
   private val promptTemplateEngine: PromptTemplateEngine
 ) : ArticleSummarizer {
+
+  private val log = LoggerFactory.getLogger(GeminiArticleSummarizer::class.java)
 
   private val mapper  = jacksonObjectMapper()
 
@@ -34,10 +37,15 @@ class GeminiArticleSummarizer (
       .maxOutputTokens(geminiProperties.maxOutputTokens)
       .build()
 
-    val response = rateLimiter.executeCallable {
-      geminiClient.models.generateContent(modelName, prompt, config)
+    try {
+      val response = rateLimiter.executeCallable {
+        geminiClient.models.generateContent(modelName, prompt, config)
+      }
+      return mapper.readValue(response.text(), SummaryResult::class.java)
+    } catch (e: Exception) {
+      log.error("Failed to summarize article with Gemini model: $modelName", e)
+      throw RuntimeException("Failed to summarize article with Gemini model: $modelName", e)
     }
-    return mapper.readValue(response.text(), SummaryResult::class.java)
   }
 
 }

@@ -1,6 +1,7 @@
 package com.techinsights.batch.config
 
 import com.techinsights.batch.listener.LoggingJobExecutionListener
+import com.techinsights.batch.listener.LoggingSkipListener
 import com.techinsights.batch.processor.PostSummaryProcessor
 import com.techinsights.batch.reader.PostReader
 import com.techinsights.batch.writer.PostWriter
@@ -27,7 +28,8 @@ class SummarizePostJobConfig(
     private val reader: PostReader,
     private val postSummaryProcessor: PostSummaryProcessor,
     private val writer: PostWriter,
-    private val loggingJobExecutionListener: LoggingJobExecutionListener
+    private val loggingJobExecutionListener: LoggingJobExecutionListener,
+    private val loggingSkipListener: LoggingSkipListener
 ) {
 
     @Bean
@@ -48,6 +50,7 @@ class SummarizePostJobConfig(
             .faultTolerant()
             .retryLimit(3).retry(Exception::class.java)
             .skipLimit(10).skip(Exception::class.java)
+            .listener(loggingSkipListener)
             .build()
 
     @Bean

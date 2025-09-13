@@ -12,9 +12,9 @@ class ResilienceConfig {
   @Bean
   fun rateLimiterRegistry(): RateLimiterRegistry {
     val config = RateLimiterConfig.custom()
-      .limitForPeriod(50)
+      .limitForPeriod(8)
       .limitRefreshPeriod(Duration.ofMinutes(1))
-      .timeoutDuration(Duration.ofSeconds(5))
+      .timeoutDuration(Duration.ofSeconds(30))
       .build()
     return RateLimiterRegistry.of(config)
   }
