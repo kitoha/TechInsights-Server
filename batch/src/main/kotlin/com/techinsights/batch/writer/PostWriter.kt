@@ -9,10 +9,10 @@ import org.springframework.stereotype.Component
 @Component
 class PostWriter(
   private val postRepository: PostRepository
-) : ItemWriter<List<PostDto>> {
+) : ItemWriter<PostDto> {
 
-  override fun write(chunk: Chunk<out List<PostDto>>) {
-    val postsToWrite = chunk.items.flatten()
+  override fun write(chunk: Chunk<out PostDto>) {
+    val postsToWrite = chunk.items
     if (postsToWrite.isNotEmpty()) {
       postRepository.saveAll(postsToWrite)
     }
