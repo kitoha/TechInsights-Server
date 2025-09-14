@@ -6,19 +6,28 @@ import org.springframework.batch.core.SkipListener
 import org.springframework.stereotype.Component
 
 @Component
-class LoggingSkipListener : SkipListener<PostDto, PostDto> {
+class LoggingSkipListener : SkipListener<Any, Any> {
 
-  private val log = LoggerFactory.getLogger(LoggingJobExecutionListener::class.java)
+    private val log = LoggerFactory.getLogger(LoggingSkipListener::class.java)
 
-  override fun onSkipInRead(t: Throwable) {
-    log.warn("Reader processing failed, skipping item due to: ${t.message}")
-  }
+    override fun onSkipInRead(t: Throwable) {
+        log.warn("Skipped item in reader due to: ${t.message}")
+    }
 
-  override fun onSkipInWrite(item: PostDto, t: Throwable) {
-    log.warn("Writer processing failed for post id=${item.id}, skipping item due to: ${t.message}")
-  }
+    override fun onSkipInWrite(item: Any, t: Throwable) {
+        val itemId = getItemId(item)
+        log.warn("Skipped item in writer with id=$itemId due to: ${t.message}")
+    }
 
-  override fun onSkipInProcess(item: PostDto, t: Throwable) {
-    log.warn("Processor processing failed for post id=${item.id}, skipping item due to: ${t.message}")
-  }
+    override fun onSkipInProcess(item: Any, t: Throwable) {
+        val itemId = getItemId(item)
+        log.warn("Skipped item in processor with id=$itemId due to: ${t.message}")
+    }
+
+    private fun getItemId(item: Any): String {
+        return when (item) {
+            is PostDto -> item.id
+            else -> "unknown"
+        }
+    }
 }

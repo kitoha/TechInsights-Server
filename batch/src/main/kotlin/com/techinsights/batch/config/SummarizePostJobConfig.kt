@@ -44,8 +44,8 @@ class SummarizePostJobConfig(
             .processor(postSummaryProcessor)
             .writer(writer)
             .faultTolerant()
-            .retryLimit(3).retry(Exception::class.java)
-            .skipLimit(10).skip(Exception::class.java)
+            .skipLimit(1000) // 스킵 제한을 넉넉하게 설정
+            .skip(Exception::class.java)
             .listener(loggingSkipListener)
             .build()
 

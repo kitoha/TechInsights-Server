@@ -26,6 +26,11 @@ class GeminiArticleSummarizer (
   private val rateLimiter = rateLimiterRegistry.rateLimiter("geminiArticleSummarizer")
 
   override fun summarize(article: String, modelType: GeminiModelType): SummaryResult {
+    if (article.isBlank()) {
+      log.warn("Article is blank, skipping summarization.")
+      throw IllegalArgumentException("Article content cannot be blank.")
+    }
+
     val modelName = modelType.getModelName()
 
     val prompt  = promptTemplateEngine.buildPrompt(article, Category.entries.map { it.name })
