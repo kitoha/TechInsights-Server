@@ -36,5 +36,7 @@ class Post(
   var categories: MutableSet<Category> = mutableSetOf(),
   @Column(name = "is_summary", nullable = false)
   var isSummary: Boolean = false,
+  @Column(name = "is_embedding", nullable = false)
+  var isEmbedding: Boolean = false
 ) {
 }

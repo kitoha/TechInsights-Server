@@ -36,7 +36,7 @@ class SummarizePostJobConfig(
             .start(summarizePostStep)
             .build()
 
-    @Bean
+    @Bean("summarized")
     fun summarizePostStep(): Step =
         StepBuilder("summarizePostStep", jobRepository)
             .chunk<PostDto, PostDto>(CHUNK_SIZE, transactionManager)

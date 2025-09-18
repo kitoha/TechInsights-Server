@@ -7,43 +7,44 @@ import com.techinsights.domain.enums.GeminiModelType
 import com.techinsights.domain.repository.post.PostEmbeddingJpaRepository
 import com.techinsights.domain.service.embedding.EmbeddingService
 import com.techinsights.domain.utils.Tsid
+import org.slf4j.LoggerFactory
 import org.springframework.batch.item.ItemProcessor
 import org.springframework.stereotype.Component
 
 @Component
 class PostEmbeddingProcessor(
     private val embeddingService: EmbeddingService,
-    private val postEmbeddingJpaRepository: PostEmbeddingJpaRepository
-) : ItemProcessor<List<PostDto>, List<PostEmbeddingDto>> {
+) : ItemProcessor<PostDto, PostEmbeddingDto> {
 
-    override fun process(items: List<PostDto>): List<PostEmbeddingDto> {
-        val postIds = items.map { Tsid.decode(it.id) }.toSet()
-        val existingEmbeddings = postEmbeddingJpaRepository.findAllById(postIds).map { it.postId }.toSet()
+    private val log = LoggerFactory.getLogger(PostEmbeddingProcessor::class.java)
 
-        val newEmbeddingDtos = mutableListOf<PostEmbeddingDto>()
+    override fun process(item: PostDto): PostEmbeddingDto {
+        val postId = item.let { Tsid.decode(it.id) }
 
-        items.forEach { post ->
-            val postId = Tsid.decode(post.id)
-            if (post.isSummary && !post.preview.isNullOrBlank() && !existingEmbeddings.contains(postId)) {
+        if (item.isSummary && !item.preview.isNullOrBlank()) {
 
-                val request = EmbeddingRequest(
-                    content = post.preview!!,
-                    categories = post.categories.map { it.name },
-                    companyName = post.company.name
-                )
+            val request = EmbeddingRequest(
+                content = item.preview!!,
+                categories = item.categories.map { it.name },
+                companyName = item.company.name
+            )
 
-                val vector = embeddingService.generateEmbedding(request, GeminiModelType.GEMINI_EMBEDDING)
+            val vector =
+                embeddingService.generateEmbedding(request, GeminiModelType.GEMINI_EMBEDDING)
 
-                val postEmbeddingDto = PostEmbeddingDto(
-                    postId = post.id,
-                    companyName = post.company.name,
-                    categories = post.categories.joinToString(",") { it.name },
-                    content = post.preview!!,
-                    embeddingVector = vector.toFloatArray()
-                )
-                newEmbeddingDtos.add(postEmbeddingDto)
-            }
+            val postEmbeddingDto = PostEmbeddingDto(
+                postId = item.id,
+                companyName = item.company.name,
+                categories = item.categories.joinToString(",") { it.name },
+                content = item.preview!!,
+                embeddingVector = vector.toFloatArray()
+            )
+
+            log.info("Successfully Vector Embedding item with id: ${item.id}")
+            return postEmbeddingDto
+        } else {
+            log.warn("failed Vector Embedding item with id: ${item.id}")
+            throw IllegalArgumentException("Post with id $postId is not summarized or preview is blank.")
         }
-        return newEmbeddingDtos
     }
 }

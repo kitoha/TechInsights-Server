@@ -17,7 +17,8 @@ data class PostDto(
     val company: CompanyDto,
     val viewCount: Long = 0L,
     var categories: Set<Category>,
-    val isSummary: Boolean = false
+    val isSummary: Boolean = false,
+    val isEmbedding: Boolean = false
 ){
     fun toEntity(): Post {
         return Post(
@@ -31,7 +32,8 @@ data class PostDto(
             company = company.toEntity(),
             viewCount = viewCount,
             categories = categories.toMutableSet(),
-            isSummary = isSummary
+            isSummary = isSummary,
+            isEmbedding = isEmbedding
         )
     }
 
@@ -48,7 +50,8 @@ data class PostDto(
                 company = CompanyDto.fromEntity(entity.company),
                 viewCount = entity.viewCount,
                 categories = entity.categories.toSet(),
-                isSummary = entity.isSummary
+                isSummary = entity.isSummary,
+                isEmbedding = entity.isEmbedding
             )
         }
     }

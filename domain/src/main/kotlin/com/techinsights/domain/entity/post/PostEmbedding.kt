@@ -1,6 +1,7 @@
 package com.techinsights.domain.entity.post
 
 import jakarta.persistence.*
+import org.hibernate.annotations.Array
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 
@@ -21,6 +22,7 @@ class PostEmbedding(
     val content: String,
 
     @JdbcTypeCode(SqlTypes.VECTOR)
-    @Column(name = "embedding_vector", columnDefinition = "vector(768)")
+    @Array(length = 3072)
+    @Column(name = "embedding_vector")
     val embeddingVector: FloatArray
 )

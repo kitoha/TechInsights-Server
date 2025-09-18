@@ -33,48 +33,17 @@ class PostVectorEmbeddingConfig(
             .start(postVectorEmbeddingStep())
             .build()
 
-    @Bean
+    @Bean("postVector")
     fun postVectorEmbeddingStep(): Step =
         StepBuilder("postVectorEmbeddingStep", jobRepository)
-            .chunk<List<PostDto>, List<PostEmbeddingDto>>(1, transactionManager)
-            .reader(embeddingChunkListItemReader(summarizedPostReader))
+            .chunk<PostDto, PostEmbeddingDto>(1, transactionManager)
+            .reader(summarizedPostReader)
             .processor(postEmbeddingProcessor)
             .writer(postEmbeddingWriter)
             .faultTolerant()
             .retryLimit(3).retry(Exception::class.java)
             .skipLimit(10).skip(Exception::class.java)
             .build()
-
-    @Bean
-    @StepScope
-    fun embeddingChunkListItemReader(reader: SummarizedPostReader): ItemReader<List<PostDto>> {
-        return object : ItemReader<List<PostDto>> {
-            private var finished = false
-
-            override fun read(): List<PostDto>? {
-                if (finished) {
-                    return null
-                }
-
-                val items = mutableListOf<PostDto>()
-                for (i in 0 until CHUNK_SIZE) {
-                    val item = reader.read() ?: break
-                    items.add(item)
-                }
-
-                if (items.isEmpty()) {
-                    finished = true
-                    return null
-                }
-
-                if (items.size < CHUNK_SIZE) {
-                    finished = true
-                }
-
-                return items
-            }
-        }
-    }
 
     companion object {
         private const val CHUNK_SIZE = 100

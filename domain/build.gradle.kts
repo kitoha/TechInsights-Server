@@ -35,6 +35,7 @@ dependencies {
     implementation("io.awspring.cloud:spring-cloud-aws-starter-parameter-store:3.3.1")
     implementation ("software.amazon.awssdk:sso:2.31.70")
     implementation ("software.amazon.awssdk:ssooidc:2.31.70")
+    implementation("org.hibernate.orm:hibernate-vector:6.6.15.Final")
     kapt("com.querydsl:querydsl-apt:5.1.0:jakarta")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("io.kotest:kotest-runner-junit5:5.8.0")

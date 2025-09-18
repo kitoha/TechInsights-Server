@@ -3,7 +3,8 @@ package com.techinsights.batch.reader
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.repository.post.PostRepository
 import org.springframework.batch.core.configuration.annotation.StepScope
-import org.springframework.batch.item.ItemReader
+import org.springframework.batch.item.ExecutionContext
+import org.springframework.batch.item.ItemStreamReader
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import kotlin.math.min
@@ -12,8 +13,8 @@ import kotlin.math.min
 @StepScope
 class SummarizedPostReader(
     private val postRepository: PostRepository,
-    @Value("#{jobParameters['limit'] ?: 1000L}") private val maxCount: Long
-) : ItemReader<PostDto> {
+    @Value("#{jobParameters['limit'] ?: 100L}") private val maxCount: Long
+) : ItemStreamReader<PostDto> {
 
     private val pageSize = DEFAULT_PAGE_SIZE
     private var offset = 0L
@@ -27,8 +28,10 @@ class SummarizedPostReader(
             val remaining = maxCount - readCount
             val fetchSize = min(pageSize.toLong(), remaining)
 
+            if (fetchSize <= 0) return null
+
             buffer = postRepository
-                .findOldestNotSummarized(fetchSize, offset)
+                .findOldestSummarizedAndNotEmbedded(fetchSize, offset)
                 .toMutableList()
 
             offset += fetchSize
@@ -39,7 +42,27 @@ class SummarizedPostReader(
         return buffer.removeFirst()
     }
 
+    override fun open(executionContext: ExecutionContext) {
+        if (executionContext.containsKey(OFFSET_KEY)) {
+            this.offset = executionContext.getLong(OFFSET_KEY)
+            this.readCount = executionContext.getLong(READ_COUNT_KEY)
+        } else {
+            this.offset = 0L
+            this.readCount = 0L
+        }
+    }
+
+    override fun update(executionContext: ExecutionContext) {
+        executionContext.putLong(OFFSET_KEY, this.offset)
+        executionContext.putLong(READ_COUNT_KEY, this.readCount)
+    }
+
+    override fun close() {
+    }
+
     companion object {
         private const val DEFAULT_PAGE_SIZE = 100
+        private const val OFFSET_KEY = "summarizedPostReader.offset"
+        private const val READ_COUNT_KEY = "summarizedPostReader.readCount"
     }
 }
