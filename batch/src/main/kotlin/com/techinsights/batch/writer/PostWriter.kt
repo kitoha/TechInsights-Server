@@ -14,7 +14,8 @@ class PostWriter(
   override fun write(chunk: Chunk<out PostDto>) {
     val postsToWrite = chunk.items
     if (postsToWrite.isNotEmpty()) {
-      postRepository.saveAll(postsToWrite)
+      val summarizedItem = postsToWrite.filter { it.isSummary }
+      postRepository.saveAll(summarizedItem)
     }
   }
 }

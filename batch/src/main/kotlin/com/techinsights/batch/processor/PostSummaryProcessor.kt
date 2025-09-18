@@ -23,19 +23,24 @@ class PostSummaryProcessor(
     }
 
     private suspend fun processSuspending(item: PostDto): PostDto {
-        val summarized =
-            summarizer.summarize(item.content, GeminiModelType.GEMINI_2_5_FLASH)
-        val content = summarized.summary
-        val categories =
-            summarized.categories.map { Category.valueOf(it) }.toSet()
-        val preview = summarized.preview
-        val summarizedItem = item.copy(
-            content = content,
-            preview = preview,
-            categories = categories,
-            isSummary = true
-        )
-        log.info("Successfully summarized item with id: ${item.id}")
-        return summarizedItem
+        try {
+            val summarized =
+                summarizer.summarize(item.content, GeminiModelType.GEMINI_2_5_FLASH)
+            val content = summarized.summary
+            val categories =
+                summarized.categories.map { Category.valueOf(it) }.toSet()
+            val preview = summarized.preview
+            val summarizedItem = item.copy(
+                content = content,
+                preview = preview,
+                categories = categories,
+                isSummary = true
+            )
+            log.info("Successfully summarized item with id: ${item.id}")
+            return summarizedItem
+        } catch (e: Exception) {
+            log.warn("Failed to summarize item with id: ${item.id}, error: ${e.message}")
+            return item
+        }
     }
 }

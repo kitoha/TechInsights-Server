@@ -14,37 +14,40 @@ import org.springframework.stereotype.Component
 @Component
 class PostEmbeddingProcessor(
     private val embeddingService: EmbeddingService,
-) : ItemProcessor<PostDto, PostEmbeddingDto> {
+) : ItemProcessor<PostDto, PostEmbeddingDto?> {
 
     private val log = LoggerFactory.getLogger(PostEmbeddingProcessor::class.java)
 
-    override fun process(item: PostDto): PostEmbeddingDto {
-        val postId = item.let { Tsid.decode(it.id) }
-
+    override fun process(item: PostDto): PostEmbeddingDto? {
         if (item.isSummary && !item.preview.isNullOrBlank()) {
 
-            val request = EmbeddingRequest(
-                content = item.preview!!,
-                categories = item.categories.map { it.name },
-                companyName = item.company.name
-            )
+            try {
+                val request = EmbeddingRequest(
+                    content = item.preview!!,
+                    categories = item.categories.map { it.name },
+                    companyName = item.company.name
+                )
 
-            val vector =
-                embeddingService.generateEmbedding(request, GeminiModelType.GEMINI_EMBEDDING)
+                val vector =
+                    embeddingService.generateEmbedding(request, GeminiModelType.GEMINI_EMBEDDING)
 
-            val postEmbeddingDto = PostEmbeddingDto(
-                postId = item.id,
-                companyName = item.company.name,
-                categories = item.categories.joinToString(",") { it.name },
-                content = item.preview!!,
-                embeddingVector = vector.toFloatArray()
-            )
+                val postEmbeddingDto = PostEmbeddingDto(
+                    postId = item.id,
+                    companyName = item.company.name,
+                    categories = item.categories.joinToString(",") { it.name },
+                    content = item.preview!!,
+                    embeddingVector = vector.toFloatArray()
+                )
 
-            log.info("Successfully Vector Embedding item with id: ${item.id}")
-            return postEmbeddingDto
+                log.info("Successfully Vector Embedding item with id: ${item.id}")
+                return postEmbeddingDto
+            } catch (e: Exception) {
+                log.warn("failed Vector Embedding item with id: ${item.id}, error: ${e.message}")
+                return null
+            }
         } else {
             log.warn("failed Vector Embedding item with id: ${item.id}")
-            throw IllegalArgumentException("Post with id $postId is not summarized or preview is blank.")
+            return null
         }
     }
 }

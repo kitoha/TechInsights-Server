@@ -55,7 +55,7 @@ class SummaryAndEmbeddingJobConfig(
       .processor(postSummaryProcessor)
       .writer(postWriter)
       .faultTolerant()
-      .skipLimit(100)
+      .skipLimit(10)
       .skip(Exception::class.java)
       .listener(loggingSkipListener)
       .build()
@@ -63,19 +63,19 @@ class SummaryAndEmbeddingJobConfig(
   @Bean
   fun postVectorEmbeddingStep(): Step =
     StepBuilder("postVectorEmbeddingStep", jobRepository)
-      .chunk<PostDto, PostEmbeddingDto>(EMBEDDING_CHUNK_SIZE, transactionManager)
+      .chunk<PostDto, PostEmbeddingDto?>(EMBEDDING_CHUNK_SIZE, transactionManager)
       .reader(embeddingPostReader)
       .processor(postEmbeddingProcessor)
       .writer(postEmbeddingWriter)
       .faultTolerant()
-      .skipLimit(100)
+      .skipLimit(10)
       .skip(Exception::class.java)
       .build()
 
 
   companion object {
 
-    private const val CHUNK_SIZE = 100
-    private const val EMBEDDING_CHUNK_SIZE = 100
+    private const val CHUNK_SIZE = 10
+    private const val EMBEDDING_CHUNK_SIZE = 10
   }
 }

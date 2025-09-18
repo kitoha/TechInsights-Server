@@ -11,12 +11,13 @@ import org.springframework.stereotype.Component
 @Component
 class PostEmbeddingWriter(
     private val postEmbeddingJpaRepository: PostEmbeddingJpaRepository
-) : ItemWriter<PostEmbeddingDto> {
+) : ItemWriter<PostEmbeddingDto?> {
 
     override fun write(chunk: Chunk<out PostEmbeddingDto>) {
         val items = chunk.items
         if (items.isNotEmpty()) {
-            val embeddings = items.map { dto ->
+            val filteredItems = items.filterNotNull()
+            val embeddings = filteredItems.map { dto ->
                 PostEmbedding(
                     postId = Tsid.decode(dto.postId),
                     companyName = dto.companyName,
