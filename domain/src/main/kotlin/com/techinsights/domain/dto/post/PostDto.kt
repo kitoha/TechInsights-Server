@@ -18,7 +18,7 @@ data class PostDto(
     val viewCount: Long = 0L,
     var categories: Set<Category>,
     val isSummary: Boolean = false,
-    val isEmbedding: Boolean = false
+    var isEmbedding: Boolean = false
 ){
     fun toEntity(): Post {
         return Post(
