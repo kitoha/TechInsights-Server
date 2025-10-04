@@ -23,3 +23,20 @@ aid:
     ttl-days: 365
     same-site-default: Lax                     # Lax | Strict | None
     secure-mode: AUTO                          # ALWAYS | NEVER | AUTO
+
+search:
+  score:
+    weights:
+      title-exact-start: 100.0
+      title-contains: 50.0
+      company-name: 30.0
+      content: 10.0
+      view-count-multiplier: 5.0
+      recent-7days: 20.0
+      recent-30days: 10.0
+      summary-bonus: 5.0
+  instant:
+    limit: 5
+  full:
+    default-size: 20
+    max-size: 100
