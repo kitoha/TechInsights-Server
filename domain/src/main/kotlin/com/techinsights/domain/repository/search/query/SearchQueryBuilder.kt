@@ -2,6 +2,7 @@ package com.techinsights.domain.repository.search.query
 
 import com.querydsl.core.types.OrderSpecifier
 import com.querydsl.core.types.dsl.BooleanExpression
+import com.querydsl.core.types.dsl.CaseBuilder
 import com.querydsl.core.types.dsl.Expressions
 import com.querydsl.core.types.dsl.NumberExpression
 import com.techinsights.domain.config.search.ScoreWeights
@@ -9,12 +10,12 @@ import com.techinsights.domain.entity.company.QCompany
 import com.techinsights.domain.entity.post.QPost
 import com.techinsights.domain.enums.search.SearchSortType
 import org.springframework.stereotype.Component
+import java.time.LocalDateTime
 
 @Component
 class SearchQueryBuilder(
   private val scoreWeights: ScoreWeights
 ) {
-
   private val post = QPost.post
   private val company = QCompany.company
 
@@ -30,17 +31,59 @@ class SearchQueryBuilder(
   }
 
   fun buildRelevanceScore(query: String): NumberExpression<Double> {
-    return Expressions.numberTemplate(
+    val lowerQuery = query.lowercase()
+    val sevenDaysAgo = LocalDateTime.now().minusDays(7)
+    val thirtyDaysAgo = LocalDateTime.now().minusDays(30)
+
+    // 제목 점수
+    val titleScore = CaseBuilder()
+      .`when`(post.title.lower().startsWith(lowerQuery))
+      .then(scoreWeights.titleExactStart)
+      .`when`(post.title.lower().contains(lowerQuery))
+      .then(scoreWeights.titleContains)
+      .otherwise(0.0)
+
+    // 회사명 점수
+    val companyScore = CaseBuilder()
+      .`when`(company.name.lower().contains(lowerQuery))
+      .then(scoreWeights.companyName)
+      .otherwise(0.0)
+
+    // 본문 점수
+    val contentScore = CaseBuilder()
+      .`when`(post.content.contains(query))
+      .then(scoreWeights.content)
+      .otherwise(0.0)
+
+    // 인기도 점수
+    val popularityScore = Expressions.numberTemplate(
       Double::class.java,
-      buildScoreTemplate(),
-      post.title,
-      query,
-      company.name,
-      post.content,
+      "log({0} + 1) * {1}",
       post.viewCount,
-      post.publishedAt,
-      post.isSummary
+      scoreWeights.viewCountMultiplier
     )
+
+    // 최신성 점수
+    val recencyScore = CaseBuilder()
+      .`when`(post.publishedAt.after(sevenDaysAgo))
+      .then(scoreWeights.recent7days)
+      .`when`(post.publishedAt.after(thirtyDaysAgo))
+      .then(scoreWeights.recent30days)
+      .otherwise(0.0)
+
+    // 요약 점수
+    val summaryScore = CaseBuilder()
+      .`when`(post.isSummary.isTrue)
+      .then(scoreWeights.summaryBonus)
+      .otherwise(0.0)
+
+    // 모든 점수 합산
+    return titleScore
+      .add(companyScore)
+      .add(contentScore)
+      .add(popularityScore)
+      .add(recencyScore)
+      .add(summaryScore)
   }
 
   fun buildOrderSpecifier(
@@ -52,11 +95,9 @@ class SearchQueryBuilder(
         relevanceScore.desc(),
         post.publishedAt.desc()
       )
-
       SearchSortType.LATEST -> arrayOf(
         post.publishedAt.desc()
       )
-
       SearchSortType.POPULAR -> arrayOf(
         post.viewCount.desc(),
         post.publishedAt.desc()
@@ -71,28 +112,5 @@ class SearchQueryBuilder(
       post.title,
       query
     )
-  }
-
-  private fun buildScoreTemplate(): String {
-    return """
-            CASE 
-                WHEN LOWER({0}) LIKE LOWER({1}) || '%' THEN ${scoreWeights.titleExactStart}
-                WHEN LOWER({0}) LIKE '%' || LOWER({1}) || '%' THEN ${scoreWeights.titleContains}
-                ELSE 0.0
-            END +
-            CASE WHEN LOWER({2}) LIKE '%' || LOWER({1}) || '%' 
-                THEN ${scoreWeights.companyName} ELSE 0.0 
-            END +
-            CASE WHEN {3} LIKE '%' || {1} || '%' 
-                THEN ${scoreWeights.content} ELSE 0.0 
-            END +
-            log({4} + 1) * ${scoreWeights.viewCountMultiplier} +
-            CASE 
-                WHEN {5} > NOW() - INTERVAL '7 days' THEN ${scoreWeights.recent7days}
-                WHEN {5} > NOW() - INTERVAL '30 days' THEN ${scoreWeights.recent30days}
-                ELSE 0.0
-            END +
-            CASE WHEN {6} = true THEN ${scoreWeights.summaryBonus} ELSE 0.0 END
-        """.trimIndent()
   }
 }

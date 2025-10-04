@@ -25,7 +25,10 @@ class PostSearchQueryRepository(
     return jpaQueryFactory
       .selectFrom(post)
       .join(post.company, company).fetchJoin()
-      .where(buildInstantSearchCondition(query))
+      .where(
+        buildInstantSearchCondition(query),
+        post.isEmbedding.isTrue
+      )
       .orderBy(
         similarityScore.desc(),
         post.viewCount.desc()
@@ -43,7 +46,10 @@ class PostSearchQueryRepository(
     return jpaQueryFactory
       .selectFrom(post)
       .join(post.company, company).fetchJoin()
-      .where(condition)
+      .where(
+        condition,
+        post.isEmbedding.isTrue
+      )
       .orderBy(*orderSpecifiers)
       .offset(offset)
       .limit(limit)
@@ -55,7 +61,10 @@ class PostSearchQueryRepository(
       .select(post.count())
       .from(post)
       .join(post.company, company)
-      .where(condition)
+      .where(
+        condition,
+        post.isEmbedding.isTrue
+      )
       .fetchOne() ?: 0L
   }
 
@@ -66,7 +75,8 @@ class PostSearchQueryRepository(
       .where(
         post.company.id.eq(companyId),
         post.title.containsIgnoreCase(query)
-          .or(post.content.contains(query))
+          .or(post.content.contains(query)),
+        post.isEmbedding.isTrue
       )
       .fetchOne() ?: 0L
   }
