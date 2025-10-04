@@ -104,13 +104,4 @@ class SearchQueryBuilder(
       )
     }
   }
-
-  fun buildSimilarityScore(query: String): NumberExpression<Double> {
-    return Expressions.numberTemplate(
-      Double::class.java,
-      "similarity({0}, {1})",
-      post.title,
-      query
-    )
-  }
 }

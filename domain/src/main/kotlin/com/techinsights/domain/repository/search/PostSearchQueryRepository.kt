@@ -19,7 +19,7 @@ class PostSearchQueryRepository(
 
   fun findForInstantSearch(
     query: String,
-    similarityScore: NumberExpression<Double>,
+    relevanceScore: NumberExpression<Double>,
     limit: Int
   ): List<Post> {
     return jpaQueryFactory
@@ -27,10 +27,10 @@ class PostSearchQueryRepository(
       .join(post.company, company).fetchJoin()
       .where(
         buildInstantSearchCondition(query),
-        post.isEmbedding.isTrue
+        post.isSummary.isTrue
       )
       .orderBy(
-        similarityScore.desc(),
+        relevanceScore.desc(),
         post.viewCount.desc()
       )
       .limit(limit.toLong())
@@ -48,7 +48,7 @@ class PostSearchQueryRepository(
       .join(post.company, company).fetchJoin()
       .where(
         condition,
-        post.isEmbedding.isTrue
+        post.isSummary.isTrue
       )
       .orderBy(*orderSpecifiers)
       .offset(offset)
@@ -63,7 +63,7 @@ class PostSearchQueryRepository(
       .join(post.company, company)
       .where(
         condition,
-        post.isEmbedding.isTrue
+        post.isSummary.isTrue
       )
       .fetchOne() ?: 0L
   }
@@ -76,7 +76,7 @@ class PostSearchQueryRepository(
         post.company.id.eq(companyId),
         post.title.containsIgnoreCase(query)
           .or(post.content.contains(query)),
-        post.isEmbedding.isTrue
+        post.isSummary.isTrue
       )
       .fetchOne() ?: 0L
   }

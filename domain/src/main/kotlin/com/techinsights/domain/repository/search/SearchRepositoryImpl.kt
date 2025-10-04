@@ -71,10 +71,10 @@ class SearchRepositoryImpl(
   }
 
   private fun findPosts(query: String, limit: Int): List<PostMatchDto> {
-    val similarityScore = queryBuilder.buildSimilarityScore(query)
+    val relevanceScore = queryBuilder.buildRelevanceScore(query)
     val posts = postSearchQueryRepository.findForInstantSearch(
       query = query,
-      similarityScore = similarityScore,
+      relevanceScore = relevanceScore,
       limit = limit
     )
 

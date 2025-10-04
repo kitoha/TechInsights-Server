@@ -1,12 +1,22 @@
 package com.techinsights.domain.config.search
 
+import com.fasterxml.jackson.annotation.JsonProperty
+
 data class ScoreWeights(
-  val titleExactStart: Double = 100.0,
-  val titleContains: Double = 50.0,
-  val companyName: Double = 30.0,
-  val content: Double = 10.0,
-  val viewCountMultiplier: Double = 5.0,
-  val recent7days: Double = 20.0,
-  val recent30days: Double = 10.0,
-  val summaryBonus: Double = 5.0
+  @JsonProperty("title-exact-start")
+  val titleExactStart: Double = 200.0,
+  @JsonProperty("title-contains")
+  val titleContains: Double = 100.0,
+  @JsonProperty("company-name")
+  val companyName: Double = 80.0,
+  @JsonProperty("content")
+  val content: Double = 5.0,
+  @JsonProperty("view-count-multiplier")
+  val viewCountMultiplier: Double = 2.0,
+  @JsonProperty("recent-7days")
+  val recent7days: Double = 10.0,
+  @JsonProperty("recent-30days")
+  val recent30days: Double = 5.0,
+  @JsonProperty("summary-bonus")
+  val summaryBonus: Double = 3.0
 )
