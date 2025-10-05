@@ -1,5 +1,6 @@
 package com.techinsights.domain.repository.post
 
+import com.techinsights.domain.dto.catogory.CategorySummaryDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.enums.Category
 import org.springframework.data.domain.Page
@@ -15,4 +16,5 @@ interface PostRepository {
   fun findOldestSummarizedAndNotEmbedded(limit: Long, offset: Long): List<PostDto>
   fun findOldestSummarized(limit: Long, offset: Long): List<PostDto>
   fun findTopViewedPosts(limit: Long): List<PostDto>
+  fun getCategoryStatistics(): List<CategorySummaryDto>
 }

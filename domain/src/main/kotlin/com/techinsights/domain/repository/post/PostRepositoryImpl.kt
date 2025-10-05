@@ -1,6 +1,7 @@
 package com.techinsights.domain.repository.post
 
 import com.querydsl.jpa.impl.JPAQueryFactory
+import com.techinsights.domain.dto.catogory.CategorySummaryDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.entity.company.QCompany
 import com.techinsights.domain.entity.post.Post
@@ -141,5 +142,24 @@ class PostRepositoryImpl(
       .limit(limit)
       .fetch()
       .map { PostDto.fromEntity(it) }
+  }
+
+  override fun getCategoryStatistics(): List<CategorySummaryDto> {
+    val post = QPost.post
+
+    return queryFactory
+      .selectFrom(post)
+      .fetch()
+      .flatMap { p -> p.categories.map { category -> p to category } }
+      .filter { (_, category) -> category != Category.All }
+      .groupBy { (_, category) -> category }
+      .map { (category, posts) ->
+        CategorySummaryDto(
+          category = category,
+          postCount = posts.size.toLong(),
+          totalViewCount = posts.sumOf { (post, _) -> post.viewCount },
+          latestPostDate = posts.maxOfOrNull { (post, _) -> post.publishedAt }
+        )
+      }
   }
 }
