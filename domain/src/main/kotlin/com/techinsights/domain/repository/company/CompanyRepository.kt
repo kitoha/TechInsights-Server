@@ -1,6 +1,7 @@
 package com.techinsights.domain.repository.company
 
 import com.techinsights.domain.dto.company.CompanyDto
+import com.techinsights.domain.dto.company.CompanyPostSummaryDto
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 
@@ -17,4 +18,5 @@ interface CompanyRepository {
   fun existsByName(name: String): Boolean
   fun getTopCompaniesByViews(pageable: Pageable): Page<CompanyDto>
   fun getTopCompaniesByPosts(pageable: Pageable): Page<CompanyDto>
+  fun findAllWithLastPostedAt(): List<CompanyPostSummaryDto>
 }

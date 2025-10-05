@@ -1,9 +1,13 @@
 package com.techinsights.domain.repository.company
 
+import com.querydsl.core.types.Projections
 import com.querydsl.jpa.impl.JPAQueryFactory
 import com.techinsights.domain.dto.company.CompanyDto
+import com.techinsights.domain.dto.company.CompanyPostSummaryDto
 import com.techinsights.domain.entity.company.Company
 import com.techinsights.domain.entity.company.QCompany
+import com.techinsights.domain.entity.company.QCompany.company
+import com.techinsights.domain.entity.post.QPost.post
 import com.techinsights.domain.utils.Tsid
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
@@ -116,5 +120,34 @@ class CompanyRepositoryImpl(
     val companyDtos = results.map { CompanyDto.fromEntity(it) }
 
     return PageImpl(companyDtos, pageable, total)
+  }
+
+  override fun findAllWithLastPostedAt(): List<CompanyPostSummaryDto> {
+    return jpaQueryFactory
+      .select(
+        Projections.constructor(
+          CompanyPostSummaryDto::class.java,
+          company.id,
+          company.name,
+          company.blogUrl,
+          company.logoImageName,
+          company.totalViewCount,
+          post.id.count(),
+          post.publishedAt.max()
+        )
+      )
+      .from(company)
+      .leftJoin(post).on(
+        post.company.id.eq(company.id)
+          .and(post.isSummary.isTrue)
+      )
+      .groupBy(
+        company.id,
+        company.name,
+        company.blogUrl,
+        company.logoImageName,
+        company.totalViewCount
+      )
+      .fetch()
   }
 }

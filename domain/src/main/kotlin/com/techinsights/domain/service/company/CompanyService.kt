@@ -1,6 +1,7 @@
 package com.techinsights.domain.service.company
 
 import com.techinsights.domain.dto.company.CompanyDto
+import com.techinsights.domain.dto.company.CompanyPostSummaryDto
 import com.techinsights.domain.exception.CompanyNotFoundException
 import com.techinsights.domain.exception.DuplicateCompanyNameException
 import com.techinsights.domain.repository.company.CompanyRepository
@@ -63,5 +64,9 @@ class CompanyService(
 
   fun getTopCompaniesByPosts(pageable: Pageable): Page<CompanyDto> {
     return companyRepository.getTopCompaniesByPosts(pageable)
+  }
+
+  fun getCompanyPostSummaries(): List<CompanyPostSummaryDto> {
+    return companyRepository.findAllWithLastPostedAt()
   }
 }

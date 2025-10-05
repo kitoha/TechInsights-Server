@@ -1,6 +1,7 @@
 package com.techinsights.api.controller.company
 
 import com.techinsights.api.request.CompanyRequest
+import com.techinsights.api.response.company.CompanyPostSummaryResponse
 import com.techinsights.api.response.company.CompanyResponse
 import com.techinsights.api.response.post.PageResponse
 import com.techinsights.domain.service.company.CompanyService
@@ -83,5 +84,12 @@ class CompanyController(
       totalPages = response.totalPages
     )
     )
+  }
+
+  @GetMapping("/api/v1/companiesSummaries")
+  fun getCompanyPostSummaries(): ResponseEntity<List<CompanyPostSummaryResponse>> {
+    val summaries = companyService.getCompanyPostSummaries()
+    val response = summaries.map { CompanyPostSummaryResponse.fromDto(it) }
+    return ResponseEntity.ok(response)
   }
 }
