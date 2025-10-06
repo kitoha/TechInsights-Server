@@ -1,5 +1,6 @@
 package com.techinsights.domain.entity.user
 
+import com.techinsights.domain.entity.BaseEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
@@ -21,4 +22,4 @@ class AnonymousUserReadHistory(
 
   @Column(name = "read_at", nullable = false, updatable = false)
   val readAt: LocalDateTime = LocalDateTime.now()
-)
+) : BaseEntity()

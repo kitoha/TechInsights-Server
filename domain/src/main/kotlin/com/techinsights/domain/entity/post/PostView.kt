@@ -1,5 +1,6 @@
 package com.techinsights.domain.entity.post
 
+import com.techinsights.domain.entity.BaseEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
@@ -21,6 +22,4 @@ class PostView (
   @Column(name = "viewed_date", nullable = false)
   val viewedDate: LocalDate,
 
-  @Column(name = "created_at", nullable = false)
-  val createdAt: LocalDateTime = LocalDateTime.now()
-)
+  ) : BaseEntity()

@@ -1,5 +1,6 @@
 package com.techinsights.domain.entity.company
 
+import com.techinsights.domain.entity.BaseEntity
 import jakarta.persistence.*
 
 @Entity
@@ -19,4 +20,4 @@ class Company(
   var totalViewCount: Long = 0L,
   @Column(name = "post_count", nullable = false)
   var postCount: Long = 0L
-)
+) : BaseEntity()

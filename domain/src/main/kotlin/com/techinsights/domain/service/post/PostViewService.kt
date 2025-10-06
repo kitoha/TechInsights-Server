@@ -20,7 +20,6 @@ class PostViewService(
   @Transactional
   fun recordView(post : PostDto, userOrIp: String) {
     val viewDate = LocalDate.now()
-    val today = LocalDateTime.now() // 후에 auditing 필요시 변경
     val postId = post.id
     val companyId = post.company.id
 
@@ -30,7 +29,7 @@ class PostViewService(
     ) {
       val postView = PostViewDto(
         id = Tsid.generate(), postId = postId,
-        userOrIp = userOrIp, viewedDate = viewDate, createdAt = today
+        userOrIp = userOrIp, viewedDate = viewDate
       )
       postViewRepository.save(postView)
 

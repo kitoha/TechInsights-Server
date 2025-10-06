@@ -1,5 +1,6 @@
 package com.techinsights.domain.entity.post
 
+import com.techinsights.domain.entity.BaseEntity
 import com.techinsights.domain.entity.company.Company
 import com.techinsights.domain.enums.Category
 import jakarta.persistence.*
@@ -38,5 +39,4 @@ class Post(
   var isSummary: Boolean = false,
   @Column(name = "is_embedding", nullable = false)
   var isEmbedding: Boolean = false
-) {
-}
+) : BaseEntity()

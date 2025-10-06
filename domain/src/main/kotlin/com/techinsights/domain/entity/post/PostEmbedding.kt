@@ -1,5 +1,6 @@
 package com.techinsights.domain.entity.post
 
+import com.techinsights.domain.entity.BaseEntity
 import jakarta.persistence.*
 import org.hibernate.annotations.Array
 import org.hibernate.annotations.JdbcTypeCode
@@ -25,4 +26,4 @@ class PostEmbedding(
     @Array(length = 3072)
     @Column(name = "embedding_vector")
     val embeddingVector: FloatArray
-)
+) : BaseEntity()
