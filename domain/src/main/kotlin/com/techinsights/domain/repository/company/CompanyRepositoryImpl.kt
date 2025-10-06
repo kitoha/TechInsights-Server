@@ -38,7 +38,8 @@ class CompanyRepositoryImpl(
   }
 
   override fun findById(id: String): CompanyDto {
-    val entity: Company = companyJpaRepository.findById(id.toLong())
+    val companyId = Tsid.decode(id)
+    val entity: Company = companyJpaRepository.findById(companyId)
       .orElseThrow { NoSuchElementException("Company with ID $id not found") }
     return CompanyDto.fromEntity(entity)
   }

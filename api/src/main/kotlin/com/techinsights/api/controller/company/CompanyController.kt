@@ -32,6 +32,12 @@ class CompanyController(
     )
   }
 
+  @GetMapping("/api/v1/companies/{companyId}")
+  fun getCompanyById(@PathVariable companyId: String): ResponseEntity<CompanyResponse> {
+    val companyDto = companyService.getCompanyById(companyId)
+    return ResponseEntity.ok(CompanyResponse.fromDto(companyDto))
+  }
+
   @PostMapping("/api/v1/companies")
   fun saveCompany(@RequestBody requests : List<CompanyRequest>): ResponseEntity<List<CompanyResponse>> {
     val companyDto = requests.map{it.toDto()}

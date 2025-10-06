@@ -69,4 +69,8 @@ class CompanyService(
   fun getCompanyPostSummaries(): List<CompanyPostSummaryDto> {
     return companyRepository.findAllWithLastPostedAt()
   }
+
+  fun getCompanyById(companyId: String): CompanyDto {
+    return companyRepository.findById(companyId)
+  }
 }
