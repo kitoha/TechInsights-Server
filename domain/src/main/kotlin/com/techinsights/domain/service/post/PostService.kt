@@ -8,7 +8,6 @@ import com.techinsights.domain.repository.user.AnonymousUserReadHistoryRepositor
 import mu.KotlinLogging
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
-import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 
@@ -23,13 +22,19 @@ class PostService(
   }
 
 
-  fun getPosts(page: Int, size: Int, sort: PostSortType, category: Category): Page<PostDto> {
+  fun getPosts(
+    page: Int,
+    size: Int,
+    sort: PostSortType,
+    category: Category,
+    companyId: String?
+  ): Page<PostDto> {
     val sortSpec = when (sort) {
       PostSortType.RECENT -> Sort.by(Sort.Direction.DESC, "publishedAt")
       PostSortType.POPULAR -> Sort.by(Sort.Direction.DESC, "viewCount")
     }
     val pageable = PageRequest.of(page, size, sortSpec)
-    return postRepository.getPosts(pageable, category)
+    return postRepository.getPosts(pageable, category, companyId)
   }
 
   fun getPostById(id: String, ip: String): PostDto {

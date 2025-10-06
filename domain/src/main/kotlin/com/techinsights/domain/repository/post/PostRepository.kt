@@ -10,7 +10,7 @@ interface PostRepository {
   fun saveAll(posts: List<PostDto>): List<PostDto>
   fun findAllByUrlIn(urls: List<String>): List<PostDto>
   fun findAllByIdIn(ids: List<String>): List<PostDto>
-  fun getPosts(pageable: Pageable, category: Category): Page<PostDto>
+  fun getPosts(pageable: Pageable, category: Category, companyId: String?): Page<PostDto>
   fun getPostById(id: String): PostDto
   fun findOldestNotSummarized(limit: Long, offset: Long): List<PostDto>
   fun findOldestSummarizedAndNotEmbedded(limit: Long, offset: Long): List<PostDto>

@@ -4,7 +4,6 @@ import com.querydsl.jpa.impl.JPAQueryFactory
 import com.techinsights.domain.dto.catogory.CategorySummaryDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.entity.company.QCompany
-import com.techinsights.domain.entity.post.Post
 import com.techinsights.domain.entity.post.QPost
 import com.techinsights.domain.enums.Category
 import com.techinsights.domain.exception.PostNotFoundException
@@ -51,23 +50,31 @@ class PostRepositoryImpl(
     return posts.map { post -> PostDto.fromEntity(post) }
   }
 
-  override fun getPosts(pageable: Pageable, category: Category): Page<PostDto> {
+  override fun getPosts(pageable: Pageable, category: Category, companyId: String?): Page<PostDto> {
     val postEntity = QPost.post
     val companyEntity = QCompany.company
+    val companyIdLong = companyId?.let { Tsid.decode(it) }
 
     val query = queryFactory.selectFrom(postEntity)
       .leftJoin(postEntity.company, companyEntity).fetchJoin()
       .where(postEntity.isSummary.isTrue,
         category.takeIf { it != Category.All }
-          ?.let { postEntity.categories.contains(it) })
+          ?.let { postEntity.categories.contains(it) },
+        companyIdLong?.let { postEntity.company.id.eq(it) })
       .orderBy(postEntity.publishedAt.desc())
       .offset(pageable.offset)
       .limit(pageable.pageSize.toLong())
 
     val results = query.fetch()
     val total = queryFactory.select(postEntity.id.count())
-      .where(postEntity.isSummary.isTrue)
-      .from(postEntity).fetchOne() ?: 0L
+      .from(postEntity)
+      .where(
+        postEntity.isSummary.isTrue,
+        category.takeIf { it != Category.All }
+          ?.let { postEntity.categories.contains(it) },
+        companyIdLong?.let { postEntity.company.id.eq(it) }
+      )
+      .fetchOne() ?: 0L
 
     val resultsDto = results.map { post -> PostDto.fromEntity(post) }
 
