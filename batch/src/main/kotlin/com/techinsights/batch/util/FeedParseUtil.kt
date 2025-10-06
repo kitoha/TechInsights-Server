@@ -5,7 +5,6 @@ import org.jsoup.nodes.Element
 import java.net.URI
 import java.time.LocalDateTime
 import java.time.LocalDate
-import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 object FeedParseUtil {
@@ -25,31 +24,6 @@ object FeedParseUtil {
     "medium.com"                to "article, .meteredContent, .pw-post-body, .postArticle-content",
     "oliveyoung.tech"           to "div.blog-post-content"
   )
-
-  fun Element.getSingleTagText(vararg tags: String): String {
-    for (tag in tags) {
-      this.selectFirst(tag)?.run {
-        return when {
-          hasAttr("href") -> attr("href")
-          text().isNotBlank() -> text()
-          else -> ""
-        }
-      }
-    }
-    return ""
-  }
-
-  fun parseRssDate(vararg dateStrings: String): LocalDateTime {
-    for (dateString in dateStrings) {
-      try {
-        if (dateString.isNotBlank()) {
-          val formatter = DateTimeFormatter.RFC_1123_DATE_TIME
-          return ZonedDateTime.parse(dateString, formatter).toLocalDateTime()
-        }
-      } catch (ignored: Exception) {}
-    }
-    return LocalDateTime.now()
-  }
 
   fun parseHtmlDate(dateText: String?): LocalDateTime {
     return try {

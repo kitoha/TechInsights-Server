@@ -1,0 +1,87 @@
+package com.techinsights.batch.parser
+
+import com.techinsights.batch.extract.CompositeThumbnailExtractor
+import com.techinsights.batch.parser.content.ContentExtractor
+import com.techinsights.batch.parser.date.CompositeDateParser
+import com.techinsights.batch.parser.feed.FeedTypeStrategy
+import com.techinsights.batch.parser.feed.FeedTypeStrategyResolver
+import com.techinsights.domain.dto.company.CompanyDto
+import com.techinsights.domain.dto.post.PostDto
+import com.techinsights.domain.utils.Tsid
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
+import org.jsoup.parser.Parser
+import org.springframework.stereotype.Component
+
+@Component
+class FeedParser(
+  private val thumbnailExtractor: CompositeThumbnailExtractor,
+  private val feedTypeResolver: FeedTypeStrategyResolver,
+  private val dateParser: CompositeDateParser,
+  private val contentExtractor: ContentExtractor
+) : BlogParser {
+
+  override fun supports(feedUrl: String): Boolean =
+    feedUrl.endsWith(".xml") ||
+        feedUrl.endsWith(".atom") ||
+        feedUrl.contains("feed") ||
+        feedUrl.contains("rss")
+
+
+  override suspend fun parseList(companyDto: CompanyDto, content: String): List<PostDto> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val document = Jsoup.parse(content, "", Parser.xmlParser())
+        val strategy = feedTypeResolver.resolve(document)
+
+        strategy.parseEntries(document)
+          .mapNotNull { element -> parseEntry(element, strategy, companyDto) }
+      }.getOrDefault(emptyList())
+    }
+
+  private fun parseEntry(
+    element: Element,
+    strategy: FeedTypeStrategy,
+    companyDto: CompanyDto
+  ): PostDto? {
+    return runCatching {
+      val title = element.selectFirst("title")?.text()?.sanitize() ?: return null
+      val url = strategy.extractLink(element).takeIf { it.isNotBlank() } ?: return null
+      val rawContent = strategy.extractContent(element)
+      val fullContent = contentExtractor.extract(url, rawContent).sanitize()
+      val publishedAt = dateParser.parse(strategy.extractPublishedDate(element))
+      val thumbnail = extractThumbnail(element, url)
+
+      PostDto(
+        id = Tsid.generate(),
+        title = title,
+        preview = null,
+        url = url,
+        content = fullContent,
+        publishedAt = publishedAt,
+        thumbnail = thumbnail,
+        company = companyDto,
+        viewCount = 0L,
+        categories = emptySet()
+      )
+    }.getOrNull()
+  }
+
+  private fun extractThumbnail(element: Element, url: String): String? {
+    thumbnailExtractor.extract(element)?.let { return it }
+
+    return runCatching {
+      Jsoup.connect(url).get().let { doc ->
+        thumbnailExtractor.extract(doc)
+      }
+    }.getOrNull()
+  }
+
+  private fun String.sanitize(): String {
+    return this.replace("\u0000", "")
+      .replace("\u0001", "")
+      .trim()
+  }
+}
