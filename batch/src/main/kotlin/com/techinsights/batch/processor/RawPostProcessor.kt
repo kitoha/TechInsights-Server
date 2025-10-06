@@ -15,7 +15,7 @@ class RawPostProcessor(
     try {
       postCrawlingService.processCrawledData(company)
     } catch (e: Exception) {
-      log.error("Feed 파싱 실패 [${company.name}] - ${e.message}")
+      log.error("Feed 파싱 실패 [${company.name}] - ${e.message}", e)
       throw e
     }
   }
