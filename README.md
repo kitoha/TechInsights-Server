@@ -8,7 +8,7 @@ Tech Insights는 최신 IT 기술 관련 회사들의 기술 블로그 게시글
 
 - 회사별 기술 블로그 요약 및 링크 제공
 - 카테고리별 게시글 목록 및 검색 기능
-- 인기글, 트렌딩 글 통계 및 차트 제공
+- 인기글, AI 추천 글 통계 및 차트 제공
 - 게시글 상세 보기 및 댓글 기능
 - 사용자 인증 및 권한 관리 (관리자, 일반 사용자 구분)
 
@@ -26,114 +26,84 @@ Tech Insights는 최신 IT 기술 관련 회사들의 기술 블로그 게시글
 - Gradle 빌드 시스템
 - Docker (개발/배포용)
 
-## Initial Design
+## 접속 링크
+
+https://www.techinsights.shop/
+
+## Preview
+
+| 검색 기능                                                            | 세부 페이지                                                                | 다크모드                                                              |
+|------------------------------------------------------------------|-----------------------------------------------------------------------|-------------------------------------------------------------------|
+| <img src="./img/gif/Search_Test.gif" alt="검색 기능 데모" width="300"> | <img src="./img/gif/DetailView_Test.gif" alt="세부 페이지 데모" width="300"> | <img src="./img/gif/DarkMode_Test.gif" alt="다크모드 데모" width="300"> |
 
 ### 데이터베이스 ERD
 
+## ERD
 ```mermaid
 erDiagram
-    USER {
-        BIGINT id PK "내부 사용자 ID"
-        VARCHAR username
-        VARCHAR email "대표 이메일"
-        VARCHAR profileImageUrl "대표 프로필 이미지"
-        VARCHAR role "ADMIN, USER"
-        DATETIME createdAt
-        DATETIME updatedAt
+    Company {
+        Long id PK
+        String name "회사명"
+        String blogUrl "블로그 주소"
+        String logoImageName "로고 이미지"
+        Boolean rssSupported "RSS 지원 여부"
+        Long totalViewCount "총 조회수"
+        Long postCount "게시물 수"
     }
 
-    USER_AUTH_PROVIDER {
-        BIGINT id PK
-        BIGINT userId FK
-        VARCHAR provider "GOOGLE, KAKAO, NAVER 등"
-        VARCHAR providerUserId "Provider별 고유 식별자"
-        VARCHAR providerEmail "해당 Provider에서 제공하는 이메일"
-        VARCHAR providerProfileImageUrl "해당 Provider에서 제공하는 이미지"
-        DATETIME createdAt
-        DATETIME updatedAt
+    Post {
+        Long id PK
+        String title "제목"
+        String preview "미리보기"
+        String url "원본 링크"
+        String content "내용"
+        LocalDateTime publishedAt "게시일"
+        String thumbnail "썸네일"
+        Long company_id FK "회사 ID"
+        Long viewCount "조회수"
+        Boolean isSummary "요약 여부"
+        Boolean isEmbedding "임베딩 여부"
     }
 
-    COMPANY {
-        BIGINT id PK
-        VARCHAR name
-        INT totalPostsCount
-        INT totalViewCount
-        VARCHAR blogUrl
-        VARCHAR logoUrl
-        DATETIME createdAt
-        DATETIME updatedAt
+    post_categories {
+        Long post_id FK "게시물 ID"
+        String category "카테고리"
     }
 
-    CATEGORY {
-        BIGINT id PK
-        VARCHAR name
+    PostEmbedding {
+        Long postId PK "게시물 ID (FK)"
+        String companyName "회사명"
+        String categories "카테고리"
+        String content "내용"
+        FloatArray embeddingVector "임베딩 벡터"
     }
 
-    TAG {
-        BIGINT id PK
-        VARCHAR name
+    PostView {
+        Long id PK
+        Long postId FK "게시물 ID"
+        String userOrIp "사용자 또는 IP"
+        LocalDate viewedDate "조회일"
     }
 
-    POST {
-        BIGINT id PK
-        BIGINT companyId FK
-        BIGINT categoryId FK
-        VARCHAR title
-        TEXT content
-        VARCHAR authorName
-        DATETIME publishedAt
-        INT viewCount "실시간 집계(캐시/배치 갱신)"
-        INT likeCount "실시간 집계(캐시/배치 갱신)"
-        INT shareCount
-        DATETIME createdAt
-        DATETIME updatedAt
-        VARCHAR originalUrl
+    AnonymousUserReadHistory {
+        Long id PK
+        String anonymousId "익명 사용자 ID"
+        Long postId FK "게시물 ID"
+        LocalDateTime readAt "읽은 시간"
     }
 
-    POST_TAG {
-        BIGINT postId FK
-        BIGINT tagId FK
-    }
-
-    COMMENT {
-        BIGINT id PK
-        BIGINT postId FK
-        BIGINT userId FK
-        BIGINT parentId FK
-        TEXT content
-        DATETIME createdAt
-        DATETIME updatedAt
-    }
-
-    POST_VIEW {
-        BIGINT id PK
-        BIGINT postId FK
-        BIGINT userId FK
-        DATETIME viewedAt
-        VARCHAR sessionOrIp
-    }
-
-    POST_LIKE {
-        BIGINT id PK
-        BIGINT postId FK
-        BIGINT userId FK
-        DATETIME likedAt
-    }
-
-    USER ||--o{ USER_AUTH_PROVIDER : has_provider
-    USER ||--o{ COMMENT : writes
-    POST ||--o{ COMMENT : has
-    COMPANY ||--o{ POST : owns
-    CATEGORY ||--o{ POST : categorizes
-    POST ||--o{ POST_TAG : post_tag
-    TAG ||--o{ POST_TAG : tag_link
-    COMMENT ||--o{ COMMENT : reply
-    POST ||--o{ POST_VIEW : viewed
-    POST ||--o{ POST_LIKE : liked
+    Company ||--o{ Post : "owns"
+    Post }|..|| PostEmbedding : "has one"
+    Post ||--o{ PostView : "has many"
+    Post ||--o{ AnonymousUserReadHistory : "has many"
+    Post ||--o{ post_categories : "has many"
 ```
+
+
 
 ### Design
 
 Home
 
 ![Image](https://github.com/user-attachments/assets/d5533bfa-e6cb-46af-9c32-16a3d9b98aa0)
+
