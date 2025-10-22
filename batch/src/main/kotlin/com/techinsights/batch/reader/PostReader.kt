@@ -2,6 +2,7 @@ package com.techinsights.batch.reader
 
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.repository.post.PostRepository
+import org.slf4j.LoggerFactory
 import org.springframework.batch.core.configuration.annotation.StepScope
 import org.springframework.batch.item.ExecutionContext
 import org.springframework.batch.item.ItemStreamReader
@@ -16,6 +17,7 @@ class PostReader(
   @Value("#{jobParameters['limit']}") private val maxCount: Long
 ) : ItemStreamReader<PostDto> {
 
+  private val log = LoggerFactory.getLogger(PostReader::class.java)
   private val pageSize = DEFAULT_PAGE_SIZE
   private var offset = 0L
   private var readCount = 0L
@@ -30,9 +32,10 @@ class PostReader(
 
       if (fetchSize <= 0) return null
 
-      buffer = postRepository
+      val rawPosts = postRepository
         .findOldestNotSummarized(fetchSize, offset)
-        .toMutableList()
+
+      buffer = rawPosts.filter { isValidForSummary(it) }.toMutableList()
 
       offset += fetchSize
       if (buffer.isEmpty()) return null
@@ -40,6 +43,25 @@ class PostReader(
 
     readCount++
     return buffer.removeFirst()
+  }
+
+  private fun isValidForSummary(post: PostDto): Boolean {
+    if (post.content.isBlank()) {
+      log.warn("Post ${post.id} has blank content, skipping")
+      return false
+    }
+
+    if (post.content.length < 100) {
+      log.warn("Post ${post.id} content too short (${post.content.length} chars), skipping")
+      return false
+    }
+
+    if (post.title.isBlank()) {
+      log.warn("Post ${post.id} has blank title, skipping")
+      return false
+    }
+
+    return true
   }
 
   override fun open(executionContext: ExecutionContext) {

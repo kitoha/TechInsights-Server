@@ -29,6 +29,7 @@ class RawPostWriter(
       val existUrls = postRepository.findAllByUrlIn(originalUrls).map { it.url }.toSet()
 
       val filteredPosts = allPosts.filter { it.url !in existUrls }
+        .filter { it.content.isNotBlank() }
 
       if (filteredPosts.isNotEmpty()) {
 

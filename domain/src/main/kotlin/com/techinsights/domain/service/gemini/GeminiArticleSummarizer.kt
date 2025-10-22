@@ -46,6 +46,14 @@ class GeminiArticleSummarizer (
       val response = rateLimiter.executeCallable {
         geminiClient.models.generateContent(modelName, prompt, config)
       }
+
+      val responseText = response.text()
+
+      if (responseText.isNullOrBlank()) {
+        log.error("Received empty response from Gemini model: $modelName")
+        throw RuntimeException("Received empty response from Gemini model: $modelName")
+      }
+
       return mapper.readValue(response.text(), SummaryResult::class.java)
     } catch (e: Exception) {
       log.error("Failed to summarize article with Gemini model: $modelName", e)
