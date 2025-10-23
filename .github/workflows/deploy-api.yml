@@ -1,9 +1,9 @@
 name: Deploy API to AWS EC2 with CodeDeploy
 
 on:
-#  push:
-#    branches:
-#      - main # 추후 prod 환경 점검 후 주석 해제
+  #  push:
+  #    branches:
+  #      - main
   workflow_dispatch:
     inputs:
       image_tag:
@@ -79,15 +79,18 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Prepare deployment artifact
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          IMAGE_TAG: ${{ steps.image.outputs.specific_tag }}
         run: |
-          # 배포 시점에 이미지 태그와 사용자 이름을 실제 값으로 치환합니다.
-          sed -i "s|DOCKERHUB_USERNAME_PLACEHOLDER|${{ secrets.DOCKERHUB_USERNAME }}|g" docker-compose.prod.yml
-          sed -i "s|IMAGE_TAG_PLACEHOLDER|${{ steps.image.outputs.specific_tag }}|g" docker-compose.prod.yml
+          sed -i "s|DOCKERHUB_USERNAME_PLACEHOLDER|${DOCKERHUB_USERNAME}|g" docker-compose.prod.yml
+          sed -i "s|IMAGE_TAG_PLACEHOLDER|${IMAGE_TAG}|g" docker-compose.prod.yml
 
           zip -r deploy.zip . -x ".git/*" ".github/*" ".idea/*" "build/*" ".gradle/*"
 
       - name: Upload artifact to S3
-        run: aws s3 cp deploy.zip s3://${{ env.S3_BUCKET_NAME }}/techinsights-api/${{ steps.image.outputs.specific_tag }}/deploy.zip
+        run: |
+          aws s3 cp deploy.zip s3://${{ env.S3_BUCKET_NAME }}/techinsights-api/${{ steps.image.outputs.specific_tag }}/deploy.zip
 
       - name: Start CodeDeploy deployment
         run: |
