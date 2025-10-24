@@ -5,7 +5,6 @@ import com.techinsights.api.response.company.CompanyPostSummaryResponse
 import com.techinsights.api.response.company.CompanyResponse
 import com.techinsights.api.response.post.PageResponse
 import com.techinsights.domain.service.company.CompanyService
-import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.http.ResponseEntity

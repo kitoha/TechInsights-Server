@@ -4,6 +4,6 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 
 
-interface FeedEntryParser {
+fun interface FeedEntryParser {
   fun parseEntries(document: Document): List<Element>
 }

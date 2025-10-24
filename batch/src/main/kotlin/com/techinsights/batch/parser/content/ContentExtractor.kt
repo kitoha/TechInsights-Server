@@ -1,6 +1,6 @@
 package com.techinsights.batch.parser.content
 
-interface ContentExtractor {
+fun interface ContentExtractor {
 
   fun extract(url: String, fallbackContent: String): String
 }

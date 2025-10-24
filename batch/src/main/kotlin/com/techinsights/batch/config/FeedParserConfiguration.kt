@@ -21,10 +21,6 @@ class FeedParserConfiguration {
     CompositeDateParser()
 
   @Bean
-  fun contentSelectorRegistry(): ContentSelectorRegistry =
-    ContentSelectorRegistry()
-
-  @Bean
   fun htmlTextExtractor(): HtmlTextExtractor =
     HtmlTextExtractor()
 

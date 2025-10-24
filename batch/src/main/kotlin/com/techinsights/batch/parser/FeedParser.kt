@@ -8,11 +8,12 @@ import com.techinsights.batch.parser.feed.FeedTypeStrategyResolver
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.utils.Tsid
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Component
 
 @Component
@@ -20,7 +21,8 @@ class FeedParser(
   private val thumbnailExtractor: CompositeThumbnailExtractor,
   private val feedTypeResolver: FeedTypeStrategyResolver,
   private val dateParser: CompositeDateParser,
-  private val contentExtractor: ContentExtractor
+  private val contentExtractor: ContentExtractor,
+  @Qualifier("ioDispatcher") private val ioDispatcher: CoroutineDispatcher
 ) : BlogParser {
 
   override fun supports(feedUrl: String): Boolean =
@@ -31,7 +33,7 @@ class FeedParser(
 
 
   override suspend fun parseList(companyDto: CompanyDto, content: String): List<PostDto> =
-    withContext(Dispatchers.IO) {
+    withContext(ioDispatcher) {
       runCatching {
         val document = Jsoup.parse(content, "", Parser.xmlParser())
         val strategy = feedTypeResolver.resolve(document)

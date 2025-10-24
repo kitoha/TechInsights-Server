@@ -1,4 +1,4 @@
-package com.techinsights.batch.config
+package com.techinsights.batch.config.props
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Configuration

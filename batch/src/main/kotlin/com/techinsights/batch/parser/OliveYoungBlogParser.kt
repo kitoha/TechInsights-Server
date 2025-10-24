@@ -6,20 +6,23 @@ import com.techinsights.batch.util.FeedParseUtil.parseHtmlDate
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.utils.Tsid
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Component
 
 @Component
 class OliveYoungBlogParser(
-  private val thumbnailExtractor: CompositeThumbnailExtractor
+  private val thumbnailExtractor: CompositeThumbnailExtractor,
+  @Qualifier("ioDispatcher") private val ioDispatcher: CoroutineDispatcher
 ) : BlogParser {
   override fun supports(feedUrl: String): Boolean =
     feedUrl.contains("oliveyoung.tech")
 
   override suspend fun parseList(companyDto: CompanyDto, content: String): List<PostDto> = withContext(
-    Dispatchers.IO) {
+    ioDispatcher
+  ) {
     try {
       val document = Jsoup.parse(content, companyDto.blogUrl)
       val posts = document.select("li.PostList-module--item--95839")

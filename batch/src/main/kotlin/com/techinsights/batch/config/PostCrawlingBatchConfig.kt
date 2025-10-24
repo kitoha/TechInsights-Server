@@ -1,5 +1,6 @@
 package com.techinsights.batch.config
 
+import com.techinsights.batch.config.props.PostCrawlingBatchProperties
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.batch.listener.LoggingJobExecutionListener

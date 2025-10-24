@@ -1,0 +1,5 @@
+[versions]
+jsoup = "1.17.2"
+
+[libraries]
+jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }

@@ -4,3 +4,39 @@ batch:
     step-name: crawlPostStep
     chunk-size: 1
     retry-limit: 3
+
+content:
+  selectors:
+    techblog.woowahan.com:
+      - ".post-content-inner > .post-content-body"
+
+    tech.kakao.com:
+      - ".inner_content > .daum-wm-content.preview"
+
+    toss.tech:
+      - "article.css-hvd0pt > div.css-1vn47db"
+
+    d2.naver.com:
+      - "article"
+      - ".post-area"
+      - ".section-content"
+      - ".post-body"
+      - ".content-area"
+
+    helloworld.kurly.com:
+      - ".post-content"
+      - ".article-body"
+      - ".post"
+
+    medium.com:
+      - "article"
+      - ".meteredContent"
+      - ".pw-post-body"
+      - ".postArticle-content"
+
+  default-selectors:
+    - "article"
+    - ".post-content"
+    - ".entry-content"
+    - "#content"
+    - ".blog-post"
