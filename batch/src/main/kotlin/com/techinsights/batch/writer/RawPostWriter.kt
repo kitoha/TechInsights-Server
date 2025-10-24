@@ -1,10 +1,8 @@
 package com.techinsights.batch.writer
 
 import com.techinsights.domain.dto.post.PostDto
-import com.techinsights.domain.enums.Category
 import com.techinsights.domain.repository.post.PostRepository
 import com.techinsights.domain.service.company.CompanyViewCountUpdater
-import com.techinsights.domain.service.gemini.GeminiArticleSummarizer
 import org.slf4j.LoggerFactory
 import org.springframework.batch.item.Chunk
 import org.springframework.batch.item.ItemWriter

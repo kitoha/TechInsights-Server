@@ -1,5 +1,89 @@
 [versions]
+kotlin = "1.9.25"
+springBoot = "3.5.0"
+springDependencyManagement = "1.1.7"
+querydsl = "5.1.0"
+hypersistenceTsid = "2.1.4"
+javaxAnnotation = "1.3.2"
+kotlinLogging = "2.1.23"
+resilience4j = "2.3.0"
+googleGenai = "1.6.0"
+springCloudAws = "3.3.1"
+awsSdk = "2.31.70"
+hibernateVector = "6.6.15.Final"
+kotest = "5.8.0"
+kotestExtensions = "1.1.3"
+mockk = "1.13.8"
+sonarqube = "7.0.0.6105"
+kotlinxCoroutines = "1.8.0"
 jsoup = "1.17.2"
 
 [libraries]
+# Spring Boot
+spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa" }
+spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web" }
+spring-boot-starter-batch = { module = "org.springframework.boot:spring-boot-starter-batch" }
+spring-boot-starter-webflux = { module = "org.springframework.boot:spring-boot-starter-webflux" }
+spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
+spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
+
+# Spring Data
+spring-data-commons = { module = "org.springframework.data:spring-data-commons" }
+
+# Kotlin
+kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }
+kotlin-test-junit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5" }
+
+# Kotlin Coroutines
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+kotlinx-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor", version.ref = "kotlinxCoroutines" }
+
+
+# Database
+postgresql = { module = "org.postgresql:postgresql" }
+hibernate-vector = { module = "org.hibernate.orm:hibernate-vector", version.ref = "hibernateVector" }
+
+# QueryDSL
+querydsl-core = { module = "com.querydsl:querydsl-core", version.ref = "querydsl" }
+querydsl-jpa = { module = "com.querydsl:querydsl-jpa", version.ref = "querydsl" }
+querydsl-apt = { module = "com.querydsl:querydsl-apt", version.ref = "querydsl" }
+
+# Utilities
+hypersistence-tsid = { module = "io.hypersistence:hypersistence-tsid", version.ref = "hypersistenceTsid" }
+javax-annotation-api = { module = "javax.annotation:javax.annotation-api", version.ref = "javaxAnnotation" }
+kotlin-logging = { module = "io.github.microutils:kotlin-logging", version.ref = "kotlinLogging" }
+jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin" }
+
+# Resilience
+resilience4j-ratelimiter = { module = "io.github.resilience4j:resilience4j-ratelimiter", version.ref = "resilience4j" }
+
+# AI
+google-genai = { module = "com.google.genai:google-genai", version.ref = "googleGenai" }
+
+# AWS
+spring-cloud-aws-parameter-store = { module = "io.awspring.cloud:spring-cloud-aws-starter-parameter-store", version.ref = "springCloudAws" }
+aws-sso = { module = "software.amazon.awssdk:sso", version.ref = "awsSdk" }
+aws-ssooidc = { module = "software.amazon.awssdk:ssooidc", version.ref = "awsSdk" }
+
+# Test
+kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
+kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
+kotest-property = { module = "io.kotest:kotest-property", version.ref = "kotest" }
+kotest-extensions-spring = { module = "io.kotest.extensions:kotest-extensions-spring", version.ref = "kotestExtensions" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }
+spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "springDependencyManagement" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
+kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }
+kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
+sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
+
+[bundles]
+kotest = ["kotest-runner-junit5", "kotest-assertions-core", "kotest-property", "kotest-extensions-spring"]
+querydsl = ["querydsl-core", "querydsl-jpa"]
+aws = ["spring-cloud-aws-parameter-store", "aws-sso", "aws-ssooidc"]
+kotlinx-coroutines = ["kotlinx-coroutines-core", "kotlinx-coroutines-reactor"]

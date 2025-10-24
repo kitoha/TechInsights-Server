@@ -4,9 +4,7 @@ import com.techinsights.domain.dto.embedding.EmbeddingRequest
 import com.techinsights.domain.dto.embedding.PostEmbeddingDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.enums.GeminiModelType
-import com.techinsights.domain.repository.post.PostEmbeddingJpaRepository
 import com.techinsights.domain.service.embedding.EmbeddingService
-import com.techinsights.domain.utils.Tsid
 import org.slf4j.LoggerFactory
 import org.springframework.batch.item.ItemProcessor
 import org.springframework.stereotype.Component

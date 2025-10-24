@@ -3,7 +3,6 @@ package com.techinsights.domain.dto.post
 import com.techinsights.domain.entity.post.PostView
 import com.techinsights.domain.utils.Tsid
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 data class PostViewDto(
     val id: String,

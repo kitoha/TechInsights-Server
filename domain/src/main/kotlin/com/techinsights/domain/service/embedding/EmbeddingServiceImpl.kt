@@ -12,7 +12,7 @@ class EmbeddingServiceImpl(
 ) : EmbeddingService {
 
   override fun generateEmbedding(request: EmbeddingRequest, modelType: GeminiModelType): List<Float> {
-    val modelName = modelType.getModelName()
+    val modelName = modelType.get()
     val combinedInput = request.toPromptString()
 
     val embedContentConfig: EmbedContentConfig = EmbedContentConfig.builder()

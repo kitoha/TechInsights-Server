@@ -31,7 +31,7 @@ class GeminiArticleSummarizer (
       throw IllegalArgumentException("Article content cannot be blank.")
     }
 
-    val modelName = modelType.getModelName()
+    val modelName = modelType.get()
 
     val prompt  = promptTemplateEngine.buildPrompt(article, Category.entries.map { it.name })
     val schema  = promptTemplateEngine.buildSchema(Category.entries.map { it.name })

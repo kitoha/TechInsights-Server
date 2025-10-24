@@ -10,7 +10,7 @@ enum class GeminiModelType {
     this.modelName = modelName
   }
 
-  fun getModelName(): String {
+  fun get(): String {
     return modelName
   }
 }

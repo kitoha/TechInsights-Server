@@ -1,9 +1,9 @@
 plugins {
-    id("org.springframework.boot")
-    id("io.spring.dependency-management")
-    kotlin("jvm")
-    kotlin("plugin.spring")
-    kotlin("plugin.jpa")
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spring.dependency.management)
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.spring)
+    alias(libs.plugins.kotlin.jpa)
 }
 
 group = "com.techinsights"
@@ -21,16 +21,15 @@ java {
 
 dependencies {
     implementation(project(":domain"))
-    implementation("org.springframework.boot:spring-boot-starter-batch")
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework.boot:spring-boot-starter-webflux")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
+    implementation(libs.spring.boot.starter.batch)
+    implementation(libs.spring.boot.starter.data.jpa)
+    implementation(libs.spring.boot.starter.webflux)
+    implementation(libs.bundles.kotlinx.coroutines)
     implementation(libs.jsoup)
-    implementation("org.jetbrains.kotlin:kotlin-reflect")
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+    implementation(libs.kotlin.reflect)
 
+    testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.kotlin.test.junit5)
 }
 
 tasks.test {
