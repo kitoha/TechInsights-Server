@@ -43,11 +43,6 @@ kotlinx-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutine
 postgresql = { module = "org.postgresql:postgresql" }
 hibernate-vector = { module = "org.hibernate.orm:hibernate-vector", version.ref = "hibernateVector" }
 
-# QueryDSL
-querydsl-core = { module = "com.querydsl:querydsl-core", version.ref = "querydsl" }
-querydsl-jpa = { module = "com.querydsl:querydsl-jpa", version.ref = "querydsl" }
-querydsl-apt = { module = "com.querydsl:querydsl-apt", version.ref = "querydsl" }
-
 # Utilities
 hypersistence-tsid = { module = "io.hypersistence:hypersistence-tsid", version.ref = "hypersistenceTsid" }
 javax-annotation-api = { module = "javax.annotation:javax.annotation-api", version.ref = "javaxAnnotation" }
@@ -84,6 +79,5 @@ sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
 
 [bundles]
 kotest = ["kotest-runner-junit5", "kotest-assertions-core", "kotest-property", "kotest-extensions-spring"]
-querydsl = ["querydsl-core", "querydsl-jpa"]
 aws = ["spring-cloud-aws-parameter-store", "aws-sso", "aws-ssooidc"]
 kotlinx-coroutines = ["kotlinx-coroutines-core", "kotlinx-coroutines-reactor"]

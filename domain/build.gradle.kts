@@ -26,8 +26,11 @@ dependencies {
     implementation(libs.jackson.module.kotlin)
     implementation(libs.postgresql)
     implementation(libs.hibernate.vector)
-    implementation(libs.bundles.querydsl)
-    kapt("${libs.querydsl.apt.get()}:jakarta")
+
+    implementation("com.querydsl:querydsl-core:${libs.versions.querydsl.get()}")
+    implementation("com.querydsl:querydsl-jpa:${libs.versions.querydsl.get()}:jakarta")
+    kapt("com.querydsl:querydsl-apt:${libs.versions.querydsl.get()}:jakarta")
+
     implementation(libs.hypersistence.tsid)
     implementation(libs.javax.annotation.api)
     implementation(libs.kotlin.logging)
