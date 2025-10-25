@@ -21,14 +21,17 @@ java {
 
 dependencies {
     implementation(project(":domain"))
+
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.data.commons)
     implementation(libs.spring.boot.starter.actuator)
     implementation(libs.kotlin.reflect)
     implementation(libs.jackson.module.kotlin)
 
-    testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.kotlin.test.junit5)
+    testImplementation(libs.bundles.kotest)
+    testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.mockk)
 }
 
 tasks.test {

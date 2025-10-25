@@ -21,6 +21,7 @@ java {
 
 dependencies {
     implementation(project(":domain"))
+
     implementation(libs.spring.boot.starter.batch)
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.spring.boot.starter.webflux)
@@ -28,8 +29,10 @@ dependencies {
     implementation(libs.jsoup)
     implementation(libs.kotlin.reflect)
 
-    testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.kotlin.test.junit5)
+    testImplementation(libs.bundles.kotest)
+    testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.mockk)
 }
 
 tasks.test {

@@ -28,9 +28,9 @@ class AtomFeedStrategy : BaseFeedStrategy() {
       .firstOrNull { it.tagName() == "content" }
 
     if (contentElement != null) {
-      val escapedHtml = contentElement.html()
-      if (escapedHtml.isNotBlank()) {
-        val decodedHtml = Parser.unescapeEntities(escapedHtml, false)
+      val htmlContent = contentElement.wholeText()
+      if (htmlContent.isNotBlank()) {
+        val decodedHtml = Parser.unescapeEntities(htmlContent, false)
         return extractStructuredText(decodedHtml)
       }
     }
