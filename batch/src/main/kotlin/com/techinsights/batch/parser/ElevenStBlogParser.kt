@@ -30,7 +30,9 @@ class ElevenStBlogParser(
       val posts = document.select("ul#post-list > li.post-item")
       posts.map { el ->
         val anchor = el.selectFirst("a")
-        val url = anchor?.absUrl("href").orEmpty()
+        val url = anchor?.absUrl("href")?.takeIf {
+          it.isNotEmpty() && it != companyDto.blogUrl
+        }.orEmpty()
         val title = anchor?.selectFirst("h3.post-title")?.text().orEmpty()
         val contents = anchor?.selectFirst("p.post-excerpt")?.text().orEmpty()
         val date = el.selectFirst("div.post-meta > p.post-date")?.text()?.trim()

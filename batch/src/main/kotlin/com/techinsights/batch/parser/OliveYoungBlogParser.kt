@@ -31,7 +31,9 @@ class OliveYoungBlogParser(
         val dateText = el.selectFirst(".PostList-module--date--21238")?.text()?.trim()
         val contents =  el.selectFirst("p.PostList-module--sub--424ed")?.text().orEmpty()
         val title = el.selectFirst("h1.PostList-module--title--a2e55")?.text().orEmpty()
-        val url = linkEl?.absUrl("href").orEmpty()
+        val url = linkEl?.absUrl("href")?.takeIf {
+          it.isNotEmpty() && it != companyDto.blogUrl
+        }.orEmpty()
         val fullContent = extractFullContent(url, contents)
 
 
