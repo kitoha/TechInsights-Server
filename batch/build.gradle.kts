@@ -35,10 +35,6 @@ dependencies {
     testImplementation(libs.mockk)
 }
 
-tasks.test {
-    useJUnitPlatform()
-}
-
 kotlin {
     jvmToolchain(21)
 }

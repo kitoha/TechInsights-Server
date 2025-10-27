@@ -33,11 +33,6 @@ dependencies {
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.mockk)
 }
-
-tasks.test {
-    useJUnitPlatform()
-}
-
 kotlin {
     jvmToolchain(21)
 }
