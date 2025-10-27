@@ -23,16 +23,19 @@ subprojects {
 	apply(plugin = "jacoco")
 
 	afterEvaluate {
-		tasks.withType<Test> {
-			useJUnitPlatform()
-			finalizedBy("jacocoTestReport")
-		}
+		if (buildFile.exists()) {
+			tasks.withType<Test> {
+				useJUnitPlatform()
+			}
 
-		tasks.named<JacocoReport>("jacocoTestReport") {
-			dependsOn("test")
-			reports {
-				xml.required.set(true)
-				html.required.set(true)
+			tasks.matching { it.name == "jacocoTestReport" }.configureEach {
+				if (this is JacocoReport) {
+					dependsOn(tasks.withType<Test>())
+					reports {
+						xml.required.set(true)
+						html.required.set(true)
+					}
+				}
 			}
 		}
 	}
