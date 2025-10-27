@@ -23,7 +23,7 @@ subprojects {
 	apply(plugin = "jacoco")
 
 	afterEvaluate {
-		tasks.named<Test>("test") {
+		tasks.withType<Test> {
 			useJUnitPlatform()
 			finalizedBy("jacocoTestReport")
 		}
