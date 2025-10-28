@@ -7,12 +7,14 @@ import com.techinsights.batch.parser.feed.FeedTypeStrategyResolver
 import com.techinsights.batch.parser.feed.RssFeedStrategy
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.utils.Tsid
+import com.techinsights.ratelimiter.DomainRateLimiterManager
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
+import org.springframework.web.reactive.function.client.WebClient
 import java.time.LocalDateTime
 
 class FeedParserTest : FunSpec({
@@ -21,11 +23,15 @@ class FeedParserTest : FunSpec({
   val feedTypeResolver = mockk<FeedTypeStrategyResolver>()
   val dateParser = mockk<CompositeDateParser>()
   val contentExtractor = mockk<ContentExtractor>()
+  val webClient = mockk<WebClient>()
+  val rateLimiterManager = mockk<DomainRateLimiterManager>()
   val parser = FeedParser(
     thumbnailExtractor,
     feedTypeResolver,
     dateParser,
     contentExtractor,
+    rateLimiterManager,
+    webClient,
     Dispatchers.Unconfined
   )
 

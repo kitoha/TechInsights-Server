@@ -40,3 +40,19 @@ content:
     - ".entry-content"
     - "#content"
     - ".blog-post"
+
+
+rate-limiter:
+  gemini:
+    limit-for-period: 8
+    refresh-period-seconds: 60
+    timeout-seconds: 30
+  crawler:
+    conservative:
+      limit-for-period: 15
+      refresh-period-seconds: 60
+      timeout-seconds: 300
+    default:
+      limit-for-period: 20
+      refresh-period-seconds: 60
+      timeout-seconds: 300
