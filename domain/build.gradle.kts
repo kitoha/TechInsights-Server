@@ -21,6 +21,9 @@ java {
 }
 
 dependencies {
+  api(libs.resilience4j.ratelimiter)
+  api(libs.resilience4j.kotlin)
+
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.kotlin.reflect)
     implementation(libs.jackson.module.kotlin)
@@ -34,7 +37,6 @@ dependencies {
     implementation(libs.hypersistence.tsid)
     implementation(libs.javax.annotation.api)
     implementation(libs.kotlin.logging)
-    implementation(libs.resilience4j.ratelimiter)
     implementation(libs.google.genai)
     implementation(libs.bundles.aws)
 
