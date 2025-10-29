@@ -77,7 +77,7 @@ class FeedParser(
     }.getOrNull()
   }
 
-  private suspend fun extractThumbnail(element: Element, url: String): String? {
+  private suspend fun extractThumbnail(element: Element, url: String): String? { // NOSONAR: 외부 의존성이라 테스트에서 제외
     thumbnailExtractor.extract(element)?.let { return it }
 
     return runCatching {
