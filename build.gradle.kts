@@ -35,6 +35,19 @@ subprojects {
 						xml.required.set(true)
 						html.required.set(true)
 					}
+
+					classDirectories.setFrom(
+						files(classDirectories.files.map {
+							fileTree(it) {
+								exclude(
+									"**/config/**",
+									"**/dto/**",
+									"**/entity/**",
+									"**/*Application*.class"
+								)
+							}
+						})
+					)
 				}
 			}
 		}
@@ -49,6 +62,13 @@ sonarqube {
 		property(
 			"sonar.coverage.jacoco.xmlReportPaths",
 			"**/build/reports/jacoco/test/jacocoTestReport.xml"
+		)
+
+		property(
+			"sonar.coverage.exclusions",
+			"**/config/**," +
+					"**/dto/**," +
+					"**/entity/**,"
 		)
 	}
 }
