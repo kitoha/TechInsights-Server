@@ -82,10 +82,19 @@ jobs:
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           IMAGE_TAG: ${{ steps.image.outputs.specific_tag }}
+          GRAFANA_CLOUD_URL: ${{ secrets.GRAFANA_CLOUD_URL }}
+          GRAFANA_CLOUD_USERNAME: ${{ secrets.GRAFANA_CLOUD_USERNAME }}
+          GRAFANA_CLOUD_API_KEY: ${{ secrets.GRAFANA_CLOUD_API_KEY }}
         run: |
           sed -i "s|DOCKERHUB_USERNAME_PLACEHOLDER|${DOCKERHUB_USERNAME}|g" docker-compose.prod.yml
           sed -i "s|IMAGE_TAG_PLACEHOLDER|${IMAGE_TAG}|g" docker-compose.prod.yml
-
+          
+          sed -i "s|GRAFANA_CLOUD_URL_PLACEHOLDER|${GRAFANA_CLOUD_URL}|g" monitoring/grafana-agent.yml
+          sed -i "s|GRAFANA_CLOUD_USERNAME_PLACEHOLDER|${GRAFANA_CLOUD_USERNAME}|g" monitoring/grafana-agent.yml
+          sed -i "s|GRAFANA_CLOUD_API_KEY_PLACEHOLDER|${GRAFANA_CLOUD_API_KEY}|g" monitoring/grafana-agent.yml
+          
+          
+          
           zip -r deploy.zip . -x ".git/*" ".github/*" ".idea/*" "build/*" ".gradle/*"
 
       - name: Upload artifact to S3

@@ -13,6 +13,38 @@ spring:
 server:
   shutdown: graceful
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      environment: ${spring.profiles.active}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.95, 0.99
+      slo:
+        http.server.requests: 10ms,50ms,100ms,200ms,500ms,1s,2s
+    enable:
+      jvm: true
+      system: true
+      process: true
+      tomcat: true
+      logback: true
+      http: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
 
 aid:
   apply-paths: ["/api/**"]                     # 적용 라우트만
