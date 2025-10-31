@@ -31,72 +31,73 @@ services:
     restart: always
     network_mode: host
 
-  node-exporter:
-    image: prom/node-exporter:latest
-    container_name: node-exporter
-    restart: always
-    command:
-      - '--path.rootfs=/host'
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-    volumes:
-      - /:/host:ro,rslave
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-    network_mode: host
-    pid: host
-    deploy:
-      resources:
-        limits:
-          cpus: '0.1'
-          memory: 64M
-
-  # Docker 컨테이너 메트릭 수집
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
-    container_name: cadvisor
-    restart: always
-    privileged: true
-    command:
-      - '-port=8081'
-    network_mode: host
-    devices:
-      - /dev/kmsg
-    ports:
-      - "8081:8080"
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-      - /dev/disk/:/dev/disk:ro
-    deploy:
-      resources:
-        limits:
-          cpus: '0.1'
-          memory: 128M
-
-  grafana-agent:
-    image: grafana/agent:latest
-    container_name: grafana-agent
-    restart: always
-    volumes:
-      - ./monitoring/grafana-agent.yml:/etc/agent/agent.yml:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-    command:
-      - -config.file=/etc/agent/agent.yml
-      - -config.expand-env
-    network_mode: host
-    pid: host
-    depends_on:
-      - tech-insights-api
-      - node-exporter
-      - cadvisor
-    deploy:
-      resources:
-        limits:
-          cpus: '0.2'
-          memory: 128M
+  # 모니터링 서비스들 - t2.micro에서는 메모리 부족으로 주석 처리
+#  node-exporter:
+#    image: prom/node-exporter:latest
+#    container_name: node-exporter
+#    restart: always
+#    command:
+#      - '--path.rootfs=/host'
+#      - '--path.procfs=/host/proc'
+#      - '--path.sysfs=/host/sys'
+#      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+#    volumes:
+#      - /:/host:ro,rslave
+#      - /proc:/host/proc:ro
+#      - /sys:/host/sys:ro
+#    network_mode: host
+#    pid: host
+#    deploy:
+#      resources:
+#        limits:
+#          cpus: '0.1'
+#          memory: 64M
+#
+#  # Docker 컨테이너 메트릭 수집
+#  cadvisor:
+#    image: gcr.io/cadvisor/cadvisor:latest
+#    container_name: cadvisor
+#    restart: always
+#    privileged: true
+#    command:
+#      - '-port=8081'
+#    network_mode: host
+#    devices:
+#      - /dev/kmsg
+#    ports:
+#      - "8081:8080"
+#    volumes:
+#      - /:/rootfs:ro
+#      - /var/run:/var/run:ro
+#      - /sys:/sys:ro
+#      - /var/lib/docker/:/var/lib/docker:ro
+#      - /dev/disk/:/dev/disk:ro
+#    deploy:
+#      resources:
+#        limits:
+#          cpus: '0.1'
+#          memory: 128M
+#
+#  grafana-agent:
+#    image: grafana/agent:latest
+#    container_name: grafana-agent
+#    restart: always
+#    volumes:
+#      - ./monitoring/grafana-agent.yml:/etc/agent/agent.yml:ro
+#      - /var/run/docker.sock:/var/run/docker.sock:ro
+#      - /proc:/host/proc:ro
+#      - /sys:/host/sys:ro
+#    command:
+#      - -config.file=/etc/agent/agent.yml
+#      - -config.expand-env
+#    network_mode: host
+#    pid: host
+#    depends_on:
+#      - tech-insights-api
+#      - node-exporter
+#      - cadvisor
+#    deploy:
+#      resources:
+#        limits:
+#          cpus: '0.2'
+#          memory: 128M
