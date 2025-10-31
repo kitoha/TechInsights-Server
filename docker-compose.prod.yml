@@ -7,9 +7,7 @@ services:
     container_name: techinsights-api-prod
     environment:
       - SPRING_PROFILES_ACTIVE=prod
-      - JAVA_OPTS=-Xms256m -Xmx512m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Xlog:gc*:file=/tmp/gc.log:time,level,tags
     restart: always
-    network_mode: host
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 30s
@@ -29,7 +27,6 @@ services:
       tech-insights-api:
         condition: service_healthy
     restart: always
-    network_mode: host
 
   # 모니터링 서비스들 - t2.micro에서는 메모리 부족으로 주석 처리
 #  node-exporter:

@@ -26,6 +26,74 @@ Tech Insights는 최신 IT 기술 관련 회사들의 기술 블로그 게시글
   - 각 아티클의 AI 요약, 태그, 원문 링크 등 상세 정보를 확인할 수 있습니다.
   - 사용자의 IP를 기반으로 조회수를 집계하여 게시글의 인기도를 측정합니다.
 
+## 시스템 아키텍처
+
+```mermaid
+graph TB
+    subgraph "클라이언트"
+        Client[Web Browser]
+    end
+
+    subgraph "인프라 레이어"
+        Nginx[Nginx<br/>리버스 프록시 & SSL]
+    end
+
+    subgraph "애플리케이션 레이어"
+        subgraph "API 모듈"
+            Controller[Controllers<br/>post, search, recommend<br/>company, category]
+            AID[AID Manager<br/>익명 사용자 추적]
+        end
+
+        subgraph "Domain 모듈"
+            Service[Domain Services<br/>PostService, SearchService<br/>RecommendationService]
+            Repository[Repositories<br/>JPA + Querydsl]
+            Embedding[Embedding Service<br/>벡터 임베딩]
+            Summarizer[Article Summarizer<br/>AI 요약]
+        end
+
+        subgraph "Batch 모듈"
+            FeedParser[RSS Feed Parser<br/>Atom/RSS]
+            Crawler[Web Crawler<br/>컨텐츠 추출]
+            BatchProcessor[Batch Processor<br/>요약 & 임베딩]
+        end
+    end
+
+    subgraph "데이터 레이어"
+        PostgreSQL[(PostgreSQL<br/>관계형 데이터<br/>벡터 검색)]
+    end
+
+    subgraph "외부 API"
+        Gemini[Google Gemini API<br/>요약 & 임베딩]
+        RSS[기업 기술블로그<br/>RSS Feeds]
+    end
+
+    Client -->|HTTPS| Nginx
+    Nginx -->|Proxy| Controller
+    Controller --> AID
+    Controller --> Service
+    Service --> Repository
+    Service --> Embedding
+    Service --> Summarizer
+    Repository --> PostgreSQL
+
+    FeedParser -->|스케줄링| RSS
+    RSS -->|XML/Atom| FeedParser
+    FeedParser --> Crawler
+    Crawler --> BatchProcessor
+    BatchProcessor --> Summarizer
+    BatchProcessor --> Embedding
+    BatchProcessor --> Repository
+
+    Embedding -->|API 호출| Gemini
+    Summarizer -->|API 호출| Gemini
+
+    style Client fill:#e1f5ff
+    style Nginx fill:#ffe1e1
+    style PostgreSQL fill:#e1ffe1
+    style Gemini fill:#fff4e1
+    style RSS fill:#f0e1ff
+```
+
 ## 기술 스택
 
 - **Language:** Kotlin
