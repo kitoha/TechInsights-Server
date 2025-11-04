@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: AI Code Review
-        uses: kitoha/Revisor@v1
+        uses: kitoha/Revisor@v1.0.1
         with:
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
