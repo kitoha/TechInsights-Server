@@ -56,12 +56,7 @@ class SearchQueryBuilder(
       .otherwise(0.0)
 
     // 인기도 점수
-    val popularityScore = Expressions.numberTemplate(
-      Double::class.java,
-      "log({0} + 1) * {1}",
-      post.viewCount,
-      scoreWeights.viewCountMultiplier
-    )
+    val popularityScore = post.viewCount.multiply(scoreWeights.viewCountMultiplier)
 
     // 최신성 점수
     val recencyScore = CaseBuilder()
