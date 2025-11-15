@@ -50,36 +50,6 @@ class PostRepositoryImpl(
     return posts.map { post -> PostDto.fromEntity(post) }
   }
 
-  override fun getPosts(pageable: Pageable, category: Category, companyId: String?): Page<PostDto> {
-    val postEntity = QPost.post
-    val companyEntity = QCompany.company
-    val companyIdLong = companyId?.let { Tsid.decode(it) }
-
-    val query = queryFactory.selectFrom(postEntity)
-      .leftJoin(postEntity.company, companyEntity).fetchJoin()
-      .where(postEntity.isSummary.isTrue,
-        category.takeIf { it != Category.All }
-          ?.let { postEntity.categories.contains(it) },
-        companyIdLong?.let { postEntity.company.id.eq(it) })
-      .orderBy(postEntity.publishedAt.desc())
-      .offset(pageable.offset)
-      .limit(pageable.pageSize.toLong())
-
-    val results = query.fetch()
-    val total = queryFactory.select(postEntity.id.count())
-      .from(postEntity)
-      .where(
-        postEntity.isSummary.isTrue,
-        category.takeIf { it != Category.All }
-          ?.let { postEntity.categories.contains(it) },
-        companyIdLong?.let { postEntity.company.id.eq(it) }
-      )
-      .fetchOne() ?: 0L
-
-    val resultsDto = results.map { post -> PostDto.fromEntity(post) }
-
-    return PageImpl(resultsDto, pageable, total)
-  }
 
   override fun getPostById(id: String): PostDto {
     val postEntity = QPost.post
@@ -168,5 +138,71 @@ class PostRepositoryImpl(
           latestPostDate = posts.maxOfOrNull { (post, _) -> post.publishedAt }
         )
       }
+  }
+
+  override fun getAllPosts(
+    pageable: Pageable,
+    companyId: String?
+  ): Page<PostDto> {
+    val postEntity = QPost.post
+    val companyEntity = QCompany.company
+    val companyIdLong = companyId?.let { Tsid.decode(it) }
+
+    val results = queryFactory.selectFrom(postEntity)
+      .leftJoin(postEntity.company, companyEntity).fetchJoin()
+      .where(
+        postEntity.isSummary.isTrue,
+        companyIdLong?.let { postEntity.company.id.eq(it) }
+      )
+      .orderBy(postEntity.publishedAt.desc())
+      .offset(pageable.offset)
+      .limit(pageable.pageSize.toLong())
+      .fetch()
+
+    val total = queryFactory.select(postEntity.id.count())
+      .from(postEntity)
+      .where(
+        postEntity.isSummary.isTrue,
+        companyIdLong?.let { postEntity.company.id.eq(it) }
+      )
+      .fetchOne() ?: 0L
+
+    val resultsDto = results.map { PostDto.fromEntity(it) }
+    return PageImpl(resultsDto, pageable, total)
+  }
+
+  override fun getPostsByCategory(
+    pageable: Pageable,
+    category: Category,
+    companyId: String?
+  ): Page<PostDto> {
+    val postEntity = QPost.post
+    val companyEntity = QCompany.company
+    val companyIdLong = companyId?.let { Tsid.decode(it) }
+
+    val results = queryFactory.selectFrom(postEntity)
+      .distinct()
+      .leftJoin(postEntity.company, companyEntity).fetchJoin()
+      .where(
+        postEntity.isSummary.isTrue,
+        postEntity.categories.any().eq(category),
+        companyIdLong?.let { postEntity.company.id.eq(it) }
+      )
+      .orderBy(postEntity.publishedAt.desc())
+      .offset(pageable.offset)
+      .limit(pageable.pageSize.toLong())
+      .fetch()
+
+    val total = queryFactory.select(postEntity.id.countDistinct())
+      .from(postEntity)
+      .where(
+        postEntity.isSummary.isTrue,
+        postEntity.categories.any().eq(category),
+        companyIdLong?.let { postEntity.company.id.eq(it) }
+      )
+      .fetchOne() ?: 0L
+
+    val resultsDto = results.map { PostDto.fromEntity(it) }
+    return PageImpl(resultsDto, pageable, total)
   }
 }

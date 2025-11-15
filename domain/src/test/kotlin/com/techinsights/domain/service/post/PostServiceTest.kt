@@ -58,14 +58,14 @@ class PostServiceTest : FunSpec({
     val page = PageImpl(listOf(samplePostDto))
 
     every {
-      postRepository.getPosts(pageable, Category.All, null)
+      postRepository.getAllPosts(pageable, null)
     } returns page
 
     val result = postService.getPosts(0, 10, PostSortType.RECENT, Category.All, null)
 
     result.content shouldHaveSize 1
     result.content[0] shouldBe samplePostDto
-    verify(exactly = 1) { postRepository.getPosts(pageable, Category.All, null) }
+    verify(exactly = 1) { postRepository.getAllPosts(pageable, null) }
   }
 
   test("게시글 목록 조회 - POPULAR 정렬") {
@@ -73,14 +73,14 @@ class PostServiceTest : FunSpec({
     val page = PageImpl(listOf(samplePostDto))
 
     every {
-      postRepository.getPosts(pageable, Category.BackEnd, null)
+      postRepository.getPostsByCategory(pageable, Category.BackEnd, null)
     } returns page
 
     val result = postService.getPosts(0, 10, PostSortType.POPULAR, Category.BackEnd, null)
 
     result.content shouldHaveSize 1
     result.content[0] shouldBe samplePostDto
-    verify(exactly = 1) { postRepository.getPosts(pageable, Category.BackEnd, null) }
+    verify(exactly = 1) { postRepository.getPostsByCategory(pageable, Category.BackEnd, null) }
   }
 
   test("게시글 목록 조회 - 특정 회사 필터링") {
@@ -88,14 +88,14 @@ class PostServiceTest : FunSpec({
     val page = PageImpl(listOf(samplePostDto))
 
     every {
-      postRepository.getPosts(pageable, Category.All, "1")
+      postRepository.getAllPosts(pageable, "1")
     } returns page
 
     val result = postService.getPosts(0, 10, PostSortType.RECENT, Category.All, "1")
 
     result.content shouldHaveSize 1
     result.content[0].company.id shouldBe "1"
-    verify(exactly = 1) { postRepository.getPosts(pageable, Category.All, "1") }
+    verify(exactly = 1) { postRepository.getAllPosts(pageable, "1") }
   }
 
   test("게시글 상세 조회 - 성공") {

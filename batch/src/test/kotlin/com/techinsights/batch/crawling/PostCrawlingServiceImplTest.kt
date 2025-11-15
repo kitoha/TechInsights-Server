@@ -16,6 +16,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.mockk.*
 import org.springframework.core.ParameterizedTypeReference
+import org.springframework.http.HttpHeaders
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import reactor.core.publisher.Mono
@@ -151,8 +152,8 @@ class PostCrawlingServiceImplTest : FunSpec({
           WebClientResponseException.create(
             500,
             "Internal Server Error",
-            null,
-            null,
+            HttpHeaders.EMPTY,
+            ByteArray(0),
             null
           )
         )
@@ -178,7 +179,12 @@ class PostCrawlingServiceImplTest : FunSpec({
     every { requestHeadersUriSpec.uri(any<String>()) } returns requestHeadersSpec
     every { requestHeadersSpec.retrieve() } returns responseSpec
     every { responseSpec.bodyToMono(any<ParameterizedTypeReference<String>>()) } returns
-        Mono.error(WebClientResponseException.create(429, "Too Many Requests", null, null, null))
+        Mono.error(
+          WebClientResponseException.create(
+            429, "Too Many Requests", HttpHeaders.EMPTY,
+            ByteArray(0), null
+          )
+        )
 
     shouldThrow<WebClientResponseException> {
       service.processCrawledData(companyDto)

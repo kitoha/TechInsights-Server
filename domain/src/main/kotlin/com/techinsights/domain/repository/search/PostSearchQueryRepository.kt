@@ -4,8 +4,8 @@ import com.querydsl.core.types.OrderSpecifier
 import com.querydsl.core.types.dsl.BooleanExpression
 import com.querydsl.core.types.dsl.NumberExpression
 import com.querydsl.jpa.impl.JPAQueryFactory
+import com.techinsights.domain.dto.search.PostSearchProjection
 import com.techinsights.domain.entity.company.QCompany
-import com.techinsights.domain.entity.post.Post
 import com.techinsights.domain.entity.post.QPost
 import org.springframework.stereotype.Repository
 
@@ -21,9 +21,10 @@ class PostSearchQueryRepository(
     query: String,
     relevanceScore: NumberExpression<Double>,
     limit: Int
-  ): List<Post> {
-    return jpaQueryFactory
-      .selectFrom(post)
+  ): List<PostSearchProjection> {
+    val results = jpaQueryFactory
+      .select(post, relevanceScore)
+      .from(post)
       .join(post.company, company).fetchJoin()
       .where(
         buildInstantSearchCondition(query),
@@ -35,16 +36,25 @@ class PostSearchQueryRepository(
       )
       .limit(limit.toLong())
       .fetch()
+
+    return results.map { tuple ->
+      PostSearchProjection(
+        post = tuple.get(post)!!,
+        relevanceScore = tuple.get(relevanceScore)!!
+      )
+    }
   }
 
   fun findForFullSearch(
     condition: BooleanExpression,
     orderSpecifiers: Array<OrderSpecifier<*>>,
+    relevanceScore: NumberExpression<Double>,
     offset: Long,
     limit: Long
-  ): List<Post> {
-    return jpaQueryFactory
-      .selectFrom(post)
+  ): List<PostSearchProjection> {
+    val results = jpaQueryFactory
+      .select(post, relevanceScore)
+      .from(post)
       .join(post.company, company).fetchJoin()
       .where(
         condition,
@@ -54,6 +64,13 @@ class PostSearchQueryRepository(
       .offset(offset)
       .limit(limit)
       .fetch()
+
+    return results.map { tuple ->
+      PostSearchProjection(
+        post = tuple.get(post)!!,
+        relevanceScore = tuple.get(relevanceScore)!!
+      )
+    }
   }
 
   fun countByCondition(condition: BooleanExpression): Long {

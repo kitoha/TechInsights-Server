@@ -8,8 +8,7 @@ import org.springframework.stereotype.Component
 
 @Component
 class SearchResultMapper(
-  private val textHighlighter: TextHighlighter,
-  private val relevanceCalculator: RelevanceCalculator
+  private val textHighlighter: TextHighlighter
 ) {
 
   fun toCompanyMatchDto(
@@ -40,7 +39,8 @@ class SearchResultMapper(
     )
   }
 
-  fun toPostSearchResultDto(post: Post, query: String): PostSearchResultDto {
+  fun toPostSearchResultDto(projection: PostSearchProjection, query: String): PostSearchResultDto {
+    val post = projection.post
     return PostSearchResultDto(
       id = Tsid.encode(post.id),
       title = post.title,
@@ -54,7 +54,7 @@ class SearchResultMapper(
       publishedAt = post.publishedAt,
       isSummary = post.isSummary,
       categories = post.categories,
-      relevanceScore = relevanceCalculator.calculate(post, query)
+      relevanceScore = projection.relevanceScore
     )
   }
 }
