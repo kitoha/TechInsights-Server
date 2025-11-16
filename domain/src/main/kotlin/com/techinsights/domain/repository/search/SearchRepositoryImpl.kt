@@ -1,6 +1,5 @@
 package com.techinsights.domain.repository.search
 
-import com.techinsights.domain.config.search.SearchProperties
 import com.techinsights.domain.dto.search.CompanyMatchDto
 import com.techinsights.domain.dto.search.InstantSearchResponse
 import com.techinsights.domain.dto.search.PostMatchDto
@@ -18,8 +17,7 @@ class SearchRepositoryImpl(
   private val postSearchQueryRepository: PostSearchQueryRepository,
   private val companySearchQueryRepository: CompanySearchQueryRepository,
   private val queryBuilder: SearchQueryBuilder,
-  private val resultMapper: SearchResultMapper,
-  private val searchProperties: SearchProperties
+  private val resultMapper: SearchResultMapper
 ) : SearchRepository {
 
   override fun instantSearch(query: String, limit: Int): InstantSearchResponse {
