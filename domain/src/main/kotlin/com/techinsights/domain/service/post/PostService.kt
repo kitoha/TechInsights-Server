@@ -34,12 +34,15 @@ class PostService(
       PostSortType.POPULAR -> Sort.by(Sort.Direction.DESC, "viewCount")
     }
     val pageable = PageRequest.of(page, size, sortSpec)
-    return postRepository.getPosts(pageable, category, companyId)
+    return if (category == Category.All) {
+      postRepository.getAllPosts(pageable, companyId)
+    } else {
+      postRepository.getPostsByCategory(pageable, category, companyId)
+    }
   }
 
   fun getPostById(id: String, ip: String): PostDto {
     val post = postRepository.getPostById(id)
-    val companyId = post.company.id
     try{
       postViewService.recordView(post, ip)
       anonymousUserReadHistoryRepository.trackAnonymousPostRead(ip, post.id)

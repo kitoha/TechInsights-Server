@@ -1,6 +1,5 @@
 package com.techinsights.domain.repository.search
 
-import com.techinsights.domain.config.search.SearchProperties
 import com.techinsights.domain.dto.search.CompanyMatchDto
 import com.techinsights.domain.dto.search.InstantSearchResponse
 import com.techinsights.domain.dto.search.PostMatchDto
@@ -18,8 +17,7 @@ class SearchRepositoryImpl(
   private val postSearchQueryRepository: PostSearchQueryRepository,
   private val companySearchQueryRepository: CompanySearchQueryRepository,
   private val queryBuilder: SearchQueryBuilder,
-  private val resultMapper: SearchResultMapper,
-  private val searchProperties: SearchProperties
+  private val resultMapper: SearchResultMapper
 ) : SearchRepository {
 
   override fun instantSearch(query: String, limit: Int): InstantSearchResponse {
@@ -46,15 +44,16 @@ class SearchRepositoryImpl(
     val searchCondition = queryBuilder.buildSearchCondition(request.query, request.companyId)
     val orderSpecifiers = queryBuilder.buildOrderSpecifier(request.sortBy, relevanceScore)
 
-    val posts = postSearchQueryRepository.findForFullSearch(
+    val projections = postSearchQueryRepository.findForFullSearch(
       condition = searchCondition,
       orderSpecifiers = orderSpecifiers,
+      relevanceScore = relevanceScore,
       offset = (request.page * request.size).toLong(),
       limit = request.size.toLong()
     )
 
     val total = postSearchQueryRepository.countByCondition(searchCondition)
-    val dtos = posts.map { resultMapper.toPostSearchResultDto(it, request.query) }
+    val dtos = projections.map { resultMapper.toPostSearchResultDto(it, request.query) }
 
     return PageImpl(dtos, PageRequest.of(request.page, request.size), total)
   }
@@ -72,12 +71,12 @@ class SearchRepositoryImpl(
 
   private fun findPosts(query: String, limit: Int): List<PostMatchDto> {
     val relevanceScore = queryBuilder.buildRelevanceScore(query)
-    val posts = postSearchQueryRepository.findForInstantSearch(
+    val projections = postSearchQueryRepository.findForInstantSearch(
       query = query,
       relevanceScore = relevanceScore,
       limit = limit
     )
 
-    return posts.map { resultMapper.toPostMatchDto(it, query) }
+    return projections.map { resultMapper.toPostMatchDto(it.post, query) }
   }
 }
