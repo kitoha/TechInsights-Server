@@ -149,6 +149,7 @@ class CompanyRepositoryImpl(
         company.logoImageName,
         company.totalViewCount
       )
+      .orderBy(post.id.count().desc())
       .fetch()
   }
 }
