@@ -23,8 +23,11 @@ FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
 RUN apt-get update && \
-    apt-get install -y ca-certificates && \
-    update-ca-certificates && \
+    apt-get install -y ca-certificates p11-kit && \
+    update-ca-certificates --fresh && \
+    CACERTS_PATH=$(find $JAVA_HOME -name cacerts | grep security | head -1) && \
+    echo "Using cacerts at: $CACERTS_PATH" && \
+    trust extract --overwrite --format=java-cacerts --filter=ca-anchors --purpose=server-auth "$CACERTS_PATH" && \
     rm -rf /var/lib/apt/lists/*
 
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
