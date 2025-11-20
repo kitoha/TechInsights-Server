@@ -6,8 +6,6 @@ import com.techinsights.domain.enums.Category
 import com.techinsights.domain.enums.PostSortType
 import com.techinsights.domain.exception.PostNotFoundException
 import com.techinsights.domain.repository.post.PostRepository
-import com.techinsights.domain.repository.user.AnonymousUserReadHistoryRepository
-import com.techinsights.domain.utils.Tsid
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -20,9 +18,7 @@ import java.time.LocalDateTime
 
 class PostServiceTest : FunSpec({
   val postRepository = mockk<PostRepository>()
-  val postViewService = mockk<PostViewService>()
-  val anonymousUserReadHistoryRepository = mockk<AnonymousUserReadHistoryRepository>()
-  val postService = PostService(postRepository, postViewService, anonymousUserReadHistoryRepository)
+  val postService = PostService(postRepository)
 
   val sampleCompanyDto = CompanyDto(
     id = "1",
@@ -48,10 +44,6 @@ class PostServiceTest : FunSpec({
     isSummary = true,
     isEmbedding = false
   )
-
-  beforeTest {
-    clearMocks(postViewService, anonymousUserReadHistoryRepository)
-  }
 
   test("게시글 목록 조회 - RECENT 정렬") {
     val pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "publishedAt"))
@@ -99,54 +91,21 @@ class PostServiceTest : FunSpec({
   }
 
   test("게시글 상세 조회 - 성공") {
-    val clientIp = "127.0.0.1"
-
     every { postRepository.getPostById("1") } returns samplePostDto
-    every { postViewService.recordView(samplePostDto, clientIp) } just Runs
-    every {
-      anonymousUserReadHistoryRepository.trackAnonymousPostRead(clientIp, "1")
-    } just Runs
 
-    val result = postService.getPostById("1", clientIp)
+    val result = postService.getPostById("1")
 
     result shouldBe samplePostDto
     verify(exactly = 1) { postRepository.getPostById("1") }
-    verify(exactly = 1) { postViewService.recordView(samplePostDto, clientIp) }
-    verify(exactly = 1) { anonymousUserReadHistoryRepository.trackAnonymousPostRead(clientIp, "1") }
   }
 
   test("게시글 상세 조회 - 존재하지 않는 게시글") {
-    val clientIp = "127.0.0.1"
-
     every { postRepository.getPostById("999") } throws PostNotFoundException("Post not found")
 
     shouldThrow<PostNotFoundException> {
-      postService.getPostById("999", clientIp)
+      postService.getPostById("999")
     }
 
     verify(exactly = 1) { postRepository.getPostById("999") }
-    verify(exactly = 0) { postViewService.recordView(any(), any()) }
-    verify(exactly = 0) { anonymousUserReadHistoryRepository.trackAnonymousPostRead(any(), any()) }
-  }
-
-  test("게시글 상세 조회 - 조회수 증가 실패해도 게시글은 반환") {
-    val clientIp = "127.0.0.1"
-    val postId = Tsid.generate()
-
-    every { postRepository.getPostById(postId) } returns samplePostDto
-    every {
-      postViewService.recordView(
-        samplePostDto,
-        clientIp
-      )
-    } throws RuntimeException("View count error")
-    every {
-      anonymousUserReadHistoryRepository.trackAnonymousPostRead(clientIp, postId)
-    } just Runs
-
-    val result = postService.getPostById(postId, clientIp)
-
-    result shouldBe samplePostDto
-    verify(exactly = 1) { postRepository.getPostById(postId) }
   }
 })

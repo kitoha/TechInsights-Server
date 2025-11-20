@@ -9,6 +9,7 @@ data class PostViewDto(
     val postId: String,
     val userOrIp: String,
     val viewedDate: LocalDate,
+  val userAgent: String?
 ) {
 
   fun toEntity(): PostView {
@@ -16,7 +17,8 @@ data class PostViewDto(
       id = Tsid.decode(id),
       postId = Tsid.decode(postId),
       userOrIp = userOrIp,
-      viewedDate = viewedDate
+      viewedDate = viewedDate,
+      userAgent = userAgent
     )
   }
 
@@ -26,7 +28,8 @@ data class PostViewDto(
         id = entity.id.toString(),
         postId = entity.postId.toString(),
         userOrIp = entity.userOrIp,
-        viewedDate = entity.viewedDate
+        viewedDate = entity.viewedDate,
+        userAgent = entity.userAgent
       )
     }
   }
