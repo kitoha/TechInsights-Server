@@ -4,8 +4,6 @@ import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.enums.Category
 import com.techinsights.domain.enums.PostSortType
 import com.techinsights.domain.repository.post.PostRepository
-import com.techinsights.domain.repository.user.AnonymousUserReadHistoryRepository
-import mu.KotlinLogging
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
@@ -13,14 +11,8 @@ import org.springframework.stereotype.Service
 
 @Service
 class PostService(
-  private val postRepository: PostRepository,
-  private val postViewService: PostViewService,
-  private val anonymousUserReadHistoryRepository: AnonymousUserReadHistoryRepository
+  private val postRepository: PostRepository
 ) {
-  companion object{
-    private val logger = KotlinLogging.logger{}
-  }
-
 
   fun getPosts(
     page: Int,

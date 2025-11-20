@@ -1,6 +1,7 @@
 package com.techinsights.api.controller.post
 
 import com.techinsights.api.util.ClientIpExtractor
+import com.techinsights.domain.repository.user.AnonymousUserReadHistoryRepository
 import com.techinsights.domain.service.post.PostService
 import com.techinsights.domain.service.post.PostViewService
 import com.techinsights.domain.utils.Tsid
@@ -16,12 +17,18 @@ class PostControllerTest : FunSpec() {
   private val postService = mockk<PostService>()
   private val postViewService = mockk<PostViewService>()
   private val clientIpExtractor = mockk<ClientIpExtractor>()
+  private val anonymousUserReadHistoryRepository = mockk<AnonymousUserReadHistoryRepository>()
 
   init {
     beforeTest {
       clearAllMocks()
 
-      val controller = PostController(postService, postViewService, clientIpExtractor)
+      val controller = PostController(
+        postService,
+        postViewService,
+        clientIpExtractor,
+        anonymousUserReadHistoryRepository
+      )
       mockMvc = MockMvcBuilders.standaloneSetup(controller).build()
     }
 
@@ -33,6 +40,12 @@ class PostControllerTest : FunSpec() {
 
       every { clientIpExtractor.extract(any()) } returns clientIp
       every { postViewService.recordView(postId, clientIp, userAgent) } just Runs
+      every {
+        anonymousUserReadHistoryRepository.trackAnonymousPostRead(
+          clientIp,
+          postId
+        )
+      } just Runs
 
       // when & then
       mockMvc.post("/api/v1/posts/$postId/view") {
@@ -43,6 +56,12 @@ class PostControllerTest : FunSpec() {
 
       verify(exactly = 1) { clientIpExtractor.extract(any()) }
       verify(exactly = 1) { postViewService.recordView(postId, clientIp, userAgent) }
+      verify(exactly = 1) {
+        anonymousUserReadHistoryRepository.trackAnonymousPostRead(
+          clientIp,
+          postId
+        )
+      }
     }
 
     test("POST /api/v1/posts/{postId}/view - User-Agent 없이도 성공") {
@@ -52,6 +71,12 @@ class PostControllerTest : FunSpec() {
 
       every { clientIpExtractor.extract(any()) } returns clientIp
       every { postViewService.recordView(postId, clientIp, null) } just Runs
+      every {
+        anonymousUserReadHistoryRepository.trackAnonymousPostRead(
+          clientIp,
+          postId
+        )
+      } just Runs
 
       // when & then
       mockMvc.post("/api/v1/posts/$postId/view") {
@@ -62,6 +87,12 @@ class PostControllerTest : FunSpec() {
 
       verify(exactly = 1) { clientIpExtractor.extract(any()) }
       verify(exactly = 1) { postViewService.recordView(postId, clientIp, null) }
+      verify(exactly = 1) {
+        anonymousUserReadHistoryRepository.trackAnonymousPostRead(
+          clientIp,
+          postId
+        )
+      }
     }
 
     test("POST /api/v1/posts/{postId}/view - 다양한 User-Agent 처리") {
@@ -73,6 +104,12 @@ class PostControllerTest : FunSpec() {
 
       every { clientIpExtractor.extract(any()) } returns clientIp
       every { postViewService.recordView(postId, clientIp, mobileUserAgent) } just Runs
+      every {
+        anonymousUserReadHistoryRepository.trackAnonymousPostRead(
+          clientIp,
+          postId
+        )
+      } just Runs
 
       // when & then
       mockMvc.post("/api/v1/posts/$postId/view") {
@@ -83,6 +120,12 @@ class PostControllerTest : FunSpec() {
 
       verify(exactly = 1) { clientIpExtractor.extract(any()) }
       verify(exactly = 1) { postViewService.recordView(postId, clientIp, mobileUserAgent) }
+      verify(exactly = 1) {
+        anonymousUserReadHistoryRepository.trackAnonymousPostRead(
+          clientIp,
+          postId
+        )
+      }
     }
   }
 }

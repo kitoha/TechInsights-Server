@@ -1,10 +1,11 @@
 package com.techinsights.domain.service.post
 
 import com.techinsights.domain.dto.post.PostViewDto
+import com.techinsights.domain.event.ViewCountIncrementEvent
 import com.techinsights.domain.repository.post.PostRepository
 import com.techinsights.domain.repository.post.PostViewRepository
-import com.techinsights.domain.service.company.CompanyViewCountUpdater
 import com.techinsights.domain.utils.Tsid
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -13,8 +14,7 @@ import java.time.LocalDate
 class PostViewService(
   private val postViewRepository: PostViewRepository,
   private val postRepository: PostRepository,
-  private val viewCountUpdater: ViewCountUpdater,
-  private val companyViewCountUpdater: CompanyViewCountUpdater
+  private val applicationEventPublisher: ApplicationEventPublisher
 ) {
 
   @Transactional
@@ -38,8 +38,9 @@ class PostViewService(
       )
       postViewRepository.save(postView)
 
-      viewCountUpdater.incrementViewCount(postId)
-      companyViewCountUpdater.incrementTotalViewCount(companyId)
+      applicationEventPublisher.publishEvent(
+        ViewCountIncrementEvent(postId, companyId)
+      )
     }
   }
 }

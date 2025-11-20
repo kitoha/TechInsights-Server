@@ -6,6 +6,7 @@ import com.techinsights.api.util.ClientIpExtractor
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.enums.Category
 import com.techinsights.domain.enums.PostSortType
+import com.techinsights.domain.repository.user.AnonymousUserReadHistoryRepository
 import com.techinsights.domain.service.post.PostService
 import com.techinsights.domain.service.post.PostViewService
 import jakarta.servlet.http.HttpServletRequest
@@ -20,7 +21,8 @@ import org.springframework.web.bind.annotation.RestController
 class PostController(
   private val postService: PostService,
   private val postViewService: PostViewService,
-  private val clientIpExtractor: ClientIpExtractor
+  private val clientIpExtractor: ClientIpExtractor,
+  private val anonymousUserReadHistoryRepository: AnonymousUserReadHistoryRepository
 ) {
 
   @GetMapping("/api/v1/posts")
@@ -58,6 +60,7 @@ class PostController(
     val userAgent = request.getHeader("User-Agent")
 
     postViewService.recordView(postId, clientIp, userAgent)
+    anonymousUserReadHistoryRepository.trackAnonymousPostRead(clientIp, postId)
 
     return ResponseEntity.ok().build()
   }

@@ -6,7 +6,6 @@ import com.techinsights.domain.enums.Category
 import com.techinsights.domain.enums.PostSortType
 import com.techinsights.domain.exception.PostNotFoundException
 import com.techinsights.domain.repository.post.PostRepository
-import com.techinsights.domain.repository.user.AnonymousUserReadHistoryRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -19,9 +18,7 @@ import java.time.LocalDateTime
 
 class PostServiceTest : FunSpec({
   val postRepository = mockk<PostRepository>()
-  val postViewService = mockk<PostViewService>()
-  val anonymousUserReadHistoryRepository = mockk<AnonymousUserReadHistoryRepository>()
-  val postService = PostService(postRepository, postViewService, anonymousUserReadHistoryRepository)
+  val postService = PostService(postRepository)
 
   val sampleCompanyDto = CompanyDto(
     id = "1",
@@ -47,10 +44,6 @@ class PostServiceTest : FunSpec({
     isSummary = true,
     isEmbedding = false
   )
-
-  beforeTest {
-    clearMocks(postViewService, anonymousUserReadHistoryRepository)
-  }
 
   test("게시글 목록 조회 - RECENT 정렬") {
     val pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "publishedAt"))
