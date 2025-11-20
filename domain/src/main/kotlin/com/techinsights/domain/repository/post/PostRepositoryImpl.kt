@@ -63,6 +63,17 @@ class PostRepositoryImpl(
     return PostDto.fromEntity(post)
   }
 
+  override fun getCompanyIdByPostId(postId: String): String {
+    val postEntity = QPost.post
+
+    val companyId = queryFactory.select(postEntity.company.id)
+      .from(postEntity)
+      .where(postEntity.id.eq(Tsid.decode(postId)))
+      .fetchOne() ?: throw PostNotFoundException("Post with ID $postId not found")
+
+    return Tsid.encode(companyId)
+  }
+
   override fun findOldestNotSummarized(limit: Long, offset: Long): List<PostDto> {
     val post = QPost.post
     val company = QCompany.company

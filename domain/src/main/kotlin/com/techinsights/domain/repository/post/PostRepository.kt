@@ -11,6 +11,7 @@ interface PostRepository {
   fun findAllByUrlIn(urls: List<String>): List<PostDto>
   fun findAllByIdIn(ids: List<String>): List<PostDto>
   fun getPostById(id: String): PostDto
+  fun getCompanyIdByPostId(postId: String): String
   fun findOldestNotSummarized(limit: Long, offset: Long): List<PostDto>
   fun findOldestSummarizedAndNotEmbedded(limit: Long, offset: Long): List<PostDto>
   fun findOldestSummarized(limit: Long, offset: Long): List<PostDto>

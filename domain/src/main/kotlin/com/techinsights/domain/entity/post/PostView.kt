@@ -21,4 +21,7 @@ class PostView (
   @Column(name = "viewed_date", nullable = false)
   val viewedDate: LocalDate,
 
+  @Column(name = "user_agent", nullable = true, length = 512)
+  val userAgent: String?
+
   ) : BaseEntity()

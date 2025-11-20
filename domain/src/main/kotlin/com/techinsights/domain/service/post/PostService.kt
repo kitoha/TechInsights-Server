@@ -41,14 +41,8 @@ class PostService(
     }
   }
 
-  fun getPostById(id: String, ip: String): PostDto {
+  fun getPostById(id: String): PostDto {
     val post = postRepository.getPostById(id)
-    try{
-      postViewService.recordView(post, ip)
-      anonymousUserReadHistoryRepository.trackAnonymousPostRead(ip, post.id)
-    }catch (e: Exception) {
-      logger.error(e) { "Failed to increment view count for post with id: $id" }
-    }
     return post
   }
 }
