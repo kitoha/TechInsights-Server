@@ -135,10 +135,7 @@ class PostServiceTest : FunSpec({
 
     every { postRepository.getPostById(postId) } returns samplePostDto
     every {
-      postViewService.recordView(
-        samplePostDto,
-        clientIp
-      )
+      postViewService.recordView(samplePostDto, clientIp)
     } throws RuntimeException("View count error")
     every {
       anonymousUserReadHistoryRepository.trackAnonymousPostRead(clientIp, postId)

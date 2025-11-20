@@ -8,7 +8,6 @@ import com.techinsights.domain.utils.Tsid
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 @Service
 class PostViewService(
@@ -18,7 +17,7 @@ class PostViewService(
 ) {
 
   @Transactional
-  fun recordView(post : PostDto, userOrIp: String) {
+  fun recordView(post: PostDto, userOrIp: String) {
     val viewDate = LocalDate.now()
     val postId = post.id
     val companyId = post.company.id
