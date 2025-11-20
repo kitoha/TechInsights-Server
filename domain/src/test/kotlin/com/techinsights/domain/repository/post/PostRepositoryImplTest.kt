@@ -512,4 +512,36 @@ class PostRepositoryImplTest : FunSpec({
     result.totalElements shouldBe 5L
     verify(exactly = 1) { queryFactory.select(QPost.post.id.countDistinct()) }
   }
+
+  test("getCompanyIdByPostId - 성공") {
+    val postId = Tsid.encode(1L)
+    val companyId = 1L
+    val query = mockk<JPAQuery<Long>>()
+
+    every { queryFactory.select(QPost.post.company.id) } returns query
+    every { query.from(QPost.post) } returns query
+    every { query.where(QPost.post.id.eq(Tsid.decode(postId))) } returns query
+    every { query.fetchOne() } returns companyId
+
+    val result = repository.getCompanyIdByPostId(postId)
+
+    result shouldBe Tsid.encode(companyId)
+    verify(exactly = 1) { queryFactory.select(QPost.post.company.id) }
+  }
+
+  test("getCompanyIdByPostId - 존재하지 않는 게시물") {
+    val invalidPostId = Tsid.encode(999L)
+    val query = mockk<JPAQuery<Long>>()
+
+    every { queryFactory.select(QPost.post.company.id) } returns query
+    every { query.from(QPost.post) } returns query
+    every { query.where(QPost.post.id.eq(Tsid.decode(invalidPostId))) } returns query
+    every { query.fetchOne() } returns null
+
+    shouldThrow<PostNotFoundException> {
+      repository.getCompanyIdByPostId(invalidPostId)
+    }
+
+    verify(exactly = 1) { queryFactory.select(QPost.post.company.id) }
+  }
 })
