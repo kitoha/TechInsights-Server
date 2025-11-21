@@ -94,24 +94,82 @@ graph TB
     style RSS fill:#f0e1ff
 ```
 
-## 기술 스택
+## 🛠 Tech Stack
 
-- **Language:** Kotlin
-- **Backend:** Spring Boot, Spring Batch, Spring Data JPA
-- **AI:** Google Gemini API (Embedding & Vector Search)
-- **Build Tool:** Gradle
-- **Infra:** Docker, Docker Compose, Nginx
-- **CI/CD:** GitHub Actions, AWS CodeDeploy
+### Language
 
-## 개발 환경
+![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
 
-- JDK 21
-- Gradle 빌드 시스템
-- Docker (개발/배포용)
+### Framework & Runtime
+
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)
+![Spring Batch](https://img.shields.io/badge/Spring%20Batch-6DB33F?style=for-the-badge&logo=spring&logoColor=white)
+![JPA](https://img.shields.io/badge/JPA-59666C?style=for-the-badge&logo=hibernate&logoColor=white)
+![Querydsl](https://img.shields.io/badge/Querydsl-4695EB?style=for-the-badge&logo=java&logoColor=white)
+
+### Database
+
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![pgvector](https://img.shields.io/badge/pgvector-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+
+### AI / ML
+
+![Google Gemini](https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white)
+
+### Infra & DevOps
+
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Nginx](https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-232F3E?style=for-the-badge&logo=amazonwebservices&logoColor=white)
+
+### Runtime
+
+![JDK 21](https://img.shields.io/badge/JDK-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
+![Gradle](https://img.shields.io/badge/Gradle-02303A?style=for-the-badge&logo=gradle&logoColor=white)
 
 ## 접속 링크
 
 https://www.techinsights.shop/
+
+## 📡 API Endpoints
+
+### Post API
+
+| Method | Endpoint                      | Description                  |
+|--------|-------------------------------|------------------------------|
+| `GET`  | `/api/v1/posts`               | 게시글 목록 조회 (페이징, 정렬, 카테고리 필터) |
+| `GET`  | `/api/v1/posts/{postId}`      | 게시글 상세 조회                    |
+| `POST` | `/api/v1/posts/{postId}/view` | 조회수 기록                       |
+
+### Search API
+
+| Method | Endpoint                 | Description            |
+|--------|--------------------------|------------------------|
+| `GET`  | `/api/v1/search/instant` | 실시간 검색 (자동완성)          |
+| `GET`  | `/api/v1/search`         | 상세 검색 (페이징, 정렬, 회사 필터) |
+
+### Company API
+
+| Method | Endpoint                         | Description    |
+|--------|----------------------------------|----------------|
+| `GET`  | `/api/v1/companies`              | 회사 목록 조회       |
+| `GET`  | `/api/v1/companies/{companyId}`  | 회사 상세 조회       |
+| `GET`  | `/api/v1/companies/top-by-views` | 조회수 기준 상위 회사   |
+| `GET`  | `/api/v1/companies/top-by-posts` | 게시글 수 기준 상위 회사 |
+| `GET`  | `/api/v1/companiesSummaries`     | 회사별 게시글 통계     |
+
+### Category API
+
+| Method | Endpoint                     | Description  |
+|--------|------------------------------|--------------|
+| `GET`  | `/api/v1/categories/summary` | 카테고리별 게시글 통계 |
+
+### Recommendation API
+
+| Method | Endpoint                  | Description   |
+|--------|---------------------------|---------------|
+| `GET`  | `/api/v1/recommendations` | AI 기반 개인화 추천  |
 
 ## Preview
 
