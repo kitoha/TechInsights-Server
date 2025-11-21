@@ -14,7 +14,8 @@ data class PostResponse(
   var thumbnail: String? = null,
   val companyName: String,
   var categories: Set<Category>,
-  val logoImageName: String
+  val logoImageName: String,
+  val viewCount: Long = 0L
 ) {
 
   companion object{
@@ -29,7 +30,8 @@ data class PostResponse(
         thumbnail = postDto.thumbnail,
         companyName = postDto.company.name,
         categories = postDto.categories,
-        logoImageName = postDto.company.logoImageName
+        logoImageName = postDto.company.logoImageName,
+        viewCount = postDto.viewCount
       )
     }
   }
