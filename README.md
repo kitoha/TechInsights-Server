@@ -182,6 +182,191 @@ erDiagram
     Post ||--o{ post_categories : "has many"
 ```
 
+## Technical Challenges & Solutions
+
+### 1. 조회수 집계 트랜잭션 최적화
+
+**문제 상황**
+
+기존 `recordView()` 메서드에서 중복 체크, PostView 저장, Post 조회수 증가, Company 총 조회수 증가가 단일 트랜잭션으로 묶여 있었습니다. 트랜잭션
+범위가 과도하게 넓어지면서 DB Lock 경합이 발생하고, 조회수 업데이트 실패 시 전체 조회 기록이 롤백되는 문제가 있었습니다.
+
+**해결 방안**
+
+Spring Event와 `@TransactionalEventListener`를 활용하여 관심사를 분리했습니다.
+(Redis를 현재 사용하지 못 하기 때문에 임시로 DB 기반 비동기 처리를 구현)
+
+1. 조회 기록 저장: 중복 체크 및 PostView 저장은 기존 트랜잭션 내에서 처리
+2. 조회수 증가: Post 및 Company 조회수 증가는 별도의 비동기 이벤트
+3. 트랜잭션 커밋 후 실행: 조회 기록이 성공적으로 커밋된 후에만 조회수 증가 로직 실행
+4. 장애 격리: 조회수 증가 실패 시에도 조회 기록은 유지
+5. 비동기 처리: 사용자 응답 지연 방지
+6. Eventual Consistency: 조회수는 최종적으로 일관성을 보장
+7. 성능 향상: 트랜잭션 경합 감소로 전체 처리량 증가
+
+```kotlin
+@Async
+@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+fun handleViewCountIncrement(event: ViewCountIncrementEvent) {
+  viewCountUpdater.incrementViewCount(event.postId)
+  companyViewCountUpdater.incrementTotalViewCount(event.companyId)
+}
+```
+
+- **AFTER_COMMIT**: 조회 기록 트랜잭션이 성공적으로 커밋된 후에만 카운트 증가 로직 실행
+- **@Async**: 비동기 처리로 사용자 응답 지연 방지
+- **Eventual Consistency**: 카운트 실패가 핵심 비즈니스 로직에 영향을 주지 않음
+
+---
+
+### 2. 벡터 검색 성능 최적화
+
+**아키텍처 설계**
+
+PostgreSQL의 pgvector 확장을 활용하여 3072차원 임베딩 벡터 기반의 유사도 검색을 구현했습니다.
+
+```kotlin
+@JdbcTypeCode(SqlTypes.VECTOR)
+@Array(length = 3072)
+@Column(name = "embedding_vector")
+val embeddingVector: FloatArray
+```
+
+**검색 로직**
+
+사용자의 최근 읽음 이력(10개)의 임베딩 벡터를 평균화하여 개인화된 추천 쿼리를 생성합니다.
+
+```sql
+SELECT * FROM post_embedding
+WHERE post_id NOT IN :excludeIds
+ORDER BY embedding_vector <-> CAST(:targetVector AS vector)
+LIMIT :limit
+```
+
+- **L2 Distance (`<->`)**: 유클리드 거리 기반 유사도 측정
+- **평균 벡터 기법**: 다수의 관심사를 단일 벡터로 응축하여 쿼리 복잡도 감소
+- **제외 필터**: 이미 읽은 게시글을 결과에서 배제하여 추천 품질 향상
+
+---
+
+### 3. RSS/Atom 피드 파싱 및 중복 처리
+
+**Strategy Pattern 기반 파서 설계**
+
+다양한 피드 형식(RSS 2.0, Atom 1.0)과 기업별 커스텀 구조를 유연하게 처리하기 위해 전략 패턴을 적용했습니다.
+
+```
+FeedTypeStrategyResolver
+├── RssFeedStrategy      (RSS 2.0)
+└── AtomFeedStrategy     (Atom 1.0)
+
+BlogParserResolver
+├── FeedParser           (일반 RSS/Atom)
+├── OliveYoungBlogParser (특수 처리)
+└── ElevenStBlogParser   (특수 처리)
+```
+
+**중복 감지 전략**
+
+URL 기반의 Idempotent 처리로 크롤링 시 중복 게시글을 방지합니다.
+
+```kotlin
+val existUrls = postRepository.findAllByUrlIn(originalUrls).map { it.url }.toSet()
+val filteredPosts = allPosts.filter { it.url !in existUrls }
+```
+
+**도메인별 컨텐츠 추출**
+
+13개 기업 기술블로그의 HTML 구조를 분석하여 도메인별 CSS 선택자를 매핑했습니다.
+
+```kotlin
+val selectorMapping = mapOf(
+  "techblog.woowahan.com" to ".post-content-inner > .post-content-body",
+  "tech.kakao.com" to ".inner_content > .daum-wm-content.preview",
+  "toss.tech" to "article.css-hvd0pt > div.css-1vn47db",
+  // ... 10개 추가 도메인
+)
+```
+
+---
+
+### 4. Gemini API Rate Limit 관리
+
+**Resilience4j 기반 Rate Limiting**
+
+외부 API 호출의 안정성을 위해 Resilience4j RateLimiter를 적용했습니다.
+
+```kotlin
+@Bean
+fun rateLimiterRegistry(): RateLimiterRegistry {
+  val geminiConfig = RateLimiterConfig.custom()
+    .limitForPeriod(8)                    // 60초당 8회
+    .limitRefreshPeriod(Duration.ofSeconds(60))
+    .timeoutDuration(Duration.ofSeconds(30))
+    .build()
+
+  return RateLimiterRegistry.of(geminiConfig)
+}
+```
+
+**호출 전략**
+
+```kotlin
+val response = rateLimiter.executeCallable {
+  geminiClient.models.generateContent(modelName, prompt, config)
+}
+```
+
+- **청크 단위 배치 처리**: 요약(10개), 임베딩(1개) 단위로 처리하여 API 호출 최적화
+- **Fault Tolerance**: 최대 3회 재시도, 10개 스킵 허용으로 부분 실패 격리
+- **도메인별 차등 제한**: 크롤링 대상 도메인별로 보수적/기본 Rate Limit 구분 적용
+
+---
+
+### 5. N+1 쿼리 최적화
+
+**Querydsl fetchJoin 전략**
+
+Post-Company 관계에서 발생하는 N+1 문제를 Querydsl의 fetchJoin으로 해결했습니다.
+
+```kotlin
+val posts = queryFactory.selectFrom(postEntity)
+  .leftJoin(postEntity.company, companyEntity).fetchJoin()
+  .where(postEntity.url.`in`(urls))
+  .fetch()
+```
+
+- Post 조회 메서드 12개 모두에 Company fetchJoin 적용
+- 검색 쿼리에도 동일한 패턴 적용
+
+**BatchSize를 통한 ElementCollection 최적화**
+
+```kotlin
+@BatchSize(size = 100)
+@ElementCollection(fetch = FetchType.LAZY, targetClass = Category::class)
+var categories: MutableSet<Category> = mutableSetOf()
+```
+
+- categories 로딩 시 N+1을 `1 + ceil(N/100)` 쿼리로 완화
+- 1000개 Post 조회 시 1000회 → 11회로 쿼리 감소
+
+**DTO Projection 활용**
+
+집계 쿼리에서 불필요한 엔티티 로딩을 방지하기 위해 Querydsl Projection을 활용했습니다.
+
+```kotlin
+.select(
+  Projections.constructor(
+    CompanyPostSummaryDto::class.java,
+    company.id, company.name, company.blogUrl,
+    company.logoImageName, company.totalViewCount,
+    post.id.count(), post.publishedAt.max()
+  )
+)
+```
+
+---
+
 ### Initial Design
 
 Home
