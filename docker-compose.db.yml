@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: postgres-local
+    restart: always
+    environment:
+      POSTGRES_USER: local-user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: techinsights_db
+      TZ: Asia/Seoul
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d
+
+volumes:
+  db_data:

@@ -1,8 +1,24 @@
 spring:
   config:
     import:
-      - aws-parameterstore:/config/techinsights/dev/
+      - optional:aws-parameterstore:/config/techinsights/dev/
+  cloud:
+    aws:
+      parameterstore:
+        enabled: false
+      region:
+        static: ap-northeast-2
+  batch:
+    job:
+      enabled: true
+    jdbc:
+      initialize-schema: always
+
+db:
+  url: ${DB_URL:jdbc:postgresql://localhost:5432/techinsights_db}
+  username: ${DB_USERNAME:local-user}
+  password: ${DB_PASSWORD:local_password}
 
 gemini:
-  api-key: ${GOOGLE_API_KEY}
+  api-key: ${GEMINI_API_KEY}
   max-output-tokens: 8192

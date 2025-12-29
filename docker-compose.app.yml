@@ -1,35 +1,20 @@
 services:
-  postgres:
-    image: pgvector/pgvector:pg15
-    container_name: postgres-local
-    restart: always
-    environment:
-      POSTGRES_USER: local-user
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: techinsights_db
-      TZ: Asia/Seoul
-    ports:
-      - "5432:5432"
-    volumes:
-      - db_data:/var/lib/postgresql/data
-      - ./initdb:/docker-entrypoint-initdb.d
-
   api:
     build:
       context: .
       dockerfile: ./api/Dockerfile
     container_name: api-local
-    depends_on:
-      - postgres
     env_file:
       - .env
     environment:
-      - DB_URL=jdbc:postgresql://postgres:5432/techinsights_db
-      - DB_USERNAME=local-user
-      - DB_PASSWORD=${DB_PASSWORD}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-jdbc:postgresql://host.docker.internal:5432/techinsights_db}
+      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-local-user}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
       - SPRING_PROFILES_ACTIVE=local
     ports:
       - "8080:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - default
       - monitoring-network
@@ -51,22 +36,19 @@ services:
       context: .
       dockerfile: ./batch/Dockerfile
     container_name: batch-local
-    depends_on:
-      - postgres
     env_file:
       - .env
     environment:
-      - DB_URL=jdbc:postgresql://postgres:5432/techinsights_db
-      - DB_USERNAME=local-user
-      - DB_PASSWORD=${DB_PASSWORD}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-jdbc:postgresql://host.docker.internal:5432/techinsights_db}
+      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-local-user}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
       - SPRING_PROFILES_ACTIVE=local
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - default
       - monitoring-network
     restart: always
-
-volumes:
-  db_data:
 
 networks:
   monitoring-network:

@@ -11,6 +11,7 @@ COPY build.gradle.kts .
 COPY domain/build.gradle.kts ./domain/
 COPY api/build.gradle.kts ./api/
 
+RUN chmod +x ./gradlew
 RUN ./gradlew dependencies --no-daemon
 
 COPY domain/src ./domain/src
