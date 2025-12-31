@@ -36,4 +36,10 @@ USER appuser
 
 COPY --from=builder /app/batch/build/libs/*.jar app.jar
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Environment variable for JVM options (can be overridden)
+ENV JAVA_OPTS="-Xmx512m -Xms256m -XX:MaxMetaspaceSize=128m -XX:+UseG1GC"
+
+# Create logs directory
+RUN mkdir -p /app/logs
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
