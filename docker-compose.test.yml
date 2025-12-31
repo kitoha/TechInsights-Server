@@ -1,0 +1,112 @@
+version: '3.8'
+
+# 프로덕션 동등 환경 테스트용 Docker Compose
+# t2.micro (1 vCPU, 1GB RAM) 스펙 시뮬레이션
+
+services:
+  batch-test:
+    build:
+      context: .
+      dockerfile: ./batch/Dockerfile
+    container_name: batch-production-parity
+
+    # 🔥 t2.micro와 동일한 리소스 제한
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'         # 1 vCPU (t2.micro)
+          memory: 1G          # 1GB RAM (t2.micro)
+        reservations:
+          cpus: '0.5'         # 최소 0.5 CPU 보장
+          memory: 512M        # 최소 512MB 보장
+
+    # CPU 쿼터 제한 (더 정밀한 제어)
+    cpus: 1.0
+    mem_limit: 1g
+    mem_reservation: 512m
+
+    # 메모리 스왑 비활성화 (프로덕션과 동일)
+    memswap_limit: 1g
+
+    environment:
+      # Spring Profile
+      - SPRING_PROFILES_ACTIVE=local
+
+      # Database (프로덕션 DB 또는 로컬 DB)
+      - DB_HOST=${DB_HOST:-host.docker.internal}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-techinsights}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-password}
+
+      # JVM 메모리 설정 (t2.micro와 동일)
+      - JAVA_OPTS=-Xmx512m -Xms256m -XX:MaxMetaspaceSize=128m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+PrintGCDetails -XX:+PrintGCDateStamps -Xloggc:/app/logs/gc.log
+
+      # Batch Job
+      - SPRING_BATCH_JOB_NAMES=${JOB_NAME:-crawlPostJob}
+
+    # 볼륨 마운트 (로그 수집)
+    volumes:
+      - ./batch-logs:/app/logs
+      - ./batch-reports:/app/reports
+
+    # 네트워크
+    networks:
+      - batch-network
+
+    # 로그 설정
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "java"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 리소스 모니터링 (Prometheus + Grafana)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: batch-prometheus
+    profiles:
+      - monitoring
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - batch-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: batch-grafana
+    profiles:
+      - monitoring
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana-dashboards:/etc/grafana/provisioning/dashboards
+    networks:
+      - batch-network
+    depends_on:
+      - prometheus
+
+networks:
+  batch-network:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:
