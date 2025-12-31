@@ -31,25 +31,6 @@ services:
       - api
     restart: always
 
-  batch:
-    build:
-      context: .
-      dockerfile: ./batch/Dockerfile
-    container_name: batch-local
-    env_file:
-      - .env
-    environment:
-      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-jdbc:postgresql://host.docker.internal:5432/techinsights_db}
-      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-local-user}
-      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
-      - SPRING_PROFILES_ACTIVE=local
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks:
-      - default
-      - monitoring-network
-    restart: always
-
 networks:
   monitoring-network:
     external: true
