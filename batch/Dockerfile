@@ -32,14 +32,19 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
-USER appuser
 
 COPY --from=builder /app/batch/build/libs/*.jar app.jar
+
+# JMX Exporter 추가 (로컬 테스트용)
+COPY batch/monitoring/jmx_prometheus_javaagent.jar /app/jmx_prometheus_javaagent.jar
+COPY batch/monitoring/jmx-config.yml /app/jmx-config.yml
 
 # Environment variable for JVM options (can be overridden)
 ENV JAVA_OPTS="-Xmx512m -Xms256m -XX:MaxMetaspaceSize=128m -XX:+UseG1GC"
 
-# Create logs directory
-RUN mkdir -p /app/logs
+# Change ownership of /app directory (logs will be mounted as volume)
+RUN chown -R appuser:appgroup /app
+
+USER appuser
 
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

@@ -28,6 +28,8 @@ dependencies {
     implementation(libs.bundles.kotlinx.coroutines)
     implementation(libs.jsoup)
     implementation(libs.kotlin.reflect)
+    implementation(libs.spring.boot.starter.actuator)
+    implementation(libs.micrometer.registry.prometheus)
 
     testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.bundles.kotest)

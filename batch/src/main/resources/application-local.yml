@@ -22,3 +22,22 @@ db:
 gemini:
   api-key: ${GEMINI_API_KEY}
   max-output-tokens: 8192
+
+# Actuator & Prometheus (로컬 테스트용)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name:batch}
+      environment: local
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true

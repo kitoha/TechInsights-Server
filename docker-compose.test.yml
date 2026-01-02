@@ -14,36 +14,30 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'         # 1 vCPU (t2.micro)
-          memory: 1G          # 1GB RAM (t2.micro)
+          cpus: '1.0'
+          memory: 1G
         reservations:
-          cpus: '0.5'         # 최소 0.5 CPU 보장
-          memory: 512M        # 최소 512MB 보장
-
-    # CPU 쿼터 제한 (더 정밀한 제어)
-    cpus: 1.0
-    mem_limit: 1g
-    mem_reservation: 512m
-
-    # 메모리 스왑 비활성화 (프로덕션과 동일)
-    memswap_limit: 1g
+          cpus: '0.5'
+          memory: 512M
 
     environment:
       # Spring Profile
       - SPRING_PROFILES_ACTIVE=local
 
       # Database (프로덕션 DB 또는 로컬 DB)
-      - DB_HOST=${DB_HOST:-host.docker.internal}
-      - DB_PORT=${DB_PORT:-5432}
-      - DB_NAME=${DB_NAME:-techinsights}
-      - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD:-password}
+      - DB_URL=jdbc:postgresql://${DB_HOST:-host.docker.internal}:${DB_PORT:-5432}/${DB_NAME:-techinsights}
+      - DB_USERNAME=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-local_password}
 
-      # JVM 메모리 설정 (t2.micro와 동일)
-      - JAVA_OPTS=-Xmx512m -Xms256m -XX:MaxMetaspaceSize=128m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+PrintGCDetails -XX:+PrintGCDateStamps -Xloggc:/app/logs/gc.log
+      # JVM 메모리 설정 + JMX Exporter (t2.micro와 동일)
+      - JAVA_OPTS=-Xmx512m -Xms256m -XX:MaxMetaspaceSize=128m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Xlog:gc*:file=/app/logs/gc.log:time,level,tags -javaagent:/app/jmx_prometheus_javaagent.jar=5556:/app/jmx-config.yml
 
       # Batch Job
-      - SPRING_BATCH_JOB_NAMES=${JOB_NAME:-crawlPostJob}
+      - SPRING_BATCH_JOB_NAME=${JOB_NAME:-crawlPostJob}
+
+    # 포트 노출 (JMX Exporter Prometheus 메트릭)
+    ports:
+      - "5556:5556"  # JMX Exporter (웹 서버 아님!)
 
     # 볼륨 마운트 (로그 수집)
     volumes:
@@ -69,44 +63,6 @@ services:
       retries: 3
       start_period: 40s
 
-  # 리소스 모니터링 (Prometheus + Grafana)
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: batch-prometheus
-    profiles:
-      - monitoring
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus-data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-    networks:
-      - batch-network
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: batch-grafana
-    profiles:
-      - monitoring
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./monitoring/grafana-dashboards:/etc/grafana/provisioning/dashboards
-    networks:
-      - batch-network
-    depends_on:
-      - prometheus
-
 networks:
   batch-network:
     driver: bridge
-
-volumes:
-  prometheus-data:
-  grafana-data:
