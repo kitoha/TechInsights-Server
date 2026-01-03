@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Repository
+import org.springframework.transaction.annotation.Transactional
 
 @Repository
 class PostRepositoryImpl(
@@ -215,5 +216,20 @@ class PostRepositoryImpl(
 
     val resultsDto = results.map { PostDto.fromEntity(it) }
     return PageImpl(resultsDto, pageable, total)
+  }
+
+  @Transactional
+  override fun updateEmbeddingStatusBulk(postIds: List<String>): Long {
+    if (postIds.isEmpty()) {
+      return 0L
+    }
+
+    val post = QPost.post
+    val decodedIds = postIds.map { Tsid.decode(it) }
+
+    return queryFactory.update(post)
+      .set(post.isEmbedding, true)
+      .where(post.id.`in`(decodedIds))
+      .execute()
   }
 }
