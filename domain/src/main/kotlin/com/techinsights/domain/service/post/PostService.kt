@@ -8,12 +8,14 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class PostService(
   private val postRepository: PostRepository
 ) {
 
+  @Transactional(readOnly = true)
   fun getPosts(
     page: Int,
     size: Int,
@@ -33,6 +35,7 @@ class PostService(
     }
   }
 
+  @Transactional(readOnly = true)
   fun getPostById(id: String): PostDto {
     val post = postRepository.getPostById(id)
     return post

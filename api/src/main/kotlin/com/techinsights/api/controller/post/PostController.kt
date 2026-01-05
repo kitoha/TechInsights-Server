@@ -10,6 +10,9 @@ import com.techinsights.domain.repository.user.AnonymousUserReadHistoryRepositor
 import com.techinsights.domain.service.post.PostService
 import com.techinsights.domain.service.post.PostViewService
 import jakarta.servlet.http.HttpServletRequest
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -22,19 +25,20 @@ class PostController(
   private val postService: PostService,
   private val postViewService: PostViewService,
   private val clientIpExtractor: ClientIpExtractor,
-  private val anonymousUserReadHistoryRepository: AnonymousUserReadHistoryRepository
+  private val anonymousUserReadHistoryRepository: AnonymousUserReadHistoryRepository,
+  @param:Qualifier("ioDispatcher") private val ioDispatcher: CoroutineDispatcher
 ) {
 
   @GetMapping("/api/v1/posts")
-  fun getPosts(@RequestParam(defaultValue = "0") page: Int,
+  suspend fun getPosts(@RequestParam(defaultValue = "0") page: Int,
     @RequestParam(defaultValue = "10") size: Int,
     @RequestParam(defaultValue = "RECENT") sort: PostSortType,
     @RequestParam(defaultValue = "All") category: Category,
     @RequestParam(required = false) companyId: String?
-  ): ResponseEntity<PageResponse<PostResponse>> {
+  ): ResponseEntity<PageResponse<PostResponse>> = withContext(ioDispatcher) {
     val result = postService.getPosts(page, size, sort, category, companyId)
     val content = result.content.map { PostResponse.fromPostDto(it) }
-    return ResponseEntity.ok(
+    ResponseEntity.ok(
       PageResponse(
       content = content,
       page = result.number,
@@ -46,16 +50,16 @@ class PostController(
   }
 
   @GetMapping("/api/v1/posts/{postId}")
-  fun getPostById(@PathVariable postId: String): ResponseEntity<PostResponse> {
+  suspend fun getPostById(@PathVariable postId: String): ResponseEntity<PostResponse> = withContext(ioDispatcher) {
     val postDto: PostDto = postService.getPostById(postId)
-    return ResponseEntity.ok(PostResponse.fromPostDto(postDto))
+    ResponseEntity.ok(PostResponse.fromPostDto(postDto))
   }
 
   @PostMapping("/api/v1/posts/{postId}/view")
   fun recordView(
     @PathVariable postId: String,
     request: HttpServletRequest
-  ): ResponseEntity<Void> {
+  ): ResponseEntity<Unit> {
     val clientIp = clientIpExtractor.extract(request)
     val userAgent = request.getHeader("User-Agent")
 
