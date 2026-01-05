@@ -1,3 +1,6 @@
+# Docker Compose configuration for local development environment
+# using PostgreSQL database service defined in docker-compose.db.yml
+# resource limits
 services:
   api:
     build:
@@ -11,6 +14,10 @@ services:
       - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-local-user}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
       - SPRING_PROFILES_ACTIVE=local
+      - DB_URL=jdbc:postgresql://host.docker.internal:5432/techinsights_db
+      - AWS_REGION=ap-northeast-2
+      - AWS_ACCESS_KEY_ID=dummy
+      - AWS_SECRET_ACCESS_KEY=dummy
     ports:
       - "8080:8080"
     extra_hosts:
@@ -19,6 +26,11 @@ services:
       - default
       - monitoring-network
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
 
   nginx:
     image: nginx:latest
