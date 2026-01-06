@@ -17,6 +17,7 @@ class PostControllerTest : FunSpec() {
   private val postService = mockk<PostService>()
   private val postViewService = mockk<PostViewService>()
   private val clientIpExtractor = mockk<ClientIpExtractor>()
+  private val dispatcher = mockk<kotlinx.coroutines.CoroutineDispatcher>()
   private val anonymousUserReadHistoryRepository = mockk<AnonymousUserReadHistoryRepository>()
 
   init {
@@ -27,7 +28,8 @@ class PostControllerTest : FunSpec() {
         postService,
         postViewService,
         clientIpExtractor,
-        anonymousUserReadHistoryRepository
+        anonymousUserReadHistoryRepository,
+        dispatcher
       )
       mockMvc = MockMvcBuilders.standaloneSetup(controller).build()
     }
