@@ -544,4 +544,55 @@ class PostRepositoryImplTest : FunSpec({
 
     verify(exactly = 1) { queryFactory.select(QPost.post.company.id) }
   }
+
+  test("updateEmbeddingStatusBulk should update all posts") {
+    val postIds = listOf(Tsid.encode(1L), Tsid.encode(2L))
+    val updateClause = mockk<com.querydsl.jpa.impl.JPAUpdateClause>()
+
+    every { queryFactory.update(QPost.post) } returns updateClause
+    every { updateClause.set(QPost.post.isEmbedding, true) } returns updateClause
+    every { updateClause.where(any<BooleanExpression>()) } returns updateClause
+    every { updateClause.execute() } returns 2L
+
+    val result = repository.updateEmbeddingStatusBulk(postIds)
+
+    result shouldBe 2L
+    verify(exactly = 1) { updateClause.execute() }
+  }
+
+  test("updateEmbeddingStatusBulk should return 0 for empty list") {
+    val result = repository.updateEmbeddingStatusBulk(emptyList())
+
+    result shouldBe 0L
+    verify(exactly = 0) { queryFactory.update(any()) }
+  }
+
+  test("updateEmbeddingStatusBulk should handle single post") {
+    val postIds = listOf(Tsid.encode(1L))
+    val updateClause = mockk<com.querydsl.jpa.impl.JPAUpdateClause>()
+
+    every { queryFactory.update(QPost.post) } returns updateClause
+    every { updateClause.set(QPost.post.isEmbedding, true) } returns updateClause
+    every { updateClause.where(any<BooleanExpression>()) } returns updateClause
+    every { updateClause.execute() } returns 1L
+
+    val result = repository.updateEmbeddingStatusBulk(postIds)
+
+    result shouldBe 1L
+  }
+
+  test("updateEmbeddingStatusBulk should handle large batch") {
+    val postIds = (1L..100L).map { Tsid.encode(it) }
+    val updateClause = mockk<com.querydsl.jpa.impl.JPAUpdateClause>()
+
+    every { queryFactory.update(QPost.post) } returns updateClause
+    every { updateClause.set(QPost.post.isEmbedding, true) } returns updateClause
+    every { updateClause.where(any<BooleanExpression>()) } returns updateClause
+    every { updateClause.execute() } returns 100L
+
+    val result = repository.updateEmbeddingStatusBulk(postIds)
+
+    result shouldBe 100L
+    verify(exactly = 1) { updateClause.execute() }
+  }
 })
