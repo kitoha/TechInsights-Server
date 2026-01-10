@@ -28,6 +28,7 @@ dependencies {
     implementation(libs.micrometer.registry.prometheus)
     implementation(libs.kotlin.reflect)
     implementation(libs.jackson.module.kotlin)
+    implementation(libs.bundles.kotlinx.coroutines)
 
     testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.bundles.kotest)

@@ -19,25 +19,39 @@ class PostEmbeddingWriter(
     private val log = LoggerFactory.getLogger(PostEmbeddingWriter::class.java)
 
     override fun write(chunk: Chunk<out PostEmbeddingDto>) {
-        val items = chunk.items
-        if (items.isNotEmpty()) {
-            val filteredItems = items.filterNotNull()
-            val embeddings = filteredItems.map { dto ->
-                PostEmbedding(
-                    postId = Tsid.decode(dto.postId),
-                    companyName = dto.companyName,
-                    categories = dto.categories,
-                    content = dto.content,
-                    embeddingVector = dto.embeddingVector
-                )
-            }
-            postEmbeddingJpaRepository.saveAll(embeddings)
+        val validItems = chunk.items.filterNotNull()
+        if (validItems.isEmpty()) {
+            return
+        }
 
-            val postIds = filteredItems.map { it.postId }
-            val posts = postRepository.findAllByIdIn(postIds)
-            posts.forEach { it.isEmbedding = true }
-            postRepository.saveAll(posts)
-            log.info("Successfully saved embeddings posts")
+        saveEmbeddings(validItems)
+
+        updatePostEmbeddingStatus(validItems)
+
+        log.info("Successfully saved ${validItems.size} embeddings and updated post statuses")
+    }
+
+    private fun saveEmbeddings(items: List<PostEmbeddingDto>) {
+        val embeddings = items.map { dto ->
+            PostEmbedding(
+                postId = Tsid.decode(dto.postId),
+                companyName = dto.companyName,
+                categories = dto.categories,
+                content = dto.content,
+                embeddingVector = dto.embeddingVector
+            )
+        }
+        postEmbeddingJpaRepository.saveAll(embeddings)
+    }
+
+    private fun updatePostEmbeddingStatus(items: List<PostEmbeddingDto>) {
+        val postIds = items.map { it.postId }
+        val updatedCount = postRepository.updateEmbeddingStatusBulk(postIds)
+
+        if (updatedCount != postIds.size.toLong()) {
+            log.warn(
+                "Embedding status update mismatch: expected ${postIds.size}, but updated $updatedCount posts"
+            )
         }
     }
 }

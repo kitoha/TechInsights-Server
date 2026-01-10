@@ -1,0 +1,54 @@
+spring:
+  config:
+    import:
+      - optional:aws-parameterstore:/config/techinsights/dev/
+  cloud:
+    aws:
+      parameterstore:
+        enabled: false
+      region:
+        static: ap-northeast-2
+  batch:
+    job:
+      enabled: true
+    jdbc:
+      initialize-schema: always
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+  datasource:
+    driver-class-name: org.postgresql.Driver
+
+db:
+  url: ${DB_URL:jdbc:postgresql://localhost:5434/techinsights_perf_test}
+  username: ${DB_USERNAME:perf_test_user}
+  password: ${DB_PASSWORD:local_password}
+
+gemini:
+  api-key: ${GEMINI_API_KEY:dummy-key-for-perf-test}
+  max-output-tokens: 8192
+
+rate-limiter:
+  gemini:
+    limit-for-period: 8
+    refresh-period-seconds: 60
+    timeout-seconds: 30
+  crawler:
+    conservative:
+      limit-for-period: 15
+      refresh-period-seconds: 60
+      timeout-seconds: 300
+    default:
+      limit-for-period: 20
+      refresh-period-seconds: 60
+      timeout-seconds: 300
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    com.techinsights.batch: INFO
+    com.techinsights.batch.mock: DEBUG

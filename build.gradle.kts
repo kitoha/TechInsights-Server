@@ -59,16 +59,25 @@ sonarqube {
 		property("sonar.projectKey", "kitoha_TechInsights-Server")
 		property("sonar.organization", "kitoha")
 		property("sonar.host.url", "https://sonarcloud.io")
+		
+		// Coverage report paths
 		property(
 			"sonar.coverage.jacoco.xmlReportPaths",
 			"**/build/reports/jacoco/test/jacocoTestReport.xml"
 		)
 
+		// Coverage exclusions
 		property(
 			"sonar.coverage.exclusions",
 			"**/config/**," +
 					"**/dto/**," +
-					"**/entity/**,"
+					"**/entity/**," +
+					"**/*Application*.kt"
+		)
+
+		property(
+			"sonar.exclusions",
+			"**/*Application*.kt"
 		)
 	}
 }
