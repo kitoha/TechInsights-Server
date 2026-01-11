@@ -29,6 +29,8 @@ dependencies {
     implementation(libs.kotlin.reflect)
     implementation(libs.jackson.module.kotlin)
     implementation(libs.bundles.kotlinx.coroutines)
+    implementation(libs.logstash.logback.encoder)
+    implementation(libs.kotlin.logging)
 
     testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.bundles.kotest)

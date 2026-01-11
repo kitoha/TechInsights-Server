@@ -17,6 +17,7 @@ mockk = "1.13.8"
 sonarqube = "7.0.0.6105"
 kotlinxCoroutines = "1.8.0"
 jsoup = "1.17.2"
+logstashLogbackEncoder = "8.0"
 
 [libraries]
 # Spring Boot
@@ -51,6 +52,7 @@ hypersistence-tsid = { module = "io.hypersistence:hypersistence-tsid", version.r
 javax-annotation-api = { module = "javax.annotation:javax.annotation-api", version.ref = "javaxAnnotation" }
 kotlin-logging = { module = "io.github.microutils:kotlin-logging", version.ref = "kotlinLogging" }
 jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin" }
+logstash-logback-encoder = { module = "net.logstash.logback:logstash-logback-encoder", version.ref = "logstashLogbackEncoder" }
 
 # Resilience
 resilience4j-kotlin = { module = "io.github.resilience4j:resilience4j-kotlin", version.ref = "resilience4j" }
