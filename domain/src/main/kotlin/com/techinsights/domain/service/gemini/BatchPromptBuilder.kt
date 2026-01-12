@@ -2,84 +2,67 @@ package com.techinsights.domain.service.gemini
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.techinsights.domain.dto.gemini.ArticleInput
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.core.io.Resource
 import org.springframework.stereotype.Component
 
 @Component
-class BatchPromptBuilder {
+class BatchPromptBuilder(
+    @Value("classpath:prompts/batch-article-summary.md")
+    private val summaryTplResource: Resource,
+    @Value("classpath:prompts/batch-article-schema.json")
+    private val schemaTplResource: Resource,
+    @Value("classpath:prompts/batch-article-item.txt")
+    private val articleItemTplResource: Resource
+) {
 
     private val mapper = jacksonObjectMapper()
 
-    fun buildPrompt(articles: List<ArticleInput>, categories: List<String>): String {
-        return """
-당신은 기술 블로그 글을 요약하는 전문가입니다.
-다음 ${articles.size}개의 글을 각각 요약해주세요.
-
-**중요: 각 결과에는 반드시 원본 글의 ID를 포함해야 합니다.**
-
-${articles.mapIndexed { index, article ->
-    """
-=== 글 ${index + 1} ===
-ID: ${article.id}
-제목: ${article.title}
-내용:
-${article.content}
-"""
-}.joinToString("\n\n")}
-
-**응답 형식:**
-다음 JSON 형식으로 응답해주세요. 각 결과는 반드시 ID를 포함해야 합니다.
-
-{
-  "results": [
-    {
-      "id": "원본 글의 ID",
-      "success": true,
-      "summary": "3-5문장으로 핵심 내용 요약",
-      "categories": ["카테고리1", "카테고리2"],
-      "preview": "본문의 첫 100자 정도를 발췌"
+    private val summaryTemplate: String by lazy { 
+        summaryTplResource.inputStream.bufferedReader().readText() 
     }
-  ]
-}
+    private val schemaTemplate: String by lazy { 
+        schemaTplResource.inputStream.bufferedReader().readText() 
+    }
+    private val articleItemTemplate: String by lazy { 
+        articleItemTplResource.inputStream.bufferedReader().readText() 
+    }
 
-**규칙:**
-1. 각 글마다 별도의 결과 객체 생성
-2. ID는 원본 글의 ID를 정확히 복사
-3. 요약이 불가능한 경우 success: false로 표시하고 error 필드에 이유 설명
-4. 카테고리는 다음 중에서만 선택: ${categories.joinToString(", ")}
-5. summary는 핵심 내용을 명확하게 3-5문장으로 요약
-6. preview는 원문의 첫 100자 정도를 그대로 발췌
-""".trimIndent()
+    fun buildPrompt(articles: List<ArticleInput>, categories: List<String>): String {
+        val articlesText = articles.mapIndexed { index, article ->
+            formatArticleItem(article, index + 1)
+        }.joinToString(ARTICLE_SEPARATOR)
+
+        return summaryTemplate
+            .replace(PLACEHOLDER_ARTICLE_COUNT, articles.size.toString())
+            .replace(PLACEHOLDER_CATEGORIES, categories.joinToString(CATEGORY_SEPARATOR))
+            .replace(PLACEHOLDER_ARTICLES, articlesText)
     }
 
     fun buildSchema(categories: List<String>): String {
-        return """
-{
-  "type": "object",
-  "properties": {
-    "results": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "id": {"type": "string"},
-          "success": {"type": "boolean"},
-          "summary": {"type": "string"},
-          "categories": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": ${mapper.writeValueAsString(categories)}
-            }
-          },
-          "preview": {"type": "string"},
-          "error": {"type": "string"}
-        },
-        "required": ["id", "success"]
-      }
+        return schemaTemplate
+            .replace(PLACEHOLDER_ENUM_VALUES, mapper.writeValueAsString(categories))
     }
-  },
-  "required": ["results"]
-}
-""".trimIndent()
+
+    private fun formatArticleItem(article: ArticleInput, index: Int): String {
+        return articleItemTemplate
+            .replace(PLACEHOLDER_INDEX, index.toString())
+            .replace(PLACEHOLDER_ID, article.id)
+            .replace(PLACEHOLDER_TITLE, article.title)
+            .replace(PLACEHOLDER_CONTENT, article.content)
+    }
+
+    companion object {
+        private const val PLACEHOLDER_ARTICLE_COUNT = "{{article_count}}"
+        private const val PLACEHOLDER_CATEGORIES = "{{categories}}"
+        private const val PLACEHOLDER_ARTICLES = "{{articles}}"
+        private const val PLACEHOLDER_ENUM_VALUES = "{{enumValues}}"
+        private const val PLACEHOLDER_INDEX = "{{index}}"
+        private const val PLACEHOLDER_ID = "{{id}}"
+        private const val PLACEHOLDER_TITLE = "{{title}}"
+        private const val PLACEHOLDER_CONTENT = "{{content}}"
+
+        private const val ARTICLE_SEPARATOR = "\n\n"
+        private const val CATEGORY_SEPARATOR = ", "
     }
 }

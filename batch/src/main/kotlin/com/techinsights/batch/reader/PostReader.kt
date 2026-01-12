@@ -72,10 +72,10 @@ class PostReader(
   }
 
   override fun open(executionContext: ExecutionContext) {
-    val savedPublishedAt = executionContext.getString(PUBLISHED_AT_KEY)
-    val savedId = executionContext.getLong(ID_KEY, -1L)
-
-    if (savedPublishedAt != null && savedId != -1L) {
+    if (executionContext.containsKey(PUBLISHED_AT_KEY) && executionContext.containsKey(ID_KEY)) {
+      val savedPublishedAt = executionContext.getString(PUBLISHED_AT_KEY)
+      val savedId = executionContext.getLong(ID_KEY)
+      
       lastPublishedAt = LocalDateTime.parse(savedPublishedAt)
       lastId = savedId
     }
@@ -94,7 +94,6 @@ class PostReader(
   }
 
   override fun close() {
-    // no resources to close
   }
 
   companion object {

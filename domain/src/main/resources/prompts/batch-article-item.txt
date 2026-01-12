@@ -1,0 +1,5 @@
+=== 글 {{index}} ===
+ID: {{id}}
+제목: {{title}}
+내용:
+{{content}}

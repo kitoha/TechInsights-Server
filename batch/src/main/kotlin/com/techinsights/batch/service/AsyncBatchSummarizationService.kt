@@ -27,7 +27,7 @@ class AsyncBatchSummarizationService(
     private val log = LoggerFactory.getLogger(javaClass)
     private val circuitBreaker = circuitBreakerRegistry.circuitBreaker("geminiBatch")
 
-    private val concurrencyLimit = Semaphore(5)
+    private val concurrencyLimit = Semaphore(2)
 
     suspend fun processBatchesAsync(batches: List<BatchRequest>): List<BatchResult> = coroutineScope {
         log.info("Processing ${batches.size} batches with total ${batches.sumOf { it.posts.size }} posts")
@@ -82,7 +82,12 @@ class AsyncBatchSummarizationService(
             val retryable = errorType in setOf(ErrorType.TIMEOUT, ErrorType.RATE_LIMIT)
 
             if (retryable && retryCount < 2) {
-                delay(5000L * (retryCount + 1))
+                val backoffDelay = when (errorType) {
+                    ErrorType.RATE_LIMIT -> 10000L * (retryCount + 1) // 503 에러: 10초, 20초 대기
+                    else -> 5000L * (retryCount + 1) // 기타: 5초, 10초 대기
+                }
+                log.warn("Retrying batch ${request.id} after ${backoffDelay}ms (attempt ${retryCount + 1}/2)")
+                delay(backoffDelay)
                 return processSingleBatchWithRetry(request, retryCount + 1)
             }
 
@@ -217,6 +222,9 @@ class AsyncBatchSummarizationService(
     private fun classifyError(e: Exception): ErrorType {
         return when {
             e.message?.contains("rate limit", ignoreCase = true) == true -> ErrorType.RATE_LIMIT
+            e.message?.contains("overloaded", ignoreCase = true) == true -> ErrorType.RATE_LIMIT
+            e.message?.contains("503", ignoreCase = true) == true -> ErrorType.RATE_LIMIT
+            e.message?.contains("429", ignoreCase = true) == true -> ErrorType.RATE_LIMIT
             e.message?.contains("timeout", ignoreCase = true) == true -> ErrorType.TIMEOUT
             e is TimeoutCancellationException -> ErrorType.TIMEOUT
             else -> ErrorType.API_ERROR
