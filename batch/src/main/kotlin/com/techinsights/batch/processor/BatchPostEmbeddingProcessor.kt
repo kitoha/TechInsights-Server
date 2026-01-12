@@ -19,7 +19,6 @@ class BatchPostEmbeddingProcessor(
     override fun process(items: List<PostDto>): List<PostEmbeddingDto>? {
         if (items.isEmpty()) return null
 
-        // Filter valid posts that can be embedded
         val validPosts = items.filter { isValidForEmbedding(it) }
 
         if (validPosts.isEmpty()) {
@@ -30,7 +29,6 @@ class BatchPostEmbeddingProcessor(
         log.info("Processing batch of ${validPosts.size} posts for embedding (filtered from ${items.size})")
 
         try {
-            // Prepare embedding requests
             val requests = validPosts.map { post ->
                 EmbeddingRequest(
                     content = post.preview!!,
@@ -39,13 +37,11 @@ class BatchPostEmbeddingProcessor(
                 )
             }
 
-            // Call batch embedding API
             val results = embeddingService.generateEmbeddingBatch(
                 requests,
                 GeminiModelType.GEMINI_EMBEDDING
             )
 
-            // Map results to PostEmbeddingDto
             val embeddingDtos = mutableListOf<PostEmbeddingDto>()
             val failures = mutableListOf<String>()
 

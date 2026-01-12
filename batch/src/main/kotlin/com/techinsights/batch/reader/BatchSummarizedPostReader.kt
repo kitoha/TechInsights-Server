@@ -12,6 +12,15 @@ import org.springframework.stereotype.Component
 import java.time.LocalDateTime
 import kotlin.math.min
 
+/**
+ * Reader that reads summarized posts in batches for efficient embedding processing.
+ *
+ * This reader returns a List<PostDto> instead of a single PostDto, allowing the
+ * processor to generate embeddings for multiple posts in a single API call.
+ *
+ * Batch size is configurable via job parameters, with a default of 50 to stay
+ * well under the Gemini API limit of 100 requests per minute.
+ */
 @Component
 @StepScope
 class BatchSummarizedPostReader(

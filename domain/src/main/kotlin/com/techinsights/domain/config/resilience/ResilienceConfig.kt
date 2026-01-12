@@ -22,11 +22,13 @@ class ResilienceConfig(
     val registry = RateLimiterRegistry.of(geminiConfig)
 
     val geminiBatchConfig = createRateLimiterConfig(rateLimiterProperties.geminiBatch)
+    val geminiEmbeddingConfig = createRateLimiterConfig(rateLimiterProperties.geminiEmbedding)
     val conservativeConfig = createRateLimiterConfig(rateLimiterProperties.crawler.conservative)
     val defaultConfig = createRateLimiterConfig(rateLimiterProperties.crawler.default)
 
     registry.rateLimiter("geminiArticleSummarizer", geminiConfig)
     registry.rateLimiter("geminiBatchSummarizer", geminiBatchConfig)
+    registry.rateLimiter("geminiEmbedding", geminiEmbeddingConfig)
     registry.rateLimiter("woowahan", conservativeConfig)
     registry.rateLimiter("gccompany", conservativeConfig)
     registry.rateLimiter("defaultCrawler", defaultConfig)
