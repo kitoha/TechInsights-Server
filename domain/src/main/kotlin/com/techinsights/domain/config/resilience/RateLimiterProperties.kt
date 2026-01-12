@@ -9,6 +9,11 @@ data class RateLimiterProperties(
     refreshPeriodSeconds = 60,
     timeoutSeconds = 30
   ),
+  val geminiBatch: LimiterConfig = LimiterConfig(
+    limitForPeriod = 20,
+    refreshPeriodSeconds = 86400,
+    timeoutSeconds = 60
+  ),
   val crawler: CrawlerLimiterConfig = CrawlerLimiterConfig()
 ) {
 

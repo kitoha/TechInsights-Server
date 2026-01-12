@@ -57,6 +57,7 @@ logstash-logback-encoder = { module = "net.logstash.logback:logstash-logback-enc
 # Resilience
 resilience4j-kotlin = { module = "io.github.resilience4j:resilience4j-kotlin", version.ref = "resilience4j" }
 resilience4j-ratelimiter = { module = "io.github.resilience4j:resilience4j-ratelimiter", version.ref = "resilience4j" }
+resilience4j-circuitbreaker = { module = "io.github.resilience4j:resilience4j-circuitbreaker", version.ref = "resilience4j" }
 
 # AI
 google-genai = { module = "com.google.genai:google-genai", version.ref = "googleGenai" }
