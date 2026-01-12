@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import kotlin.coroutines.CoroutineContext
 
 @Service
 class GeminiBatchArticleSummarizer(
@@ -24,7 +25,8 @@ class GeminiBatchArticleSummarizer(
     private val promptBuilder: BatchPromptBuilder,
     private val validator: BatchSummaryValidator,
     rateLimiterRegistry: RateLimiterRegistry,
-    circuitBreakerRegistry: CircuitBreakerRegistry
+    circuitBreakerRegistry: CircuitBreakerRegistry,
+    private val ioDispatcher: CoroutineContext = Dispatchers.IO
 ) : BatchArticleSummarizer {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -59,7 +61,7 @@ class GeminiBatchArticleSummarizer(
         try {
             acquireRateLimiterPermission(rateLimiter)
 
-            val response = withContext(Dispatchers.IO) {
+            val response = withContext(ioDispatcher) {
                 circuitBreaker.executeCallable {
                     geminiClient.models.generateContent(modelName, prompt, config)
                 }
@@ -119,7 +121,7 @@ class GeminiBatchArticleSummarizer(
     }
 
     private suspend fun acquireRateLimiterPermission(rateLimiter: RateLimiter) {
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             rateLimiter.acquirePermission()
         }
     }

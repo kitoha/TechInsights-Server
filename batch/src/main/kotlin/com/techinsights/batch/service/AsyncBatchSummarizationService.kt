@@ -13,13 +13,15 @@ import kotlinx.coroutines.*
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.util.concurrent.Semaphore
+import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
 
 @Service
 class AsyncBatchSummarizationService(
     private val batchSummarizer: BatchArticleSummarizer,
     private val validator: BatchSummaryValidator,
-    circuitBreakerRegistry: CircuitBreakerRegistry
+    circuitBreakerRegistry: CircuitBreakerRegistry,
+    private val ioDispatcher: CoroutineContext = Dispatchers.IO
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -33,7 +35,7 @@ class AsyncBatchSummarizationService(
         val sortedBatches = batches.sortedByDescending { it.priority }
 
         sortedBatches.map { batch ->
-            async(Dispatchers.IO) {
+            async(ioDispatcher) {
                 processSingleBatchWithRetry(batch)
             }
         }.awaitAll()

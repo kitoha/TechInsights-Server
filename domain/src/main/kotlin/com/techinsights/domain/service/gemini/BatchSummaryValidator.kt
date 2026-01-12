@@ -28,12 +28,16 @@ class BatchSummaryValidator {
             return ValidationResult(false, errors)
         }
 
-        if (result.summary.isNullOrBlank()) {
-            errors.add("Summary is blank")
-        } else if (result.summary.length < 50) {
-            errors.add("Summary too short: ${result.summary.length} chars")
-        } else if (result.summary.length > 5000) {
-            errors.add("Summary too long: ${result.summary.length} chars")
+        when {
+            result.summary.isNullOrBlank() -> {
+                errors.add("Summary is blank")
+            }
+            result.summary.length < 50 -> {
+                errors.add("Summary too short: ${result.summary.length} chars")
+            }
+            result.summary.length > 5000 -> {
+                errors.add("Summary too long: ${result.summary.length} chars")
+            }
         }
 
         if (result.categories.isNullOrEmpty()) {

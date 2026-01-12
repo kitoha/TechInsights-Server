@@ -41,14 +41,11 @@ class DynamicBatchBuilder(
                 continue
             }
 
-            if (currentTokens + postTotalTokens > maxTokensPerRequest ||
-                currentBatch.size >= maxBatchSize) {
-
-                if (currentBatch.isNotEmpty()) {
-                    batches.add(Batch(currentBatch.toList(), currentTokens))
-                    currentBatch.clear()
-                    currentTokens = 500
-                }
+            if ((currentTokens + postTotalTokens > maxTokensPerRequest ||
+                currentBatch.size >= maxBatchSize) && currentBatch.isNotEmpty()) {
+                batches.add(Batch(currentBatch.toList(), currentTokens))
+                currentBatch.clear()
+                currentTokens = 500
             }
 
             currentBatch.add(post)
