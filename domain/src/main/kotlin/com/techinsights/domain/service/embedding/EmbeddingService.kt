@@ -5,4 +5,13 @@ import com.techinsights.domain.enums.GeminiModelType
 
 interface EmbeddingService {
     fun generateEmbedding(request: EmbeddingRequest, modelType: GeminiModelType): List<Float>
+
+    fun generateEmbeddingBatch(requests: List<EmbeddingRequest>, modelType: GeminiModelType): List<EmbeddingResult>
+    
+    data class EmbeddingResult(
+        val request: EmbeddingRequest,
+        val vector: List<Float>,
+        val success: Boolean = true,
+        val error: String? = null
+    )
 }

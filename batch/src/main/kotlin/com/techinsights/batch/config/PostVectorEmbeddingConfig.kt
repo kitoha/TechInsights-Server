@@ -1,8 +1,8 @@
 package com.techinsights.batch.config
 
-import com.techinsights.batch.processor.PostEmbeddingProcessor
-import com.techinsights.batch.reader.SummarizedPostReader
-import com.techinsights.batch.writer.PostEmbeddingWriter
+import com.techinsights.batch.processor.BatchPostEmbeddingProcessor
+import com.techinsights.batch.reader.BatchSummarizedPostReader
+import com.techinsights.batch.writer.BatchPostEmbeddingWriter
 import com.techinsights.domain.dto.embedding.PostEmbeddingDto
 import com.techinsights.domain.dto.post.PostDto
 import org.springframework.batch.core.Job
@@ -19,9 +19,9 @@ import org.springframework.transaction.PlatformTransactionManager
 class PostVectorEmbeddingConfig(
     private val jobRepository: JobRepository,
     private val transactionManager: PlatformTransactionManager,
-    private val summarizedPostReader: SummarizedPostReader,
-    private val postEmbeddingProcessor: PostEmbeddingProcessor,
-    private val postEmbeddingWriter: PostEmbeddingWriter
+    private val batchSummarizedPostReader: BatchSummarizedPostReader,
+    private val batchPostEmbeddingProcessor: BatchPostEmbeddingProcessor,
+    private val batchPostEmbeddingWriter: BatchPostEmbeddingWriter
 ) {
 
     @Bean
@@ -34,16 +34,16 @@ class PostVectorEmbeddingConfig(
     @Bean("postVector")
     fun postVectorEmbeddingStep(): Step =
         StepBuilder("postVectorEmbeddingStep", jobRepository)
-            .chunk<PostDto, PostEmbeddingDto>(1, transactionManager)
-            .reader(summarizedPostReader)
-            .processor(postEmbeddingProcessor)
-            .writer(postEmbeddingWriter)
+            .chunk<List<PostDto>, List<PostEmbeddingDto>>(CHUNK_SIZE, transactionManager)
+            .reader(batchSummarizedPostReader)
+            .processor(batchPostEmbeddingProcessor)
+            .writer(batchPostEmbeddingWriter)
             .faultTolerant()
             .retryLimit(3).retry(Exception::class.java)
             .skipLimit(10).skip(Exception::class.java)
             .build()
 
     companion object {
-        private const val CHUNK_SIZE = 100
+        private const val CHUNK_SIZE = 1
     }
 }

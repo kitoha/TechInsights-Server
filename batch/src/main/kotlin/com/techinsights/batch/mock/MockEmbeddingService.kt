@@ -35,4 +35,33 @@ class MockEmbeddingService : EmbeddingService {
 
         return embedding
     }
+
+    override fun generateEmbeddingBatch(
+        requests: List<EmbeddingRequest>,
+        modelType: GeminiModelType
+    ): List<EmbeddingService.EmbeddingResult> {
+        val startTime = System.currentTimeMillis()
+
+        val batchResponseTime = API_RESPONSE_TIME_MS + (requests.size * 10)
+        Thread.sleep(batchResponseTime)
+
+        val results = requests.map { request ->
+            val embedding = List(EMBEDDING_DIMENSION) { index ->
+                (index.toFloat() / EMBEDDING_DIMENSION)
+            }
+            EmbeddingService.EmbeddingResult(
+                request = request,
+                vector = embedding,
+                success = true
+            )
+        }
+
+        val elapsedTime = System.currentTimeMillis() - startTime
+        log.debug(
+            "Mock batch embedding generated for {} items in {}ms (avg: {}ms per item, dimension: {})",
+            requests.size, elapsedTime, elapsedTime / requests.size, EMBEDDING_DIMENSION
+        )
+
+        return results
+    }
 }
