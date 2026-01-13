@@ -176,35 +176,35 @@ class PostRepositoryImplTest : FunSpec({
     every { queryFactory.selectFrom(QPost.post) } returns query
     every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
     every { query.fetchJoin() } returns query
-    every { query.where(any<BooleanExpression>()) } returns query
-    every { query.orderBy(any()) } returns query
-    every { query.offset(0L) } returns query
+    every { query.where(any<BooleanExpression>(), isNull()) } returns query
+    every { query.orderBy(any(), any()) } returns query
     every { query.limit(10L) } returns query
     every { query.fetch() } returns listOf(post2)
 
-    val result = repository.findOldestNotSummarized(limit = 10, offset = 0)
+    val result = repository.findOldestNotSummarized(limit = 10, lastPublishedAt = null, lastId = null)
 
     result shouldHaveSize 1
     result[0].isSummary shouldBe false
-    verify(exactly = 1) { query.orderBy(any()) }
+    verify(exactly = 1) { query.orderBy(any(), any()) }
   }
 
-  test("should apply offset and limit correctly") {
+  test("should apply cursor and limit correctly") {
     val query = mockk<JPAQuery<Post>>()
+    val cursorDate = LocalDateTime.of(2024, 1, 1, 12, 0)
+    val cursorId = 100L
 
     every { queryFactory.selectFrom(QPost.post) } returns query
     every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
     every { query.fetchJoin() } returns query
-    every { query.where(any<BooleanExpression>()) } returns query
-    every { query.orderBy(any()) } returns query
-    every { query.offset(20L) } returns query
+    every { query.where(any<BooleanExpression>(), any<BooleanExpression>()) } returns query
+    every { query.orderBy(any(), any()) } returns query
     every { query.limit(5L) } returns query
     every { query.fetch() } returns emptyList()
 
-    repository.findOldestNotSummarized(limit = 5, offset = 20)
+    repository.findOldestNotSummarized(limit = 5, lastPublishedAt = cursorDate, lastId = cursorId)
 
-    verify(exactly = 1) { query.offset(20L) }
     verify(exactly = 1) { query.limit(5L) }
+    verify(exactly = 0) { query.offset(any()) }
   }
 
   test("should return posts that are summarized but not embedded") {
@@ -226,13 +226,12 @@ class PostRepositoryImplTest : FunSpec({
     every { queryFactory.selectFrom(QPost.post) } returns query
     every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
     every { query.fetchJoin() } returns query
-    every { query.where(any<BooleanExpression>()) } returns query
-    every { query.orderBy(any()) } returns query
-    every { query.offset(0L) } returns query
+    every { query.where(any<BooleanExpression>(), isNull()) } returns query
+    every { query.orderBy(any(), any()) } returns query
     every { query.limit(10L) } returns query
     every { query.fetch() } returns listOf(postNotEmbedded)
 
-    val result = repository.findOldestSummarizedAndNotEmbedded(limit = 10, offset = 0)
+    val result = repository.findOldestSummarizedAndNotEmbedded(limit = 10, lastPublishedAt = null, lastId = null)
 
     result shouldHaveSize 1
     result[0].isSummary shouldBe true
@@ -245,13 +244,12 @@ class PostRepositoryImplTest : FunSpec({
     every { queryFactory.selectFrom(QPost.post) } returns query
     every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
     every { query.fetchJoin() } returns query
-    every { query.where(any<BooleanExpression>()) } returns query
-    every { query.orderBy(any()) } returns query
-    every { query.offset(0L) } returns query
+    every { query.where(any<BooleanExpression>(), isNull()) } returns query
+    every { query.orderBy(any(), any()) } returns query
     every { query.limit(10L) } returns query
     every { query.fetch() } returns listOf(post1)
 
-    val result = repository.findOldestSummarized(limit = 10, offset = 0)
+    val result = repository.findOldestSummarized(limit = 10, lastPublishedAt = null, lastId = null)
 
     result shouldHaveSize 1
     result[0].isSummary shouldBe true

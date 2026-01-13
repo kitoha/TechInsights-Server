@@ -1,0 +1,9 @@
+package com.techinsights.domain.enums
+
+enum class ErrorType {
+    API_ERROR,
+    TIMEOUT,
+    RATE_LIMIT,
+    VALIDATION_ERROR,
+    UNKNOWN
+}

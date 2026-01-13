@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "properties": {
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "success": {"type": "boolean"},
+          "summary": {
+            "type": "string",
+            "description": "마크다운을 사용하여 상세하고 구조적으로 작성된 전체 요약본입니다."
+          },
+          "preview": {
+            "type": "string",
+            "description": "게시글의 핵심 내용을 1~2 문장의 순수 텍스트로 요약한 미리보기용 내용입니다."
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": {{enumValues}}
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "error": {"type": "string"}
+        },
+        "required": ["id", "success"]
+      }
+    }
+  },
+  "required": ["results"]
+}

@@ -2,11 +2,11 @@ package com.techinsights.batch.config
 
 import com.techinsights.batch.listener.LoggingJobExecutionListener
 import com.techinsights.batch.listener.LoggingSkipListener
-import com.techinsights.batch.processor.PostEmbeddingProcessor
 import com.techinsights.batch.processor.PostSummaryProcessor
+import com.techinsights.batch.processor.BatchPostEmbeddingProcessor
 import com.techinsights.batch.reader.PostReader
-import com.techinsights.batch.reader.SummarizedPostReader
-import com.techinsights.batch.writer.PostEmbeddingWriter
+import com.techinsights.batch.reader.BatchSummarizedPostReader
+import com.techinsights.batch.writer.BatchPostEmbeddingWriter
 import com.techinsights.batch.writer.PostWriter
 import com.techinsights.domain.dto.embedding.PostEmbeddingDto
 import com.techinsights.domain.dto.post.PostDto
@@ -27,12 +27,12 @@ class SummaryAndEmbeddingJobConfig(
   private val transactionManager: PlatformTransactionManager,
   private val postSummaryProcessor: PostSummaryProcessor,
   private val postWriter: PostWriter,
-  private val postEmbeddingProcessor: PostEmbeddingProcessor,
-  private val postEmbeddingWriter: PostEmbeddingWriter,
+  private val batchPostEmbeddingProcessor: BatchPostEmbeddingProcessor,
+  private val batchPostEmbeddingWriter: BatchPostEmbeddingWriter,
   private val loggingJobExecutionListener: LoggingJobExecutionListener,
   private val loggingSkipListener: LoggingSkipListener,
   private val summarizePostReader: PostReader,
-  private val embeddingPostReader: SummarizedPostReader,
+  private val batchSummarizedPostReader: BatchSummarizedPostReader,
 ) {
 
   @Bean
@@ -63,10 +63,10 @@ class SummaryAndEmbeddingJobConfig(
   @Bean
   fun postVectorEmbeddingStep(): Step =
     StepBuilder("postVectorEmbeddingStep", jobRepository)
-      .chunk<PostDto, PostEmbeddingDto?>(EMBEDDING_CHUNK_SIZE, transactionManager)
-      .reader(embeddingPostReader)
-      .processor(postEmbeddingProcessor)
-      .writer(postEmbeddingWriter)
+      .chunk<List<PostDto>, List<PostEmbeddingDto>>(EMBEDDING_CHUNK_SIZE, transactionManager)
+      .reader(batchSummarizedPostReader)
+      .processor(batchPostEmbeddingProcessor)
+      .writer(batchPostEmbeddingWriter)
       .faultTolerant()
       .skipLimit(10)
       .skip(Exception::class.java)
@@ -74,8 +74,7 @@ class SummaryAndEmbeddingJobConfig(
 
 
   companion object {
-
     private const val CHUNK_SIZE = 10
-    private const val EMBEDDING_CHUNK_SIZE = 10
+    private const val EMBEDDING_CHUNK_SIZE = 1
   }
 }

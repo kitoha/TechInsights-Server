@@ -75,15 +75,21 @@ class PostRepositoryImpl(
     return Tsid.encode(companyId)
   }
 
-  override fun findOldestNotSummarized(limit: Long, offset: Long): List<PostDto> {
+  override fun findOldestNotSummarized(
+    limit: Long,
+    lastPublishedAt: java.time.LocalDateTime?,
+    lastId: Long?
+  ): List<PostDto> {
     val post = QPost.post
     val company = QCompany.company
 
     return queryFactory.selectFrom(post)
       .leftJoin(post.company, company).fetchJoin()
-      .where(post.isSummary.isFalse)
-      .orderBy(post.publishedAt.asc())
-      .offset(offset)
+      .where(
+        post.isSummary.isFalse,
+        buildCursorCondition(post, lastPublishedAt, lastId)
+      )
+      .orderBy(post.publishedAt.asc(), post.id.asc())
       .limit(limit)
       .fetch()
       .map { PostDto.fromEntity(it) }
@@ -91,30 +97,39 @@ class PostRepositoryImpl(
 
   override fun findOldestSummarizedAndNotEmbedded(
     limit: Long,
-    offset: Long
+    lastPublishedAt: java.time.LocalDateTime?,
+    lastId: Long?
   ): List<PostDto> {
     val post = QPost.post
     val company = QCompany.company
 
     return queryFactory.selectFrom(post)
       .leftJoin(post.company, company).fetchJoin()
-      .where(post.isSummary.isTrue.and(post.isEmbedding.isFalse))
-      .orderBy(post.publishedAt.asc())
-      .offset(offset)
+      .where(
+        post.isSummary.isTrue.and(post.isEmbedding.isFalse),
+        buildCursorCondition(post, lastPublishedAt, lastId)
+      )
+      .orderBy(post.publishedAt.asc(), post.id.asc())
       .limit(limit)
       .fetch()
       .map { PostDto.fromEntity(it) }
   }
 
-  override fun findOldestSummarized(limit: Long, offset: Long): List<PostDto> {
+  override fun findOldestSummarized(
+    limit: Long,
+    lastPublishedAt: java.time.LocalDateTime?,
+    lastId: Long?
+  ): List<PostDto> {
     val post = QPost.post
     val company = QCompany.company
 
     return queryFactory.selectFrom(post)
       .leftJoin(post.company, company).fetchJoin()
-      .where(post.isSummary.isTrue)
-      .orderBy(post.publishedAt.asc())
-      .offset(offset)
+      .where(
+        post.isSummary.isTrue,
+        buildCursorCondition(post, lastPublishedAt, lastId)
+      )
+      .orderBy(post.publishedAt.asc(), post.id.asc())
       .limit(limit)
       .fetch()
       .map { PostDto.fromEntity(it) }
@@ -231,5 +246,23 @@ class PostRepositoryImpl(
       .set(post.isEmbedding, true)
       .where(post.id.`in`(decodedIds))
       .execute()
+  }
+
+  private fun buildCursorCondition(
+    post: QPost,
+    lastPublishedAt: java.time.LocalDateTime?,
+    lastId: Long?
+  ): com.querydsl.core.types.dsl.BooleanExpression? {
+    if (lastPublishedAt == null || lastId == null) {
+      return null
+    }
+
+    // WHERE (published_at > lastPublishedAt) 
+    //    OR (published_at = lastPublishedAt AND id > lastId)
+    return post.publishedAt.gt(lastPublishedAt)
+      .or(
+        post.publishedAt.eq(lastPublishedAt)
+          .and(post.id.gt(lastId))
+      )
   }
 }
