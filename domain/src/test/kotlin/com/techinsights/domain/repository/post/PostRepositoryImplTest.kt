@@ -176,9 +176,8 @@ class PostRepositoryImplTest : FunSpec({
     every { queryFactory.selectFrom(QPost.post) } returns query
     every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
     every { query.fetchJoin() } returns query
-    every { query.where(any<BooleanExpression>()) } returns query
-    every { query.orderBy(any()) } returns query
-    every { query.offset(0L) } returns query
+    every { query.where(any<BooleanExpression>(), isNull()) } returns query
+    every { query.orderBy(any(), any()) } returns query
     every { query.limit(10L) } returns query
     every { query.fetch() } returns listOf(post2)
 
@@ -186,7 +185,7 @@ class PostRepositoryImplTest : FunSpec({
 
     result shouldHaveSize 1
     result[0].isSummary shouldBe false
-    verify(exactly = 1) { query.orderBy(any()) }
+    verify(exactly = 1) { query.orderBy(any(), any()) }
   }
 
   test("should apply cursor and limit correctly") {
@@ -227,9 +226,8 @@ class PostRepositoryImplTest : FunSpec({
     every { queryFactory.selectFrom(QPost.post) } returns query
     every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
     every { query.fetchJoin() } returns query
-    every { query.where(any<BooleanExpression>()) } returns query
-    every { query.orderBy(any()) } returns query
-    every { query.offset(0L) } returns query
+    every { query.where(any<BooleanExpression>(), isNull()) } returns query
+    every { query.orderBy(any(), any()) } returns query
     every { query.limit(10L) } returns query
     every { query.fetch() } returns listOf(postNotEmbedded)
 
@@ -246,9 +244,8 @@ class PostRepositoryImplTest : FunSpec({
     every { queryFactory.selectFrom(QPost.post) } returns query
     every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
     every { query.fetchJoin() } returns query
-    every { query.where(any<BooleanExpression>()) } returns query
-    every { query.orderBy(any()) } returns query
-    every { query.offset(0L) } returns query
+    every { query.where(any<BooleanExpression>(), isNull()) } returns query
+    every { query.orderBy(any(), any()) } returns query
     every { query.limit(10L) } returns query
     every { query.fetch() } returns listOf(post1)
 
