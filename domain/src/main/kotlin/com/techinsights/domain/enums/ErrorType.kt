@@ -5,5 +5,6 @@ enum class ErrorType {
     TIMEOUT,
     RATE_LIMIT,
     VALIDATION_ERROR,
-    UNKNOWN
+    UNKNOWN,
+    CONTENT_ERROR
 }

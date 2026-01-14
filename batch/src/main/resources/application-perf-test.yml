@@ -29,7 +29,7 @@ db:
 
 gemini:
   api-key: ${GEMINI_API_KEY:dummy-key-for-perf-test}
-  max-output-tokens: 8192
+  max-output-tokens: 16384
 
 rate-limiter:
   gemini:

@@ -21,4 +21,5 @@ interface PostRepository {
   fun getAllPosts(pageable: Pageable, companyId: String?): Page<PostDto>
   fun getPostsByCategory(pageable: Pageable, category: Category, companyId: String?): Page<PostDto>
   fun updateEmbeddingStatusBulk(postIds: List<String>): Long
+  fun incrementSummaryFailureCount(postId: String)
 }

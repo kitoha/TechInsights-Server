@@ -20,6 +20,10 @@ class PostRepositoryImpl(
   private val queryFactory: JPAQueryFactory
 ) : PostRepository {
 
+  companion object {
+    private const val MAX_RETRY_COUNT = 5
+  }
+
   override fun saveAll(posts: List<PostDto>): List<PostDto> {
     val entities = posts.map { post -> post.toEntity() }
     return postJpaRepository.saveAll(entities).map { entity -> PostDto.fromEntity(entity) }
@@ -87,6 +91,7 @@ class PostRepositoryImpl(
       .leftJoin(post.company, company).fetchJoin()
       .where(
         post.isSummary.isFalse,
+        post.summaryFailureCount.lt(MAX_RETRY_COUNT),
         buildCursorCondition(post, lastPublishedAt, lastId)
       )
       .orderBy(post.publishedAt.asc(), post.id.asc())
@@ -245,6 +250,17 @@ class PostRepositoryImpl(
     return queryFactory.update(post)
       .set(post.isEmbedding, true)
       .where(post.id.`in`(decodedIds))
+      .execute()
+  }
+
+  @Transactional
+  override fun incrementSummaryFailureCount(postId: String) {
+    val post = QPost.post
+    val decodedId = Tsid.decode(postId)
+
+    queryFactory.update(post)
+      .set(post.summaryFailureCount, post.summaryFailureCount.add(1))
+      .where(post.id.eq(decodedId))
       .execute()
   }
 

@@ -38,23 +38,135 @@ class GeminiBatchArticleSummarizer(
         articles: List<ArticleInput>,
         modelType: GeminiModelType
     ): BatchSummaryResponse {
+        return summarizeBatchWithFallback(articles, modelType, depth = 0)
+    }
+
+    private suspend fun summarizeBatchWithFallback(
+        articles: List<ArticleInput>,
+        modelType: GeminiModelType,
+        depth: Int
+    ): BatchSummaryResponse {
         if (articles.isEmpty()) {
             return BatchSummaryResponse(emptyList())
         }
 
-        log.info("Summarizing batch of ${articles.size} articles")
+        if (articles.size == 1) {
+            return summarizeSingle(articles.first(), modelType)
+        }
+
+        if (depth > MAX_FALLBACK_DEPTH) {
+            log.warn("Max fallback depth reached, marking ${articles.size} articles as failed")
+            return responseParser.createFailureResponse(articles, "Max retry depth exceeded")
+        }
+
+        log.info("Summarizing batch of ${articles.size} articles (depth=$depth)")
 
         return try {
-            val responseText = callGeminiApi(articles, modelType)
-            val categories = Category.entries.map { it.name }.toSet()
-
-            val parsedResponse = responseParser.parse(responseText, articles)
-            responseProcessor.process(parsedResponse, articles, categories)
+            processBatchNormally(articles, modelType)
 
         } catch (e: Exception) {
-            log.error("Failed to process batch", e)
-            responseParser.createFailureResponse(articles, e.message ?: "Unknown error")
+            val errorType = classifyError(e)
+            log.error("Batch processing failed with $errorType: ${e.message}")
+
+            when {
+                shouldFallbackToSplit(errorType, articles.size, depth) -> {
+                    log.info("Applying binary search fallback for ${articles.size} articles")
+                    binarySearchFallback(articles, modelType, depth)
+                }
+                else -> {
+                    log.warn("Marking entire batch as failed (non-splittable error)")
+                    responseParser.createFailureResponse(articles, e.message ?: "Batch failed")
+                }
+            }
         }
+    }
+
+    private suspend fun processBatchNormally(
+        articles: List<ArticleInput>,
+        modelType: GeminiModelType
+    ): BatchSummaryResponse {
+        val responseText = callGeminiApi(articles, modelType)
+        val categories = Category.entries.map { it.name }.toSet()
+
+        val parsedResponse = responseParser.parse(responseText, articles)
+        return responseProcessor.process(parsedResponse, articles, categories)
+    }
+
+    private suspend fun summarizeSingle(
+        article: ArticleInput,
+        modelType: GeminiModelType
+    ): BatchSummaryResponse {
+        return try {
+            processBatchNormally(listOf(article), modelType)
+        } catch (e: Exception) {
+            log.error("Individual processing failed for article ${article.id}: ${e.message}")
+            responseParser.createFailureResponse(listOf(article), e.message ?: "Individual processing failed")
+        }
+    }
+
+    private suspend fun binarySearchFallback(
+        articles: List<ArticleInput>,
+        modelType: GeminiModelType,
+        depth: Int
+    ): BatchSummaryResponse {
+        val midpoint = articles.size / 2
+        val firstHalf = articles.take(midpoint)
+        val secondHalf = articles.drop(midpoint)
+
+        log.debug("Splitting batch: ${articles.size} -> $midpoint + ${articles.size - midpoint}")
+
+        val firstResults = summarizeBatchWithFallback(firstHalf, modelType, depth + 1)
+        val secondResults = summarizeBatchWithFallback(secondHalf, modelType, depth + 1)
+
+        return BatchSummaryResponse(firstResults.results + secondResults.results)
+    }
+
+    private fun classifyError(e: Exception): ErrorCategory {
+        val message = e.message?.lowercase() ?: ""
+
+        return when {
+            message.contains("503") ||
+            message.contains("overloaded") ||
+            message.contains("timeout") ||
+            message.contains("timed out") -> ErrorCategory.TRANSIENT_API
+
+            message.contains("json") ||
+            message.contains("parse") ||
+            message.contains("truncat") ||
+            message.contains("unexpected end") -> ErrorCategory.SIZE_RELATED
+
+            message.contains("circuit") ||
+            message.contains("breaker") -> ErrorCategory.CIRCUIT_OPEN
+
+            else -> ErrorCategory.UNKNOWN
+        }
+    }
+
+    private fun shouldFallbackToSplit(
+        errorType: ErrorCategory,
+        batchSize: Int,
+        depth: Int
+    ): Boolean {
+        return when (errorType) {
+            ErrorCategory.SIZE_RELATED -> batchSize > 1
+
+            ErrorCategory.TRANSIENT_API -> batchSize > 3 && depth < 2
+
+            ErrorCategory.CIRCUIT_OPEN -> false
+
+            ErrorCategory.UNKNOWN -> batchSize > 2 && depth == 0
+        }
+    }
+
+    private enum class ErrorCategory {
+        SIZE_RELATED,
+        TRANSIENT_API,
+        CIRCUIT_OPEN,
+        UNKNOWN
+    }
+
+    companion object {
+        private const val MAX_FALLBACK_DEPTH = 4
     }
 
     private suspend fun callGeminiApi(

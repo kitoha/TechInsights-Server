@@ -4,6 +4,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.techinsights.domain.dto.gemini.ArticleInput
 import com.techinsights.domain.dto.gemini.BatchSummaryResponse
 import com.techinsights.domain.dto.gemini.SummaryResultWithId
+import com.techinsights.domain.exception.JsonTruncationException
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 
@@ -39,6 +40,13 @@ class BatchResponseParser {
         val recoveredResults = extractCompleteJsonObjects(responseText, articles)
 
         log.info("Recovered ${recoveredResults.size} of ${articles.size} results")
+
+        // If recovery failed completely or recovered less than 50%, throw exception to trigger Binary Search
+        if (recoveredResults.isEmpty() || recoveredResults.size < articles.size * 0.5) {
+            val message = "JSON truncation: Recovered ${recoveredResults.size}/${articles.size} results (< 50%). Triggering Binary Search."
+            log.warn(message)
+            throw JsonTruncationException(message)
+        }
 
         val failedResults = createFailedResults(articles, recoveredResults)
 
