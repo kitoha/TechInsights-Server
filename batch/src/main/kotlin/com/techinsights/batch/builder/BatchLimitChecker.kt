@@ -9,8 +9,7 @@ class BatchLimitChecker(
     private val config: BatchBuildConfig,
     private val geminiProperties: GeminiProperties
 ) {
-
-    private val maxOutputTokensAllowed: Int by lazy {
+    val maxOutputTokensAllowed: Int by lazy {
         (geminiProperties.maxOutputTokens * config.outputSafetyMargin).toInt()
     }
 
@@ -34,6 +33,4 @@ class BatchLimitChecker(
     fun estimateOutputTokens(batchSize: Int): Int {
         return (batchSize * config.avgTokensPerSummary) + config.jsonOverheadTokens
     }
-
-    fun getMaxOutputTokensAllowed(): Int = maxOutputTokensAllowed
 }

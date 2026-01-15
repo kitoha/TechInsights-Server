@@ -176,7 +176,7 @@ class PostRepositoryImplTest : FunSpec({
     every { queryFactory.selectFrom(QPost.post) } returns query
     every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
     every { query.fetchJoin() } returns query
-    every { query.where(any<BooleanExpression>(), isNull()) } returns query
+    every { query.where(any<BooleanExpression>(), any<BooleanExpression>(), isNull()) } returns query
     every { query.orderBy(any(), any()) } returns query
     every { query.limit(10L) } returns query
     every { query.fetch() } returns listOf(post2)
@@ -196,7 +196,7 @@ class PostRepositoryImplTest : FunSpec({
     every { queryFactory.selectFrom(QPost.post) } returns query
     every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
     every { query.fetchJoin() } returns query
-    every { query.where(any<BooleanExpression>(), any<BooleanExpression>()) } returns query
+    every { query.where(any<BooleanExpression>(), any<BooleanExpression>(), any<BooleanExpression>()) } returns query
     every { query.orderBy(any(), any()) } returns query
     every { query.limit(5L) } returns query
     every { query.fetch() } returns emptyList()

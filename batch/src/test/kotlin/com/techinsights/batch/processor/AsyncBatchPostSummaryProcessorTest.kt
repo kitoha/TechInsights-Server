@@ -22,12 +22,17 @@ class AsyncBatchPostSummaryProcessorTest : FunSpec({
 
     lateinit var batchService: AsyncBatchSummarizationService
     lateinit var batchBuilder: DynamicBatchBuilder
+    lateinit var failurePostMapper: FailurePostMapper
     lateinit var processor: AsyncBatchPostSummaryProcessor
 
     beforeEach {
         batchService = mockk()
         batchBuilder = mockk()
-        processor = AsyncBatchPostSummaryProcessor(batchService, batchBuilder)
+        failurePostMapper = mockk()
+
+        every { failurePostMapper.mapFailuresToPosts(any(), any(), any()) } returns emptyList()
+        
+        processor = AsyncBatchPostSummaryProcessor(batchService, batchBuilder, failurePostMapper)
     }
 
     afterEach {
@@ -104,6 +109,7 @@ class AsyncBatchPostSummaryProcessorTest : FunSpec({
 
         every { batchBuilder.buildBatches(posts) } returns listOf(batch)
         coEvery { batchService.processBatchesAsync(any()) } returns listOf(batchResult)
+        every { failurePostMapper.mapFailuresToPosts(any(), any(), any()) } returns listOf(post2)
 
         // when
         val result = processor.process(posts)
@@ -168,6 +174,7 @@ class AsyncBatchPostSummaryProcessorTest : FunSpec({
 
         every { batchBuilder.buildBatches(posts) } returns listOf(batch)
         coEvery { batchService.processBatchesAsync(any()) } returns listOf(batchResult)
+        every { failurePostMapper.mapFailuresToPosts(any(), any(), any()) } returns listOf(posts[0])
 
         // when
         val result = processor.process(posts)

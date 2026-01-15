@@ -84,14 +84,14 @@ class BatchResponseParserTest : FunSpec({
       {
         "results": [
           {
-            "id": "1",
+            "id":"1",
             "success": true,
             "summary": "Summary 1",
             "categories": ["AI"],
             "preview": "Preview 1"
           },
           {
-            "id": "2",
+            "id":"2",
             "success": true,
             "summary": "Summary 2 truncated...
     """.trimIndent()
@@ -103,20 +103,20 @@ class BatchResponseParserTest : FunSpec({
     val response = parser.parse(responseText, articles)
 
     response.results shouldHaveSize 2
-    response.results.any { !it.success } shouldBe true
+    response.results.any { it.id == "1" && it.success } shouldBe true
+    response.results.any { it.id == "2" && !it.success } shouldBe true
   }
 
-  test("should create failure response for all articles when JSON is completely invalid") {
+  test("should throw JsonTruncationException when JSON is completely invalid") {
     val responseText = "This is not JSON at all"
     val articles = listOf(
       ArticleInput("1", "Title 1", "Content 1"),
       ArticleInput("2", "Title 2", "Content 2")
     )
 
-    val response = parser.parse(responseText, articles)
-
-    response.results shouldHaveSize 2
-    response.results.all { !it.success } shouldBe true
+    io.kotest.assertions.throwables.shouldThrow<com.techinsights.domain.exception.JsonTruncationException> {
+      parser.parse(responseText, articles)
+    }
   }
 
   test("should handle response with failed results") {

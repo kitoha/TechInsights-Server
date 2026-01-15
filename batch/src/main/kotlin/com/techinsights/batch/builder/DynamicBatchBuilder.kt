@@ -65,7 +65,7 @@ class DynamicBatchBuilder(
         if (exceedsOutput) {
             log.debug(
                 "Starting new batch: would exceed output limit " +
-                "(${limitChecker.estimateOutputTokens(currentSize + 1)} > ${limitChecker.getMaxOutputTokensAllowed()})"
+                "(${limitChecker.estimateOutputTokens(currentSize + 1)} > ${limitChecker.maxOutputTokensAllowed})"
             )
         }
 
@@ -103,7 +103,7 @@ class DynamicBatchBuilder(
 
     private fun logBatchSummary(batches: List<Batch>, totalPosts: Int) {
         val avgBatchSize = if (batches.isNotEmpty()) totalPosts / batches.size else 0
-        val maxOutput = limitChecker.getMaxOutputTokensAllowed()
+        val maxOutput = limitChecker.maxOutputTokensAllowed
 
         log.info(
             "Built ${batches.size} batches from $totalPosts posts. " +

@@ -13,13 +13,14 @@ class ErrorTypeTest : FunSpec({
     errorTypes shouldContain ErrorType.TIMEOUT
     errorTypes shouldContain ErrorType.RATE_LIMIT
     errorTypes shouldContain ErrorType.VALIDATION_ERROR
+    errorTypes shouldContain ErrorType.CONTENT_ERROR
     errorTypes shouldContain ErrorType.UNKNOWN
   }
 
-  test("should have exactly 5 error types") {
+  test("should have exactly 6 error types") {
     val errorTypes = ErrorType.values()
 
-    errorTypes.size shouldBe 5
+    errorTypes.size shouldBe 6
   }
 
   test("should convert from string correctly") {
@@ -27,6 +28,7 @@ class ErrorTypeTest : FunSpec({
     ErrorType.valueOf("TIMEOUT") shouldBe ErrorType.TIMEOUT
     ErrorType.valueOf("RATE_LIMIT") shouldBe ErrorType.RATE_LIMIT
     ErrorType.valueOf("VALIDATION_ERROR") shouldBe ErrorType.VALIDATION_ERROR
+    ErrorType.valueOf("CONTENT_ERROR") shouldBe ErrorType.CONTENT_ERROR
     ErrorType.valueOf("UNKNOWN") shouldBe ErrorType.UNKNOWN
   }
 
@@ -38,5 +40,6 @@ class ErrorTypeTest : FunSpec({
     errorTypes[2] shouldBe ErrorType.RATE_LIMIT
     errorTypes[3] shouldBe ErrorType.VALIDATION_ERROR
     errorTypes[4] shouldBe ErrorType.UNKNOWN
+    errorTypes[5] shouldBe ErrorType.CONTENT_ERROR
   }
 })
