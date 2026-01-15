@@ -10,7 +10,7 @@ class StreamingJsonParser {
         private const val OBJECT_START = '{'
         private const val OBJECT_END = '}'
         private const val QUOTE = '"'
-        private const val ESCAPE = '\\'
+        private const val ESCAPE = '\u005C'
     }
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -30,8 +30,14 @@ class StreamingJsonParser {
             val endIndex = findEndOfObject(startIndex)
             if (endIndex != -1) {
                 val jsonObject = buffer.substring(startIndex, endIndex + 1)
-                parseSummary(jsonObject)?.let { summaries.add(it) }
-                buffer = buffer.substring(endIndex + 1)
+                val summary = parseSummary(jsonObject)
+                
+                if (summary != null) {
+                    summaries.add(summary)
+                    buffer = buffer.substring(endIndex + 1)
+                } else {
+                    buffer = buffer.substring(startIndex + 1)
+                }
             } else {
                 break
             }
@@ -70,14 +76,12 @@ class StreamingJsonParser {
         return try {
             val result = mapper.readValue(json, SummaryResultWithId::class.java)
             if (result.id.isNullOrEmpty()) {
-                log.warn("Parsed JSON object is missing required ID field.")
                 null
             } else {
                 log.info("Successfully parsed summary for ID: ${result.id}")
                 result
             }
         } catch (e: Exception) {
-            log.error("Failed to parse JSON object from stream. Error: ${e.message}\nJSON: $json")
             null
         }
     }
