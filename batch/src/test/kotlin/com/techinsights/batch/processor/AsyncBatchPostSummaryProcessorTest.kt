@@ -3,7 +3,6 @@ package com.techinsights.batch.processor
 import com.techinsights.batch.builder.DynamicBatchBuilder
 import com.techinsights.batch.dto.BatchFailure
 import com.techinsights.batch.dto.BatchMetrics
-import com.techinsights.batch.dto.BatchRequest
 import com.techinsights.batch.dto.BatchResult
 import com.techinsights.batch.service.AsyncBatchSummarizationService
 import com.techinsights.domain.dto.company.CompanyDto
@@ -22,12 +21,17 @@ class AsyncBatchPostSummaryProcessorTest : FunSpec({
 
     lateinit var batchService: AsyncBatchSummarizationService
     lateinit var batchBuilder: DynamicBatchBuilder
+    lateinit var failurePostMapper: FailurePostMapper
     lateinit var processor: AsyncBatchPostSummaryProcessor
 
     beforeEach {
         batchService = mockk()
         batchBuilder = mockk()
-        processor = AsyncBatchPostSummaryProcessor(batchService, batchBuilder)
+        failurePostMapper = mockk()
+
+        every { failurePostMapper.mapFailuresToPosts(any(), any(), any()) } returns emptyList()
+        
+        processor = AsyncBatchPostSummaryProcessor(batchService, batchBuilder, failurePostMapper)
     }
 
     afterEach {
@@ -51,12 +55,6 @@ class AsyncBatchPostSummaryProcessorTest : FunSpec({
         )
 
         val batch = DynamicBatchBuilder.Batch(posts, 1000)
-        val batchRequest = BatchRequest(
-            id = "test-batch-id",
-            posts = posts,
-            estimatedTokens = 1000,
-            priority = 0
-        )
 
         val batchResult = BatchResult(
             requestId = "test-batch-id",
@@ -104,6 +102,7 @@ class AsyncBatchPostSummaryProcessorTest : FunSpec({
 
         every { batchBuilder.buildBatches(posts) } returns listOf(batch)
         coEvery { batchService.processBatchesAsync(any()) } returns listOf(batchResult)
+        every { failurePostMapper.mapFailuresToPosts(any(), any(), any()) } returns listOf(post2)
 
         // when
         val result = processor.process(posts)
@@ -168,6 +167,7 @@ class AsyncBatchPostSummaryProcessorTest : FunSpec({
 
         every { batchBuilder.buildBatches(posts) } returns listOf(batch)
         coEvery { batchService.processBatchesAsync(any()) } returns listOf(batchResult)
+        every { failurePostMapper.mapFailuresToPosts(any(), any(), any()) } returns listOf(posts[0])
 
         // when
         val result = processor.process(posts)

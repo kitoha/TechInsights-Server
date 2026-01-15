@@ -4,6 +4,10 @@ batch:
     step-name: crawlPostStep
     chunk-size: 1
     retry-limit: 3
+  processing:
+    # Gemini API 5 RPM
+    concurrency-limit: 1
+    timeout-ms: 180000
 
 content:
   selectors:
@@ -47,10 +51,14 @@ rate-limiter:
     limit-for-period: 8
     refresh-period-seconds: 60
     timeout-seconds: 30
-  gemini-batch:
-    limit-for-period: 20
-    refresh-period-seconds: 86400  # 하루 (RPD 제한)
+  gemini-batch-rpm:
+    limit-for-period: 5
+    refresh-period-seconds: 60
     timeout-seconds: 60
+  gemini-batch-rpd:
+    limit-for-period: 20
+    refresh-period-seconds: 86400
+    timeout-seconds: 1
   crawler:
     conservative:
       limit-for-period: 15
@@ -65,8 +73,12 @@ circuit-breaker:
   gemini-batch:
     failure-rate-threshold: 50  # 실패율 50% 이상 시 오픈
     slow-call-rate-threshold: 80  # 느린 호출 80% 이상 시 오픈
-    slow-call-duration-threshold-seconds: 30  # 30초 이상 걸리면 느린 호출로 간주
+    slow-call-duration-threshold-seconds: 180  # 30초 이상 걸리면 느린 호출로 간주
     wait-duration-in-open-state-seconds: 60  # OPEN 상태 60초 유지
     permitted-number-of-calls-in-half-open-state: 3  # HALF_OPEN 시 3개 호출 허용
     sliding-window-size: 10  # 최근 10개 호출 기준
     minimum-number-of-calls: 5  # 최소 5개 호출 후 통계 계산
+
+gemini:
+  api-key: ${GEMINI_API_KEY}
+  max-output-tokens: 16384

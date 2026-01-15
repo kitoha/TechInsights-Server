@@ -7,5 +7,7 @@ data class BatchFailure(
     val post: PostDto,
     val reason: String,
     val retryable: Boolean,
-    val errorType: ErrorType
+    val errorType: ErrorType,
+    val batchSize: Int = 1,
+    val isBatchFailure: Boolean = false
 )

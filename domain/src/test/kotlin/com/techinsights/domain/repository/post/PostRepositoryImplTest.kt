@@ -176,7 +176,7 @@ class PostRepositoryImplTest : FunSpec({
     every { queryFactory.selectFrom(QPost.post) } returns query
     every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
     every { query.fetchJoin() } returns query
-    every { query.where(any<BooleanExpression>(), isNull()) } returns query
+    every { query.where(any<BooleanExpression>(), any<BooleanExpression>(), isNull()) } returns query
     every { query.orderBy(any(), any()) } returns query
     every { query.limit(10L) } returns query
     every { query.fetch() } returns listOf(post2)
@@ -196,7 +196,7 @@ class PostRepositoryImplTest : FunSpec({
     every { queryFactory.selectFrom(QPost.post) } returns query
     every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
     every { query.fetchJoin() } returns query
-    every { query.where(any<BooleanExpression>(), any<BooleanExpression>()) } returns query
+    every { query.where(any<BooleanExpression>(), any<BooleanExpression>(), any<BooleanExpression>()) } returns query
     every { query.orderBy(any(), any()) } returns query
     every { query.limit(5L) } returns query
     every { query.fetch() } returns emptyList()
@@ -591,6 +591,21 @@ class PostRepositoryImplTest : FunSpec({
     val result = repository.updateEmbeddingStatusBulk(postIds)
 
     result shouldBe 100L
+    verify(exactly = 1) { updateClause.execute() }
+  }
+
+  test("incrementSummaryFailureCount should increment failure count for a post") {
+    val postId = Tsid.encode(1L)
+    val updateClause = mockk<com.querydsl.jpa.impl.JPAUpdateClause>()
+
+    every { queryFactory.update(QPost.post) } returns updateClause
+    every { updateClause.set(QPost.post.summaryFailureCount, any<com.querydsl.core.types.Expression<Int>>()) } returns updateClause
+    every { updateClause.where(any<BooleanExpression>()) } returns updateClause
+    every { updateClause.execute() } returns 1L
+
+    repository.incrementSummaryFailureCount(postId)
+
+    verify(exactly = 1) { queryFactory.update(QPost.post) }
     verify(exactly = 1) { updateClause.execute() }
   }
 })

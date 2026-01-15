@@ -1,12 +1,13 @@
 package com.techinsights.domain.service.gemini
 
 import com.techinsights.domain.dto.gemini.ArticleInput
-import com.techinsights.domain.dto.gemini.BatchSummaryResponse
+import com.techinsights.domain.dto.gemini.SummaryResultWithId
 import com.techinsights.domain.enums.GeminiModelType
+import kotlinx.coroutines.flow.Flow
 
 fun interface BatchArticleSummarizer {
-    suspend fun summarizeBatch(
+    fun summarizeBatch(
         articles: List<ArticleInput>,
         modelType: GeminiModelType
-    ): BatchSummaryResponse
+    ): Flow<SummaryResultWithId>
 }

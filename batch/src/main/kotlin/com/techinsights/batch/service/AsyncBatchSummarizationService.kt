@@ -1,12 +1,12 @@
 package com.techinsights.batch.service
 
-import com.techinsights.batch.dto.*
+import com.techinsights.batch.config.props.BatchProcessingProperties
+import com.techinsights.batch.dto.BatchRequest
+import com.techinsights.batch.dto.BatchResult
 import com.techinsights.domain.dto.gemini.ArticleInput
-import com.techinsights.domain.enums.Category
-import com.techinsights.domain.enums.ErrorType
+import com.techinsights.domain.dto.gemini.BatchSummaryResponse
 import com.techinsights.domain.enums.GeminiModelType
 import com.techinsights.domain.service.gemini.BatchArticleSummarizer
-import com.techinsights.domain.service.gemini.BatchSummaryValidator
 import io.github.resilience4j.circuitbreaker.CircuitBreaker
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
 import kotlinx.coroutines.*
@@ -19,15 +19,17 @@ import kotlin.coroutines.cancellation.CancellationException
 @Service
 class AsyncBatchSummarizationService(
     private val batchSummarizer: BatchArticleSummarizer,
-    private val validator: BatchSummaryValidator,
+    private val resultProcessor: BatchResultProcessor,
+    private val retryPolicy: BatchRetryPolicy,
+    private val errorClassifier: ErrorClassifier,
+    private val properties: BatchProcessingProperties,
     circuitBreakerRegistry: CircuitBreakerRegistry,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
     private val circuitBreaker = circuitBreakerRegistry.circuitBreaker("geminiBatch")
-
-    private val concurrencyLimit = Semaphore(2)
+    private val concurrencyLimit: Semaphore by lazy { Semaphore(properties.concurrencyLimit) }
 
     suspend fun processBatchesAsync(batches: List<BatchRequest>): List<BatchResult> = coroutineScope {
         log.info("Processing ${batches.size} batches with total ${batches.sumOf { it.posts.size }} posts")
@@ -47,58 +49,94 @@ class AsyncBatchSummarizationService(
     ): BatchResult {
         val startTime = System.currentTimeMillis()
 
-        if (circuitBreaker.state == CircuitBreaker.State.OPEN) {
-            log.warn("Circuit breaker is OPEN, skipping batch ${request.id}")
-            return createFailureResult(
-                request,
-                "Circuit breaker open - API unavailable",
-                ErrorType.API_ERROR
-            )
+        if (isCircuitBreakerOpen()) {
+            return handleCircuitBreakerOpen(request)
         }
 
-        try {
+        return try {
             concurrencyLimit.acquire()
-
-            return withTimeout(60_000) {
-                processSingleBatch(request)
-            }
-
+            executeBatchWithTimeout(request)
         } catch (e: TimeoutCancellationException) {
-            log.error("Batch ${request.id} timed out after 60s", e)
-
-            if (retryCount < 2) {
-                delay(2000L * (retryCount + 1))
-                return processSingleBatchWithRetry(request, retryCount + 1)
-            }
-
-            return createFailureResult(request, "Timeout after retries", ErrorType.TIMEOUT)
-
+            handleTimeout(request, retryCount, e)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            log.error("Batch ${request.id} failed", e)
-
-            val errorType = classifyError(e)
-            val retryable = errorType in setOf(ErrorType.TIMEOUT, ErrorType.RATE_LIMIT)
-
-            if (retryable && retryCount < 2) {
-                val backoffDelay = when (errorType) {
-                    ErrorType.RATE_LIMIT -> 10000L * (retryCount + 1) // 503 에러: 10초, 20초 대기
-                    else -> 5000L * (retryCount + 1) // 기타: 5초, 10초 대기
-                }
-                log.warn("Retrying batch ${request.id} after ${backoffDelay}ms (attempt ${retryCount + 1}/2)")
-                delay(backoffDelay)
-                return processSingleBatchWithRetry(request, retryCount + 1)
-            }
-
-            return createFailureResult(request, e.message ?: "Unknown error", errorType)
-
+            handleException(request, retryCount, e)
         } finally {
             concurrencyLimit.release()
-
-            val duration = System.currentTimeMillis() - startTime
-            log.info("Batch ${request.id} completed in ${duration}ms")
+            logBatchCompletion(request.id, startTime)
         }
+    }
+
+    private fun isCircuitBreakerOpen(): Boolean {
+        return circuitBreaker.state == CircuitBreaker.State.OPEN
+    }
+
+    private fun handleCircuitBreakerOpen(request: BatchRequest): BatchResult {
+        log.warn("Circuit breaker is OPEN, skipping batch ${request.id}")
+        return resultProcessor.createFailureResult(
+            request,
+            "Circuit breaker open - API unavailable",
+            com.techinsights.domain.enums.ErrorType.API_ERROR
+        )
+    }
+
+    private suspend fun executeBatchWithTimeout(request: BatchRequest): BatchResult {
+        return withTimeout(properties.timeoutMs) {
+            processSingleBatch(request)
+        }
+    }
+
+    private suspend fun handleTimeout(
+        request: BatchRequest,
+        retryCount: Int,
+        exception: TimeoutCancellationException
+    ): BatchResult {
+        log.error("Batch ${request.id} timed out after ${properties.timeoutMs}ms", exception)
+
+        val errorType = errorClassifier.classify(exception)
+        
+        if (retryPolicy.shouldRetry(errorType, retryCount)) {
+            val delay = retryPolicy.calculateBackoffDelay(errorType, retryCount)
+            delay(delay)
+            log.warn("Batch ${request.id} for posts [${request.posts.map { it.id }.joinToString()}] timed out. Retrying after ${delay}ms (attempt ${retryCount + 1}/${properties.maxRetryAttempts})")
+            return processSingleBatchWithRetry(request, retryCount + 1)
+        }
+
+        log.error("Batch ${request.id} for posts [${request.posts.map { it.id }.joinToString()}] failed permanently due to timeout after ${properties.maxRetryAttempts} retries.", exception)
+        return resultProcessor.createFailureResult(
+            request,
+            "Timeout after retries",
+            errorType
+        )
+    }
+
+    private suspend fun handleException(
+        request: BatchRequest,
+        retryCount: Int,
+        exception: Exception
+    ): BatchResult {
+        log.error("Batch ${request.id} for posts [${request.posts.map { it.id }.joinToString()}] failed.", exception)
+
+        val errorType = errorClassifier.classify(exception)
+
+        if (retryPolicy.shouldRetry(errorType, retryCount)) {
+            val backoffDelay = retryPolicy.calculateBackoffDelay(errorType, retryCount)
+            log.warn("Retrying batch ${request.id} after ${backoffDelay}ms (attempt ${retryCount + 1}/${properties.maxRetryAttempts})")
+            delay(backoffDelay)
+            return processSingleBatchWithRetry(request, retryCount + 1)
+        }
+
+        return resultProcessor.createFailureResult(
+            request,
+            exception.message ?: "Unknown error",
+            errorType
+        )
+    }
+
+    private fun logBatchCompletion(batchId: String, startTime: Long) {
+        val duration = System.currentTimeMillis() - startTime
+        log.info("Batch $batchId completed in ${duration}ms")
     }
 
     private suspend fun processSingleBatch(request: BatchRequest): BatchResult {
@@ -112,122 +150,18 @@ class AsyncBatchSummarizationService(
             )
         }
 
-        val batchResponse = batchSummarizer.summarizeBatch(
+        val summaryFlow = batchSummarizer.summarizeBatch(
             inputs,
             GeminiModelType.GEMINI_2_5_FLASH_LITE
         )
 
-        val successes = mutableListOf<com.techinsights.domain.dto.post.PostDto>()
-        val failures = mutableListOf<BatchFailure>()
-
-        for (post in request.posts) {
-            val result = batchResponse.results.find { it.id == post.id }
-
-            when {
-                result == null -> {
-                    failures.add(BatchFailure(
-                        post = post,
-                        reason = "No result returned for this post",
-                        retryable = false,
-                        errorType = ErrorType.VALIDATION_ERROR
-                    ))
-                }
-
-                !result.success -> {
-                    failures.add(BatchFailure(
-                        post = post,
-                        reason = result.error ?: "Unknown error",
-                        retryable = true,
-                        errorType = ErrorType.VALIDATION_ERROR
-                    ))
-                }
-
-                else -> {
-                    val validation = validator.validate(
-                        ArticleInput(post.id, post.title, post.content),
-                        result,
-                        Category.entries.map { it.name }.toSet()
-                    )
-
-                    if (!validation.isValid) {
-                        failures.add(BatchFailure(
-                            post = post,
-                            reason = validation.errors.joinToString(", "),
-                            retryable = true,
-                            errorType = ErrorType.VALIDATION_ERROR
-                        ))
-                    } else {
-                        successes.add(post.copy(
-                            content = result.summary ?: post.content,
-                            preview = result.preview,
-                            categories = result.categories
-                                ?.mapNotNull { runCatching { Category.valueOf(it) }.getOrNull() }
-                                ?.toSet()
-                                ?: emptySet(),
-                            isSummary = true
-                        ))
-                    }
-                }
-            }
+        val results = mutableListOf<com.techinsights.domain.dto.gemini.SummaryResultWithId>()
+        summaryFlow.collect { result ->
+            results.add(result)
         }
 
-        val duration = System.currentTimeMillis() - startTime
+        val batchResponse = BatchSummaryResponse(results)
 
-        val metrics = BatchMetrics(
-            totalItems = request.posts.size,
-            successCount = successes.size,
-            failureCount = failures.size,
-            apiCallCount = 1,
-            tokensUsed = request.estimatedTokens,
-            durationMs = duration
-        )
-
-        return BatchResult(
-            requestId = request.id,
-            successes = successes,
-            failures = failures,
-            metrics = metrics
-        )
-    }
-
-    private fun createFailureResult(
-        request: BatchRequest,
-        reason: String,
-        errorType: ErrorType
-    ): BatchResult {
-        val failures = request.posts.map { post ->
-            BatchFailure(
-                post = post,
-                reason = reason,
-                retryable = errorType in setOf(ErrorType.TIMEOUT, ErrorType.RATE_LIMIT),
-                errorType = errorType
-            )
-        }
-
-        return BatchResult(
-            requestId = request.id,
-            successes = emptyList(),
-            failures = failures,
-            metrics = BatchMetrics(
-                totalItems = request.posts.size,
-                successCount = 0,
-                failureCount = request.posts.size,
-                apiCallCount = 0,
-                tokensUsed = 0,
-                durationMs = 0
-            )
-        )
-    }
-
-    private fun classifyError(e: Exception): ErrorType {
-        return when {
-            e.message?.contains("rate limit", ignoreCase = true) == true -> ErrorType.RATE_LIMIT
-            e.message?.contains("overloaded", ignoreCase = true) == true -> ErrorType.RATE_LIMIT
-            e.message?.contains("503", ignoreCase = true) == true -> ErrorType.RATE_LIMIT
-            e.message?.contains("429", ignoreCase = true) == true -> ErrorType.RATE_LIMIT
-            e.message?.contains("timeout", ignoreCase = true) == true -> ErrorType.TIMEOUT
-            e is TimeoutCancellationException -> ErrorType.TIMEOUT
-            else -> ErrorType.API_ERROR
-        }
+        return resultProcessor.processBatchResponse(request, batchResponse, startTime)
     }
 }

@@ -21,4 +21,4 @@ db:
 
 gemini:
   api-key: ${GEMINI_API_KEY}
-  max-output-tokens: 8192
+  max-output-tokens: 16384

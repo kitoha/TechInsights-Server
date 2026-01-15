@@ -6,6 +6,18 @@ import org.junit.jupiter.api.Test
 class GeminiModelTypeTest {
 
     @Test
+    fun `GEMINI_3_FLASH should return correct model name`() {
+        // given
+        val modelType = GeminiModelType.GEMINI_3_FLASH
+
+        // when
+        val modelName = modelType.get()
+
+        // then
+        assertThat(modelName).isEqualTo("gemini-3-pro-preview")
+    }
+
+    @Test
     fun `GEMINI_2_5_FLASH should return correct model name`() {
         // given
         val modelType = GeminiModelType.GEMINI_2_5_FLASH
@@ -50,7 +62,7 @@ class GeminiModelTypeTest {
         val modelNames = allModelTypes.map { it.get() }
 
         // then
-        assertThat(modelNames).hasSize(3)
+        assertThat(modelNames).hasSize(4)
         assertThat(modelNames).doesNotHaveDuplicates()
     }
 }

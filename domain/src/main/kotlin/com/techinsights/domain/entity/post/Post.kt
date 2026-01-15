@@ -38,5 +38,7 @@ class Post(
   @Column(name = "is_summary", nullable = false)
   var isSummary: Boolean = false,
   @Column(name = "is_embedding", nullable = false)
-  var isEmbedding: Boolean = false
+  var isEmbedding: Boolean = false,
+  @Column(name = "summary_failure_count", nullable = false)
+  var summaryFailureCount: Int = 0
 ) : BaseEntity()

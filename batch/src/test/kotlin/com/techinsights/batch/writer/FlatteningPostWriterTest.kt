@@ -3,6 +3,7 @@ package com.techinsights.batch.writer
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.repository.post.PostRepository
+import com.techinsights.domain.repository.post.PostSummaryFailureRepository
 import com.techinsights.domain.service.company.CompanyViewCountUpdater
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -15,12 +16,14 @@ class FlatteningPostWriterTest : FunSpec({
 
     lateinit var postRepository: PostRepository
     lateinit var companyViewCountUpdater: CompanyViewCountUpdater
+    lateinit var failureRepository: PostSummaryFailureRepository
     lateinit var writer: FlatteningPostWriter
 
     beforeEach {
         postRepository = mockk()
+        failureRepository = mockk()
         companyViewCountUpdater = mockk(relaxed = true)
-        writer = FlatteningPostWriter(postRepository, companyViewCountUpdater)
+        writer = FlatteningPostWriter(postRepository, failureRepository, companyViewCountUpdater)
     }
 
     afterEach {

@@ -13,7 +13,8 @@ import java.util.*
 @Component
 class AsyncBatchPostSummaryProcessor(
     private val batchService: AsyncBatchSummarizationService,
-    private val batchBuilder: DynamicBatchBuilder
+    private val batchBuilder: DynamicBatchBuilder,
+    private val failureMapper: FailurePostMapper
 ) : ItemProcessor<List<PostDto>, List<PostDto>> {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -30,15 +31,7 @@ class AsyncBatchPostSummaryProcessor(
 
     private suspend fun processAsync(items: List<PostDto>): List<PostDto> {
         val batches = batchBuilder.buildBatches(items)
-
-        val batchRequests = batches.map { batch ->
-            BatchRequest(
-                id = UUID.randomUUID().toString(),
-                posts = batch.items,
-                estimatedTokens = batch.estimatedTokens,
-                priority = 0
-            )
-        }
+        val batchRequests = createBatchRequests(batches)
 
         log.info("Created ${batchRequests.size} API batches from ${items.size} posts")
 
@@ -47,22 +40,36 @@ class AsyncBatchPostSummaryProcessor(
         val allSuccesses = batchResults.flatMap { it.successes }
         val allFailures = batchResults.flatMap { it.failures }
 
-        log.info("Batch processing complete: ${allSuccesses.size} successes, ${allFailures.size} failures")
+        logProcessingResults(allSuccesses.size, allFailures)
 
-        if (allFailures.isNotEmpty()) {
-            val retryableCount = allFailures.count { it.retryable }
-            val nonRetryableCount = allFailures.size - retryableCount
+        val failedPosts = failureMapper.mapFailuresToPosts(items, allSuccesses, allFailures)
 
-            log.warn("${allFailures.size} posts failed: $retryableCount retryable, $nonRetryableCount non-retryable")
+        return allSuccesses + failedPosts
+    }
 
-            allFailures.take(5).forEach { failure ->
+    private fun createBatchRequests(batches: List<DynamicBatchBuilder.Batch>): List<BatchRequest> {
+        return batches.map { batch ->
+            BatchRequest(
+                id = UUID.randomUUID().toString(),
+                posts = batch.items,
+                estimatedTokens = batch.estimatedTokens,
+                priority = 0
+            )
+        }
+    }
+
+    private fun logProcessingResults(successCount: Int, failures: List<com.techinsights.batch.dto.BatchFailure>) {
+        log.info("Batch processing complete: $successCount successes, ${failures.size} failures")
+
+        if (failures.isNotEmpty()) {
+            val retryableCount = failures.count { it.retryable }
+            val nonRetryableCount = failures.size - retryableCount
+
+            log.warn("${failures.size} posts failed: $retryableCount retryable, $nonRetryableCount non-retryable")
+
+            failures.take(5).forEach { failure ->
                 log.debug("Failed post ${failure.post.id}: ${failure.reason} (retryable: ${failure.retryable})")
             }
         }
-
-        val successIds = allSuccesses.map { it.id }.toSet()
-        val failedPosts = items.filter { it.id !in successIds }
-
-        return allSuccesses + failedPosts
     }
 }

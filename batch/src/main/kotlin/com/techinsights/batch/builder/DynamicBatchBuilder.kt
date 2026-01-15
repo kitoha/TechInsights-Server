@@ -1,5 +1,6 @@
 package com.techinsights.batch.builder
 
+import com.techinsights.batch.config.BatchBuildConfig
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.utils.TokenEstimator
 import org.slf4j.LoggerFactory
@@ -7,12 +8,12 @@ import org.springframework.stereotype.Component
 
 @Component
 class DynamicBatchBuilder(
-    private val maxTokensPerRequest: Int = 200_000,  // TPM의 80%만 사용 (안전 마진)
-    private val minBatchSize: Int = 1,
-    private val maxBatchSize: Int = 20
+    private val config: BatchBuildConfig,
+    private val limitChecker: BatchLimitChecker,
+    private val postTruncator: PostTruncator
 ) {
 
-    private val log = LoggerFactory.getLogger(DynamicBatchBuilder::class.java)
+    private val log = LoggerFactory.getLogger(javaClass)
 
     data class Batch(
         val items: List<PostDto>,
@@ -22,54 +23,91 @@ class DynamicBatchBuilder(
     fun buildBatches(posts: List<PostDto>): List<Batch> {
         val batches = mutableListOf<Batch>()
         var currentBatch = mutableListOf<PostDto>()
-        var currentTokens = 500  // 기본 프롬프트 토큰
+        var currentTokens = config.basePromptTokens
 
         for (post in posts) {
-            val postTotalTokens = TokenEstimator.estimateTotalTokens(post.content)
+            val postTokens = TokenEstimator.estimateTotalTokens(post.content)
 
-            if (postTotalTokens > maxTokensPerRequest) {
-                log.warn("Post ${post.id} too large (${postTotalTokens} tokens), truncating")
-                val truncatedPost = truncatePost(post, maxTokensPerRequest - 2000)
-
-                if (currentBatch.isNotEmpty()) {
-                    batches.add(Batch(currentBatch.toList(), currentTokens))
-                    currentBatch.clear()
-                    currentTokens = 500
-                }
-
-                batches.add(Batch(listOf(truncatedPost), TokenEstimator.estimateTotalTokens(truncatedPost.content)))
+            if (limitChecker.exceedsMaxTokens(postTokens)) {
+                handleOversizedPost(post, batches, currentBatch, currentTokens)
+                currentBatch = mutableListOf()
+                currentTokens = config.basePromptTokens
                 continue
             }
 
-            if ((currentTokens + postTotalTokens > maxTokensPerRequest ||
-                currentBatch.size >= maxBatchSize) && currentBatch.isNotEmpty()) {
-                batches.add(Batch(currentBatch.toList(), currentTokens))
-                currentBatch.clear()
-                currentTokens = 500
+            if (shouldStartNewBatch(currentBatch.size, currentTokens, postTokens)) {
+                finalizeBatch(batches, currentBatch, currentTokens)
+                currentBatch = mutableListOf()
+                currentTokens = config.basePromptTokens
             }
 
             currentBatch.add(post)
-            currentTokens += postTotalTokens
+            currentTokens += postTokens
         }
+
+        finalizeBatch(batches, currentBatch, currentTokens)
+        logBatchSummary(batches, posts.size)
+
+        return batches
+    }
+
+    private fun shouldStartNewBatch(
+        currentSize: Int,
+        currentTokens: Int,
+        additionalTokens: Int
+    ): Boolean {
+        if (currentSize == 0) return false
+
+        val exceedsInput = limitChecker.exceedsInputLimit(currentTokens, additionalTokens)
+        val exceedsOutput = limitChecker.exceedsOutputLimit(currentSize + 1)
+        val exceedsSize = limitChecker.exceedsBatchSize(currentSize)
+
+        if (exceedsOutput) {
+            log.debug(
+                "Starting new batch: would exceed output limit " +
+                "(${limitChecker.estimateOutputTokens(currentSize + 1)} > ${limitChecker.maxOutputTokensAllowed})"
+            )
+        }
+
+        return exceedsInput || exceedsOutput || exceedsSize
+    }
+
+    private fun handleOversizedPost(
+        post: PostDto,
+        batches: MutableList<Batch>,
+        currentBatch: MutableList<PostDto>,
+        currentTokens: Int
+    ) {
+        log.warn("Post ${post.id} too large, truncating")
 
         if (currentBatch.isNotEmpty()) {
             batches.add(Batch(currentBatch.toList(), currentTokens))
         }
 
-        log.info("Built ${batches.size} batches from ${posts.size} posts. " +
-                "Avg batch size: ${if (batches.isNotEmpty()) posts.size / batches.size else 0}")
+        val maxTokens = postTruncator.calculateMaxTokensForTruncation()
+        val truncatedPost = postTruncator.truncate(post, maxTokens)
+        val truncatedTokens = TokenEstimator.estimateTotalTokens(truncatedPost.content)
 
-        return batches
+        batches.add(Batch(listOf(truncatedPost), truncatedTokens))
     }
 
-    private fun truncatePost(post: PostDto, maxTokens: Int): PostDto {
-        val maxChars = maxTokens / 3 // 대략적인 문자 수 추정
-        return if (post.content.length > maxChars) {
-            post.copy(
-                content = post.content.take(maxChars) + "\n\n[내용이 잘렸습니다]"
-            )
-        } else {
-            post
+    private fun finalizeBatch(
+        batches: MutableList<Batch>,
+        currentBatch: List<PostDto>,
+        currentTokens: Int
+    ) {
+        if (currentBatch.isNotEmpty()) {
+            batches.add(Batch(currentBatch.toList(), currentTokens))
         }
+    }
+
+    private fun logBatchSummary(batches: List<Batch>, totalPosts: Int) {
+        val avgBatchSize = if (batches.isNotEmpty()) totalPosts / batches.size else 0
+        val maxOutput = limitChecker.maxOutputTokensAllowed
+
+        log.info(
+            "Built ${batches.size} batches from $totalPosts posts. " +
+            "Avg batch size: $avgBatchSize, Max output tokens: $maxOutput"
+        )
     }
 }
