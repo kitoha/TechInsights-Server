@@ -110,9 +110,8 @@ class GeminiBatchArticleSummarizer(
 
                 if (currentErrorType != null) {
                     log.warn("Gemini stream interrupted. Reason: $finishReason, Articles: ${articles.map { it.id }}")
-                    // 스트림이 중단되었으므로 에러 정보를 담아 보냄 (이후 정합성 체크에서 나머지 게시글에 적용됨)
                     send(SummaryResultWithId(
-                        id = "SYSTEM_ERROR_MARKER", // 정합성 체크를 위한 마커
+                        id = "SYSTEM_ERROR_MARKER",
                         success = false,
                         error = "Gemini finished with reason: $finishReason",
                         errorType = currentErrorType
@@ -133,7 +132,7 @@ class GeminiBatchArticleSummarizer(
                 }
             }
         }
-    }.buffer(Channel.UNLIMITED) // downstream 처리가 늦어져도 막히지 않도록 버퍼 설정
+    }.buffer(Channel.UNLIMITED)
 
     private fun buildGeminiConfig(categories: List<String>): GenerateContentConfig {
         val schema = promptBuilder.buildSchema(categories)

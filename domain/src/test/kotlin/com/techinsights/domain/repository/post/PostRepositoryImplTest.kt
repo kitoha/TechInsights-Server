@@ -593,4 +593,19 @@ class PostRepositoryImplTest : FunSpec({
     result shouldBe 100L
     verify(exactly = 1) { updateClause.execute() }
   }
+
+  test("incrementSummaryFailureCount should increment failure count for a post") {
+    val postId = Tsid.encode(1L)
+    val updateClause = mockk<com.querydsl.jpa.impl.JPAUpdateClause>()
+
+    every { queryFactory.update(QPost.post) } returns updateClause
+    every { updateClause.set(QPost.post.summaryFailureCount, any<com.querydsl.core.types.Expression<Int>>()) } returns updateClause
+    every { updateClause.where(any<BooleanExpression>()) } returns updateClause
+    every { updateClause.execute() } returns 1L
+
+    repository.incrementSummaryFailureCount(postId)
+
+    verify(exactly = 1) { queryFactory.update(QPost.post) }
+    verify(exactly = 1) { updateClause.execute() }
+  }
 })
