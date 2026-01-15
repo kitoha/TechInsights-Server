@@ -110,7 +110,13 @@ class GeminiBatchArticleSummarizerTest : FunSpec({
     }
 
     test("summarizeBatch should handle empty articles list") {
-        val resultFlow = summarizer.summarizeBatch(emptyList(), GeminiModelType.GEMINI_2_5_FLASH_LITE)
+        val spySummarizer = spyk(summarizer, recordPrivateCalls = true)
+        
+        coEvery { 
+            spySummarizer["callGeminiApi"](emptyList<ArticleInput>(), any<GeminiModelType>()) 
+        } returns kotlinx.coroutines.flow.emptyFlow<SummaryResultWithId>()
+
+        val resultFlow = spySummarizer.summarizeBatch(emptyList(), GeminiModelType.GEMINI_2_5_FLASH_LITE)
         val results = resultFlow.toList()
         results shouldHaveSize 0
     }

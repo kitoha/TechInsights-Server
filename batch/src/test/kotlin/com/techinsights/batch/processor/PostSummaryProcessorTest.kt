@@ -37,7 +37,7 @@ class PostSummaryProcessorTest : FunSpec({
         )
 
         coEvery {
-            summarizer.summarize(originalPost.content, GeminiModelType.GEMINI_3_FLASH)
+            summarizer.summarize(originalPost.content, GeminiModelType.GEMINI_2_5_FLASH)
         } returns summaryResult
 
         // when
@@ -52,7 +52,7 @@ class PostSummaryProcessorTest : FunSpec({
         )
 
         coVerify(exactly = 1) {
-            summarizer.summarize(originalPost.content, GeminiModelType.GEMINI_3_FLASH)
+            summarizer.summarize(originalPost.content, GeminiModelType.GEMINI_2_5_FLASH)
         }
     }
 
@@ -233,7 +233,7 @@ class PostSummaryProcessorTest : FunSpec({
         result.isSummary shouldBe true
     }
 
-    test("process should use GEMINI_3_FLASH model") {
+    test("process should use GEMINI_2_5_FLASH model") {
         // given
         val originalPost = createMockPostDto(
             id = "8",
@@ -248,7 +248,7 @@ class PostSummaryProcessorTest : FunSpec({
         )
 
         coEvery {
-            summarizer.summarize(any(), GeminiModelType.GEMINI_3_FLASH)
+            summarizer.summarize(any(), GeminiModelType.GEMINI_2_5_FLASH)
         } returns summaryResult
 
         // when
@@ -256,7 +256,7 @@ class PostSummaryProcessorTest : FunSpec({
 
         // then
         coVerify(exactly = 1) {
-            summarizer.summarize(any(), GeminiModelType.GEMINI_3_FLASH)
+            summarizer.summarize(any(), GeminiModelType.GEMINI_2_5_FLASH)
         }
     }
 

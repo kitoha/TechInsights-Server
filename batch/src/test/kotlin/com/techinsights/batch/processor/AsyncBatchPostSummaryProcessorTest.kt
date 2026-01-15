@@ -3,7 +3,6 @@ package com.techinsights.batch.processor
 import com.techinsights.batch.builder.DynamicBatchBuilder
 import com.techinsights.batch.dto.BatchFailure
 import com.techinsights.batch.dto.BatchMetrics
-import com.techinsights.batch.dto.BatchRequest
 import com.techinsights.batch.dto.BatchResult
 import com.techinsights.batch.service.AsyncBatchSummarizationService
 import com.techinsights.domain.dto.company.CompanyDto
@@ -56,12 +55,6 @@ class AsyncBatchPostSummaryProcessorTest : FunSpec({
         )
 
         val batch = DynamicBatchBuilder.Batch(posts, 1000)
-        val batchRequest = BatchRequest(
-            id = "test-batch-id",
-            posts = posts,
-            estimatedTokens = 1000,
-            priority = 0
-        )
 
         val batchResult = BatchResult(
             requestId = "test-batch-id",
