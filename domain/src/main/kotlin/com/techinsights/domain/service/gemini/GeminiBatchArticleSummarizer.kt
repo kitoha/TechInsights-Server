@@ -5,12 +5,18 @@ import com.google.genai.Client
 import com.google.genai.types.GenerateContentConfig
 import com.techinsights.domain.config.gemini.GeminiProperties
 import com.techinsights.domain.dto.gemini.ArticleInput
-import com.techinsights.domain.dto.gemini.BatchSummaryResponse
+import com.techinsights.domain.dto.gemini.SummaryResultWithId
 import com.techinsights.domain.enums.Category
+import com.techinsights.domain.enums.ErrorType
 import com.techinsights.domain.enums.GeminiModelType
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.buffer
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -21,8 +27,6 @@ class GeminiBatchArticleSummarizer(
     private val geminiClient: Client,
     private val geminiProperties: GeminiProperties,
     private val promptBuilder: BatchPromptBuilder,
-    private val responseParser: BatchResponseParser,
-    private val responseProcessor: BatchResponseProcessor,
     rateLimiterRegistry: RateLimiterRegistry,
     circuitBreakerRegistry: CircuitBreakerRegistry,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO
@@ -35,163 +39,101 @@ class GeminiBatchArticleSummarizer(
     private val rpdLimiter = rateLimiterRegistry.rateLimiter("geminiBatchRpd")
     private val circuitBreaker = circuitBreakerRegistry.circuitBreaker("geminiBatch")
 
-    override suspend fun summarizeBatch(
+    override fun summarizeBatch(
         articles: List<ArticleInput>,
         modelType: GeminiModelType
-    ): BatchSummaryResponse {
-        return summarizeBatchWithFallback(articles, modelType, depth = 0)
-    }
-
-    private suspend fun summarizeBatchWithFallback(
-        articles: List<ArticleInput>,
-        modelType: GeminiModelType,
-        depth: Int
-    ): BatchSummaryResponse {
-        if (articles.isEmpty()) {
-            return BatchSummaryResponse(emptyList())
-        }
-
-        if (articles.size == 1) {
-            return summarizeSingle(articles.first(), modelType)
-        }
-
-        if (depth > MAX_FALLBACK_DEPTH) {
-            log.warn("Max fallback depth reached, marking ${articles.size} articles as failed")
-            return responseParser.createFailureResponse(articles, "Max retry depth exceeded")
-        }
-
-        log.info("Summarizing batch of ${articles.size} articles (depth=$depth)")
-
-        return try {
-            processBatchNormally(articles, modelType)
-
-        } catch (e: Exception) {
-            val errorType = classifyError(e)
-            log.error("Batch processing failed with $errorType: ${e.message}")
-
-            when {
-                shouldFallbackToSplit(errorType, articles.size, depth) -> {
-                    log.info("Applying binary search fallback for ${articles.size} articles")
-                    binarySearchFallback(articles, modelType, depth)
-                }
-                else -> {
-                    log.warn("Marking entire batch as failed (non-splittable error)")
-                    responseParser.createFailureResponse(articles, e.message ?: "Batch failed")
+    ): Flow<SummaryResultWithId> {
+        return channelFlow {
+            val results = mutableSetOf<String>()
+            var lastErrorType: ErrorType? = null
+            var lastErrorMessage: String? = null
+            
+            callGeminiApi(articles, modelType).collect { result ->
+                if (result.id == "SYSTEM_ERROR_MARKER") {
+                    lastErrorType = result.errorType
+                    lastErrorMessage = result.error
+                } else {
+                    results.add(result.id)
+                    if (!result.success) {
+                        lastErrorType = result.errorType
+                        lastErrorMessage = result.error
+                    }
+                    send(result)
                 }
             }
-        }
+
+            articles.filter { it.id !in results }.forEach { missing ->
+                val errorType = lastErrorType ?: ErrorType.CONTENT_ERROR
+                val errorMessage = lastErrorMessage ?: "Response missing from Gemini stream (possible parsing or model error)"
+                
+                log.warn("Post ${missing.id} missing from Gemini stream response. Marking as failed with type $errorType. Reason: $errorMessage")
+                send(
+                    SummaryResultWithId(
+                        id = missing.id,
+                        success = false,
+                        error = errorMessage,
+                        errorType = errorType
+                    )
+                )
+            }
+        }.buffer(Channel.UNLIMITED)
     }
 
-    private suspend fun processBatchNormally(
+    private fun callGeminiApi(
         articles: List<ArticleInput>,
         modelType: GeminiModelType
-    ): BatchSummaryResponse {
-        val responseText = callGeminiApi(articles, modelType)
-        val categories = Category.entries.map { it.name }.toSet()
-
-        val parsedResponse = responseParser.parse(responseText, articles)
-        return responseProcessor.process(parsedResponse, articles, categories)
-    }
-
-    private suspend fun summarizeSingle(
-        article: ArticleInput,
-        modelType: GeminiModelType
-    ): BatchSummaryResponse {
-        return try {
-            processBatchNormally(listOf(article), modelType)
-        } catch (e: Exception) {
-            log.error("Individual processing failed for article ${article.id}: ${e.message}")
-            responseParser.createFailureResponse(listOf(article), e.message ?: "Individual processing failed")
-        }
-    }
-
-    private suspend fun binarySearchFallback(
-        articles: List<ArticleInput>,
-        modelType: GeminiModelType,
-        depth: Int
-    ): BatchSummaryResponse {
-        val midpoint = articles.size / 2
-        val firstHalf = articles.take(midpoint)
-        val secondHalf = articles.drop(midpoint)
-
-        log.debug("Splitting batch: ${articles.size} -> $midpoint + ${articles.size - midpoint}")
-
-        val firstResults = summarizeBatchWithFallback(firstHalf, modelType, depth + 1)
-        val secondResults = summarizeBatchWithFallback(secondHalf, modelType, depth + 1)
-
-        return BatchSummaryResponse(firstResults.results + secondResults.results)
-    }
-
-    private fun classifyError(e: Exception): ErrorCategory {
-        val message = e.message?.lowercase() ?: ""
-
-        return when {
-            message.contains("503") ||
-            message.contains("overloaded") ||
-            message.contains("timeout") ||
-            message.contains("timed out") -> ErrorCategory.TRANSIENT_API
-
-            message.contains("json") ||
-            message.contains("parse") ||
-            message.contains("truncat") ||
-            message.contains("unexpected end") -> ErrorCategory.SIZE_RELATED
-
-            message.contains("circuit") ||
-            message.contains("breaker") -> ErrorCategory.CIRCUIT_OPEN
-
-            else -> ErrorCategory.UNKNOWN
-        }
-    }
-
-    private fun shouldFallbackToSplit(
-        errorType: ErrorCategory,
-        batchSize: Int,
-        depth: Int
-    ): Boolean {
-        return when (errorType) {
-            ErrorCategory.SIZE_RELATED -> batchSize > 1
-
-            ErrorCategory.TRANSIENT_API -> batchSize > 3 && depth < 2
-
-            ErrorCategory.CIRCUIT_OPEN -> false
-
-            ErrorCategory.UNKNOWN -> batchSize > 2 && depth == 0
-        }
-    }
-
-    private enum class ErrorCategory {
-        SIZE_RELATED,
-        TRANSIENT_API,
-        CIRCUIT_OPEN,
-        UNKNOWN
-    }
-
-    companion object {
-        private const val MAX_FALLBACK_DEPTH = 4
-    }
-
-    private suspend fun callGeminiApi(
-        articles: List<ArticleInput>,
-        modelType: GeminiModelType
-    ): String {
+    ): Flow<SummaryResultWithId> = channelFlow {
         val modelName = modelType.get()
         val categories = Category.entries.map { it.name }
 
         val prompt = promptBuilder.buildPrompt(articles, categories)
         val config = buildGeminiConfig(categories)
 
-        // API 할당량 최적화를 위한 이중 검문 (RPD -> RPM)
         acquireRateLimiterPermission(rpdLimiter)
         acquireRateLimiterPermission(rpmLimiter)
 
-        val response = withContext(ioDispatcher) {
-            circuitBreaker.executeCallable {
-                geminiClient.models.generateContent(modelName, prompt, config)
+        try {
+            val responseStream = circuitBreaker.executeCallable {
+                geminiClient.models.generateContentStream(modelName, prompt, config)
+            }
+
+            val jsonParser = StreamingJsonParser()
+            for (res in responseStream) {
+                val candidates = res.candidates().orElse(null)
+                val finishReason = candidates?.firstOrNull()?.finishReason()
+                val currentErrorType = when (finishReason?.toString()?.uppercase()) {
+                    "SAFETY" -> ErrorType.SAFETY_BLOCKED
+                    "MAX_TOKENS" -> ErrorType.LENGTH_LIMIT
+                    "OTHER" -> ErrorType.API_ERROR
+                    else -> null
+                }
+
+                if (currentErrorType != null) {
+                    log.warn("Gemini stream interrupted. Reason: $finishReason, Articles: ${articles.map { it.id }}")
+                    // 스트림이 중단되었으므로 에러 정보를 담아 보냄 (이후 정합성 체크에서 나머지 게시글에 적용됨)
+                    send(SummaryResultWithId(
+                        id = "SYSTEM_ERROR_MARKER", // 정합성 체크를 위한 마커
+                        success = false,
+                        error = "Gemini finished with reason: $finishReason",
+                        errorType = currentErrorType
+                    ))
+                }
+
+                res.text()?.let { textChunk ->
+                    jsonParser.process(textChunk).forEach { summary ->
+                        launch(ioDispatcher) { send(summary) }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            log.error("Streaming summarization failed for articles [${articles.map { it.id }.joinToString()}].", e)
+            articles.forEach { article ->
+                launch(ioDispatcher) {
+                    send(SummaryResultWithId(article.id, false, error = e.message ?: "Streaming failed", errorType = ErrorType.API_ERROR))
+                }
             }
         }
-
-        return response.text() ?: ""
-    }
+    }.buffer(Channel.UNLIMITED) // downstream 처리가 늦어져도 막히지 않도록 버퍼 설정
 
     private fun buildGeminiConfig(categories: List<String>): GenerateContentConfig {
         val schema = promptBuilder.buildSchema(categories)

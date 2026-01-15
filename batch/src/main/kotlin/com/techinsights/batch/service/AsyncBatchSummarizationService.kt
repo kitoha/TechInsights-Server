@@ -4,6 +4,7 @@ import com.techinsights.batch.config.props.BatchProcessingProperties
 import com.techinsights.batch.dto.BatchRequest
 import com.techinsights.batch.dto.BatchResult
 import com.techinsights.domain.dto.gemini.ArticleInput
+import com.techinsights.domain.dto.gemini.BatchSummaryResponse
 import com.techinsights.domain.enums.GeminiModelType
 import com.techinsights.domain.service.gemini.BatchArticleSummarizer
 import io.github.resilience4j.circuitbreaker.CircuitBreaker
@@ -98,9 +99,11 @@ class AsyncBatchSummarizationService(
         if (retryPolicy.shouldRetry(errorType, retryCount)) {
             val delay = retryPolicy.calculateBackoffDelay(errorType, retryCount)
             delay(delay)
+            log.warn("Batch ${request.id} for posts [${request.posts.map { it.id }.joinToString()}] timed out. Retrying after ${delay}ms (attempt ${retryCount + 1}/${properties.maxRetryAttempts})")
             return processSingleBatchWithRetry(request, retryCount + 1)
         }
 
+        log.error("Batch ${request.id} for posts [${request.posts.map { it.id }.joinToString()}] failed permanently due to timeout after ${properties.maxRetryAttempts} retries.", exception)
         return resultProcessor.createFailureResult(
             request,
             "Timeout after retries",
@@ -113,7 +116,7 @@ class AsyncBatchSummarizationService(
         retryCount: Int,
         exception: Exception
     ): BatchResult {
-        log.error("Batch ${request.id} failed", exception)
+        log.error("Batch ${request.id} for posts [${request.posts.map { it.id }.joinToString()}] failed.", exception)
 
         val errorType = errorClassifier.classify(exception)
 
@@ -147,10 +150,17 @@ class AsyncBatchSummarizationService(
             )
         }
 
-        val batchResponse = batchSummarizer.summarizeBatch(
+        val summaryFlow = batchSummarizer.summarizeBatch(
             inputs,
             GeminiModelType.GEMINI_2_5_FLASH_LITE
         )
+
+        val results = mutableListOf<com.techinsights.domain.dto.gemini.SummaryResultWithId>()
+        summaryFlow.collect { result ->
+            results.add(result)
+        }
+
+        val batchResponse = BatchSummaryResponse(results)
 
         return resultProcessor.processBatchResponse(request, batchResponse, startTime)
     }

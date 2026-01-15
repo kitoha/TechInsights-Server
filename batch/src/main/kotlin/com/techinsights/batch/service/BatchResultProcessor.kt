@@ -33,7 +33,12 @@ class BatchResultProcessor(
                 )
 
                 !result.success -> failures.add(
-                    BatchFailure(post, result.error ?: "Unknown error", true, ErrorType.VALIDATION_ERROR)
+                    BatchFailure(
+                        post = post,
+                        reason = result.error ?: "Unknown error",
+                        retryable = result.errorType?.let { retryPolicy.isRetryableError(it) } ?: true,
+                        errorType = result.errorType ?: ErrorType.VALIDATION_ERROR
+                    )
                 )
 
                 else -> {

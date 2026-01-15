@@ -5,9 +5,9 @@ batch:
     chunk-size: 1
     retry-limit: 3
   processing:
-    # Gemini API 5 RPM 제한에 최적화하기 위해 병렬 처리 수를 1로 제한합니다.
-    # API Tier 업그레이드 시 이 값을 늘려 처리 속도를 향상시킬 수 있습니다.
+    # Gemini API 5 RPM
     concurrency-limit: 1
+    timeout-ms: 180000
 
 content:
   selectors:

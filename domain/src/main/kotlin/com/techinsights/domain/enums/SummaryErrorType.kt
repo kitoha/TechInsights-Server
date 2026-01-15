@@ -29,6 +29,14 @@ enum class SummaryErrorType(
         retryable = true,
         description = "Request timed out"
     ),
+    SAFETY_BLOCKED(
+        retryable = false,
+        description = "Content blocked by safety filters"
+    ),
+    LENGTH_LIMIT(
+        retryable = false,
+        description = "Content or response length exceeded limits"
+    ),
     UNKNOWN(
         retryable = true,
         description = "Unknown error occurred"

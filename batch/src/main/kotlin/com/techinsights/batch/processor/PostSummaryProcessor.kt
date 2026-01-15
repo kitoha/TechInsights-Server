@@ -25,7 +25,7 @@ class PostSummaryProcessor(
     private suspend fun processSuspending(item: PostDto): PostDto {
         try {
             val summarized =
-                summarizer.summarize(item.content, GeminiModelType.GEMINI_3_FLASH)
+                summarizer.summarize(item.content, GeminiModelType.GEMINI_2_5_FLASH)
             val content = summarized.summary
             val categories =
                 summarized.categories.map { Category.valueOf(it) }.toSet()

@@ -12,6 +12,8 @@ object ErrorTypeMapper {
             ErrorType.RATE_LIMIT -> SummaryErrorType.API_ERROR
             ErrorType.VALIDATION_ERROR -> SummaryErrorType.VALIDATION_ERROR
             ErrorType.CONTENT_ERROR -> SummaryErrorType.CONTENT_ERROR
+            ErrorType.SAFETY_BLOCKED -> SummaryErrorType.SAFETY_BLOCKED
+            ErrorType.LENGTH_LIMIT -> SummaryErrorType.LENGTH_LIMIT
             else -> SummaryErrorType.UNKNOWN
         }
     }

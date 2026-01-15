@@ -6,5 +6,7 @@ enum class ErrorType {
     RATE_LIMIT,
     VALIDATION_ERROR,
     UNKNOWN,
-    CONTENT_ERROR
+    CONTENT_ERROR,
+    SAFETY_BLOCKED,
+    LENGTH_LIMIT
 }
