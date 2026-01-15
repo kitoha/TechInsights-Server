@@ -33,41 +33,4 @@ enum class SummaryErrorType(
         retryable = true,
         description = "Unknown error occurred"
     );
-
-    companion object {
-        fun fromException(exception: Exception): SummaryErrorType {
-            val message = exception.message?.lowercase() ?: ""
-
-            return when {
-                message.contains("503") ||
-                message.contains("overloaded") ||
-                message.contains("service unavailable") -> API_ERROR
-
-                message.contains("429") ||
-                message.contains("rate limit") -> API_ERROR
-
-                message.contains("timeout") ||
-                message.contains("timed out") -> TIMEOUT
-
-                message.contains("json") ||
-                message.contains("parse") ||
-                message.contains("truncat") ||
-                message.contains("unexpected end") -> JSON_TRUNCATION
-
-                message.contains("circuit") ||
-                message.contains("breaker") -> CIRCUIT_OPEN
-
-                message.contains("invalid content") ||
-                message.contains("inappropriate") -> CONTENT_ERROR
-
-                message.contains("validation") -> VALIDATION_ERROR
-
-                else -> UNKNOWN
-            }
-        }
-
-        fun nonRetryableTypes(): List<SummaryErrorType> {
-            return entries.filter { !it.retryable }
-        }
-    }
 }
