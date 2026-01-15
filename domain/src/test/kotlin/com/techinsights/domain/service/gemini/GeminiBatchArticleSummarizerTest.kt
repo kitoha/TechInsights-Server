@@ -33,8 +33,8 @@ class GeminiBatchArticleSummarizerTest : FunSpec({
 
     beforeTest {
         clearAllMocks()
-        
-        every { rateLimiterRegistry.rateLimiter(any()) } returns rateLimiter
+
+        every { rateLimiterRegistry.rateLimiter(or("geminiBatchRpm", "geminiBatchRpd")) } returns rateLimiter
         every { circuitBreakerRegistry.circuitBreaker(any()) } returns circuitBreaker
         every { responseProcessor.process(any(), any(), any()) } answers { firstArg() }
 

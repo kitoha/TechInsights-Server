@@ -48,6 +48,10 @@ class OptimizedSummaryJobConfig(
             .build()
 
     companion object {
-        private const val CHUNK_SIZE = 5
+        /**
+         * 현재 사용 중인 Gemini API의 Rate Limit이 분당 5회(5 RPM)로 매우 제한적입니다.
+         * 추후 API Tier 업그레이드 시 이 값을 5~10 이상으로 상향 조정하여 처리 속도를 높일 수 있습니다.
+         */
+        private const val CHUNK_SIZE = 1
     }
 }

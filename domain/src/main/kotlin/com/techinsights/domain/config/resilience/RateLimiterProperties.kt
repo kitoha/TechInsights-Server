@@ -9,10 +9,15 @@ data class RateLimiterProperties(
     refreshPeriodSeconds = 60,
     timeoutSeconds = 30
   ),
-  val geminiBatch: LimiterConfig = LimiterConfig(
+  val geminiBatchRpm: LimiterConfig = LimiterConfig(
+    limitForPeriod = 5,
+    refreshPeriodSeconds = 60,
+    timeoutSeconds = 60
+  ),
+  val geminiBatchRpd: LimiterConfig = LimiterConfig(
     limitForPeriod = 20,
     refreshPeriodSeconds = 86400,
-    timeoutSeconds = 60
+    timeoutSeconds = 1
   ),
   val geminiEmbedding: LimiterConfig = LimiterConfig(
     limitForPeriod = 90,

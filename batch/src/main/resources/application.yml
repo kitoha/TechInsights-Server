@@ -4,6 +4,10 @@ batch:
     step-name: crawlPostStep
     chunk-size: 1
     retry-limit: 3
+  processing:
+    # Gemini API 5 RPM 제한에 최적화하기 위해 병렬 처리 수를 1로 제한합니다.
+    # API Tier 업그레이드 시 이 값을 늘려 처리 속도를 향상시킬 수 있습니다.
+    concurrency-limit: 1
 
 content:
   selectors:
@@ -47,10 +51,14 @@ rate-limiter:
     limit-for-period: 8
     refresh-period-seconds: 60
     timeout-seconds: 30
-  gemini-batch:
+  gemini-batch-rpm:
+    limit-for-period: 5
+    refresh-period-seconds: 60
+    timeout-seconds: 60
+  gemini-batch-rpd:
     limit-for-period: 20
-    refresh-period-seconds: 86400  # 하루 (RPD 제한)
-    timeout-seconds: 180
+    refresh-period-seconds: 86400
+    timeout-seconds: 1
   crawler:
     conservative:
       limit-for-period: 15

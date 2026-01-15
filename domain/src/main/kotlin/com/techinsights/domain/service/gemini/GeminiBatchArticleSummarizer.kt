@@ -31,7 +31,8 @@ class GeminiBatchArticleSummarizer(
     private val log = LoggerFactory.getLogger(javaClass)
     private val mapper = jacksonObjectMapper()
 
-    private val rateLimiter = rateLimiterRegistry.rateLimiter("geminiBatchSummarizer")
+    private val rpmLimiter = rateLimiterRegistry.rateLimiter("geminiBatchRpm")
+    private val rpdLimiter = rateLimiterRegistry.rateLimiter("geminiBatchRpd")
     private val circuitBreaker = circuitBreakerRegistry.circuitBreaker("geminiBatch")
 
     override suspend fun summarizeBatch(
@@ -179,7 +180,9 @@ class GeminiBatchArticleSummarizer(
         val prompt = promptBuilder.buildPrompt(articles, categories)
         val config = buildGeminiConfig(categories)
 
-        acquireRateLimiterPermission()
+        // API 할당량 최적화를 위한 이중 검문 (RPD -> RPM)
+        acquireRateLimiterPermission(rpdLimiter)
+        acquireRateLimiterPermission(rpmLimiter)
 
         val response = withContext(ioDispatcher) {
             circuitBreaker.executeCallable {
@@ -201,9 +204,9 @@ class GeminiBatchArticleSummarizer(
             .build()
     }
 
-    private suspend fun acquireRateLimiterPermission() {
+    private suspend fun acquireRateLimiterPermission(limiter: io.github.resilience4j.ratelimiter.RateLimiter) {
         withContext(ioDispatcher) {
-            rateLimiter.acquirePermission()
+            limiter.acquirePermission()
         }
     }
 }
