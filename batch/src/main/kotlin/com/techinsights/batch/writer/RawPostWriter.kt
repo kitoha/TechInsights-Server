@@ -31,9 +31,15 @@ class RawPostWriter(
 
         val savedPosts = postRepository.saveAll(filteredPosts)
 
-        log.info("Saved ${savedPosts.size} new posts (filtered from ${allPosts.size})")
+        val titles = savedPosts.take(3).joinToString(", ") { "'${it.title}'" }
+        val moreCount = if (savedPosts.size > 3) " and ${savedPosts.size - 3} more" else ""
+
+        log.info("[Writer] Saved {} new posts: {}{}", savedPosts.size, titles, moreCount)
       } else {
-        log.info("No new posts to save (all duplicates)")
+        log.info("[Writer] No new posts to save (Duplicate: {}, Empty: {})",
+          existUrls.size,
+          allPosts.size - existUrls.size
+        )
       }
 
     } catch (e: Exception) {

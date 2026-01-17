@@ -12,10 +12,19 @@ class RawPostProcessor(
   private val postCrawlingService: PostCrawlingService
 ) : ItemProcessor<CompanyDto, List<PostDto>> {
   override fun process(company: CompanyDto): List<PostDto> = runBlocking {
+    val startTime = System.currentTimeMillis()
+    log.info(">>>> [Crawling Start] Company: {} | URL: {}", company.name, company.blogUrl)
+
     try {
-      postCrawlingService.processCrawledData(company)
+      val result = postCrawlingService.processCrawledData(company)
+
+      val duration = System.currentTimeMillis() - startTime
+      log.info("<<<< [Crawling End]   Company: {} | Items: {} | Time: {}ms", company.name, result.size, duration)
+
+      result
     } catch (e: Exception) {
-      log.error("Feed 파싱 실패 [${company.name}] - ${e.message}", e)
+      val duration = System.currentTimeMillis() - startTime
+      log.error("!!!! [Crawling Fail]  Company: {} | Time: {}ms | Error: {}", company.name, duration, e.message, e)
       throw e
     }
   }
