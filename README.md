@@ -26,111 +26,128 @@ Tech Insights는 최신 IT 기술 관련 회사들의 기술 블로그 게시글
   - 각 아티클의 AI 요약, 태그, 원문 링크 등 상세 정보를 확인할 수 있습니다.
   - 사용자의 IP를 기반으로 조회수를 집계하여 게시글의 인기도를 측정합니다.
 
-## 시스템 아키텍처
+---
 
-```mermaid
-graph TB
-    subgraph "클라이언트"
-        Client[Web Browser]
-    end
+## 🚀 Quick Start
 
-    subgraph "인프라 레이어"
-        Nginx[Nginx<br/>리버스 프록시 & SSL]
-    end
+### Prerequisites
 
-    subgraph "애플리케이션 레이어"
-        subgraph "API 모듈"
-            Controller[Controllers<br/>post, search, recommend<br/>company, category]
-            AID[AID Manager<br/>익명 사용자 추적]
-        end
+- **JDK 21**
+- **Docker & Docker Compose**
+- **Gradle 8.5+** (Wrapper 포함)
 
-        subgraph "Domain 모듈"
-            Service[Domain Services<br/>PostService, SearchService<br/>RecommendationService]
-            Repository[Repositories<br/>JPA + Querydsl]
-            Embedding[Embedding Service<br/>벡터 임베딩]
-            Summarizer[Article Summarizer<br/>AI 요약]
-        end
+### 환경 설정
 
-        subgraph "Batch 모듈"
-            FeedParser[RSS Feed Parser<br/>Atom/RSS]
-            Crawler[Web Crawler<br/>컨텐츠 추출]
-            BatchProcessor[Batch Processor<br/>요약 & 임베딩]
-        end
-    end
+프로젝트 루트에 `.env` 파일을 생성합니다:
 
-    subgraph "데이터 레이어"
-        PostgreSQL[(PostgreSQL<br/>관계형 데이터<br/>벡터 검색)]
-    end
-
-    subgraph "외부 API"
-        Gemini[Google Gemini API<br/>요약 & 임베딩]
-        RSS[기업 기술블로그<br/>RSS Feeds]
-    end
-
-    Client -->|HTTPS| Nginx
-    Nginx -->|Proxy| Controller
-    Controller --> AID
-    Controller --> Service
-    Service --> Repository
-    Service --> Embedding
-    Service --> Summarizer
-    Repository --> PostgreSQL
-
-    FeedParser -->|스케줄링| RSS
-    RSS -->|XML/Atom| FeedParser
-    FeedParser --> Crawler
-    Crawler --> BatchProcessor
-    BatchProcessor --> Summarizer
-    BatchProcessor --> Embedding
-    BatchProcessor --> Repository
-
-    Embedding -->|API 호출| Gemini
-    Summarizer -->|API 호출| Gemini
-
-    style Client fill:#e1f5ff
-    style Nginx fill:#ffe1e1
-    style PostgreSQL fill:#e1ffe1
-    style Gemini fill:#fff4e1
-    style RSS fill:#f0e1ff
+```env
+DB_PASSWORD=your_password
+GEMINI_API_KEY=your_gemini_api_key
 ```
 
-## 🛠 Tech Stack
+### 로컬 실행
 
-### Language
+```bash
+# 1. 저장소 클론
+git clone https://github.com/kitoha/TechInsights-Server.git
+cd TechInsights-Server
 
-![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
+# 2. DB 실행 (PostgreSQL + pgvector)
+docker-compose -f docker-compose.db.yml up -d
 
-### Framework & Runtime
+# 3. 빌드
+./gradlew clean build
 
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)
-![Spring Batch](https://img.shields.io/badge/Spring%20Batch-6DB33F?style=for-the-badge&logo=spring&logoColor=white)
-![JPA](https://img.shields.io/badge/JPA-59666C?style=for-the-badge&logo=hibernate&logoColor=white)
-![Querydsl](https://img.shields.io/badge/Querydsl-4695EB?style=for-the-badge&logo=java&logoColor=white)
+# 4. API 서버 실행
+./gradlew :api:bootRun
+```
 
-### Database
+API 서버: http://localhost:8080
 
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
-![pgvector](https://img.shields.io/badge/pgvector-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+Health Check: http://localhost:8080/actuator/health
 
-### AI / ML
+---
 
-![Google Gemini](https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white)
+## 🏗 프로젝트 구조
 
-### Infra & DevOps
+```
+TechInsights-Server/
+├── api/                     # REST API 모듈 (Spring Boot Web)
+│   ├── src/main/kotlin/
+│   └── Dockerfile
+├── batch/                   # 배치 처리 모듈 (Spring Batch)
+│   ├── src/main/kotlin/
+│   └── Dockerfile
+├── domain/                  # 공통 도메인 모듈 (JPA, Querydsl)
+│   └── src/main/kotlin/
+├── gradle/                  # Gradle 버전 카탈로그
+│   └── libs.versions.toml
+├── docker-compose.yml       # 로컬 전체 환경 (API + DB + Nginx)
+├── docker-compose.db.yml    # DB만 실행
+├── docker-compose.app.yml   # API + Nginx
+└── docker-compose.prod.yml  # 프로덕션 환경
+```
 
-![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![Nginx](https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white)
-![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)
-![AWS](https://img.shields.io/badge/AWS-232F3E?style=for-the-badge&logo=amazonwebservices&logoColor=white)
+### 모듈 의존성
 
-### Runtime
+```
+api ──┬──→ domain
+batch ─┘
+```
 
-![JDK 21](https://img.shields.io/badge/JDK-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
-![Gradle](https://img.shields.io/badge/Gradle-02303A?style=for-the-badge&logo=gradle&logoColor=white)
+| 모듈 | 역할 |
+|------|------|
+| `api` | REST API 엔드포인트, 컨트롤러, 인증/인가 |
+| `batch` | RSS 피드 크롤링, AI 요약, 임베딩 생성 |
+| `domain` | 엔티티, 리포지토리, 도메인 서비스 |
 
-## 접속 링크
+---
 
-https://www.techinsights.shop/
+## 🐳 Docker
+
+| 파일 | 용도 | 명령어 |
+|------|------|--------|
+| `docker-compose.db.yml` | PostgreSQL + pgvector | `docker-compose -f docker-compose.db.yml up -d` |
+| `docker-compose.yml` | 전체 로컬 환경 | `docker-compose up -d` |
+| `docker-compose.app.yml` | API + Nginx | `docker-compose -f docker-compose.app.yml up -d` |
+| `docker-compose.prod.yml` | 프로덕션 (AWS) | CodeDeploy로 실행 |
+
+### Docker 이미지 빌드
+
+```bash
+# API 이미지 빌드
+docker build -t techinsights-api ./api
+
+# Batch 이미지 빌드
+docker build -t techinsights-batch ./batch
+```
+
+---
+
+## 🧪 테스트
+
+```bash
+# 전체 테스트 실행
+./gradlew test
+
+# 모듈별 테스트
+./gradlew :api:test
+./gradlew :batch:test
+./gradlew :domain:test
+
+# 커버리지 리포트 생성
+./gradlew jacocoTestReport
+```
+
+커버리지 리포트: `build/reports/jacoco/test/html/index.html`
+
+### 테스트 스택
+- **JUnit 5** - 테스트 프레임워크
+- **Kotest** - Kotlin 테스트 라이브러리
+- **MockK** - Kotlin 모킹 라이브러리
+- **JaCoCo** - 코드 커버리지
+
+---
 
 ## 📡 API Endpoints
 
@@ -171,15 +188,23 @@ https://www.techinsights.shop/
 |--------|---------------------------|---------------|
 | `GET`  | `/api/v1/recommendations` | AI 기반 개인화 추천  |
 
-## Preview
+---
 
-| 검색 기능                                                            | 세부 페이지                                                                | 다크모드                                                              |
-|------------------------------------------------------------------|-----------------------------------------------------------------------|-------------------------------------------------------------------|
-| <img src="./img/gif/Search_Test.gif" alt="검색 기능 데모" width="300"> | <img src="./img/gif/DetailView_Test.gif" alt="세부 페이지 데모" width="300"> | <img src="./img/gif/DarkMode_Test.gif" alt="다크모드 데모" width="300"> |
+## 시스템 아키텍처
 
-### 데이터베이스 ERD
+API Sever
+
+<img width="4920" height="1272" alt="Image" src="https://github.com/user-attachments/assets/39001247-3359-46c5-a12d-33dda77f3456" />
+
+Batch Server
+
+<img width="3930" height="2197" alt="Image" src="https://github.com/user-attachments/assets/664b2b9e-2c79-4fd1-9bbe-acd050342ca5" />
+
+
+---
 
 ## ERD
+
 ```mermaid
 erDiagram
     Company {
@@ -190,6 +215,9 @@ erDiagram
         Boolean rssSupported "RSS 지원 여부"
         Long totalViewCount "총 조회수"
         Long postCount "게시물 수"
+        LocalDateTime createdAt "생성일"
+        LocalDateTime updatedAt "수정일"
+        LocalDateTime deletedAt "삭제일 (soft delete)"
     }
 
     Post {
@@ -204,11 +232,15 @@ erDiagram
         Long viewCount "조회수"
         Boolean isSummary "요약 여부"
         Boolean isEmbedding "임베딩 여부"
+        Int summaryFailureCount "요약 실패 횟수"
+        LocalDateTime createdAt "생성일"
+        LocalDateTime updatedAt "수정일"
+        LocalDateTime deletedAt "삭제일 (soft delete)"
     }
 
     post_categories {
         Long post_id FK "게시물 ID"
-        String category "카테고리"
+        String category "카테고리 (Enum)"
     }
 
     PostEmbedding {
@@ -216,7 +248,9 @@ erDiagram
         String companyName "회사명"
         String categories "카테고리"
         String content "내용"
-        FloatArray embeddingVector "임베딩 벡터"
+        FloatArray embeddingVector "임베딩 벡터 (3072차원)"
+        LocalDateTime createdAt "생성일"
+        LocalDateTime updatedAt "수정일"
     }
 
     PostView {
@@ -224,6 +258,9 @@ erDiagram
         Long postId FK "게시물 ID"
         String userOrIp "사용자 또는 IP"
         LocalDate viewedDate "조회일"
+        String userAgent "User Agent"
+        LocalDateTime createdAt "생성일"
+        LocalDateTime updatedAt "수정일"
     }
 
     AnonymousUserReadHistory {
@@ -231,6 +268,29 @@ erDiagram
         String anonymousId "익명 사용자 ID"
         Long postId FK "게시물 ID"
         LocalDateTime readAt "읽은 시간"
+        LocalDateTime createdAt "생성일"
+        LocalDateTime updatedAt "수정일"
+    }
+
+    PostSummaryFailure {
+        Long id PK
+        Long postId FK "게시물 ID"
+        String errorType "에러 유형 (Enum)"
+        String errorMessage "에러 메시지"
+        LocalDateTime failedAt "실패 시간"
+        Int batchSize "배치 크기"
+        Boolean isBatchFailure "배치 실패 여부"
+    }
+
+    SummaryRetryQueue {
+        Long postId PK "게시물 ID"
+        String reason "재시도 사유"
+        String errorType "에러 유형 (Enum)"
+        Int retryCount "재시도 횟수"
+        Instant nextRetryAt "다음 재시도 시간"
+        Instant createdAt "생성일"
+        Instant lastRetryAt "마지막 재시도 시간"
+        Int maxRetries "최대 재시도 횟수"
     }
 
     Company ||--o{ Post : "owns"
@@ -238,196 +298,81 @@ erDiagram
     Post ||--o{ PostView : "has many"
     Post ||--o{ AnonymousUserReadHistory : "has many"
     Post ||--o{ post_categories : "has many"
+    Post ||--o{ PostSummaryFailure : "has many"
+    Post ||--o| SummaryRetryQueue : "has one"
 ```
+
+---
+
+## 🛠 Tech Stack
+
+### Language
+
+![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
+
+### Framework & Runtime
+
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)
+![Spring Batch](https://img.shields.io/badge/Spring%20Batch-6DB33F?style=for-the-badge&logo=spring&logoColor=white)
+![JPA](https://img.shields.io/badge/JPA-59666C?style=for-the-badge&logo=hibernate&logoColor=white)
+![Querydsl](https://img.shields.io/badge/Querydsl-4695EB?style=for-the-badge&logo=java&logoColor=white)
+
+### Database
+
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![pgvector](https://img.shields.io/badge/pgvector-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+
+### AI / ML
+
+![Google Gemini](https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white)
+
+### Infra & DevOps
+
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Nginx](https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-232F3E?style=for-the-badge&logo=amazonwebservices&logoColor=white)
+
+### Runtime
+
+![JDK 21](https://img.shields.io/badge/JDK-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
+![Gradle](https://img.shields.io/badge/Gradle-02303A?style=for-the-badge&logo=gradle&logoColor=white)
+
+---
 
 ## Technical Challenges & Solutions
 
-### 1. 조회수 집계 트랜잭션 최적화
+개발 과정에서 마주한 기술적 도전과 해결 방안을 정리했습니다.
 
-**문제 상황**
+| 주제 | 핵심 기술 |
+|------|----------|
+| [조회수 집계 트랜잭션 최적화](./TECHNICAL_CHALLENGES.md#1-조회수-집계-트랜잭션-최적화) | Spring Event, @TransactionalEventListener, Eventual Consistency |
+| [벡터 검색 성능 최적화](./TECHNICAL_CHALLENGES.md#2-벡터-검색-성능-최적화) | PostgreSQL pgvector, L2 Distance, 평균 벡터 기법 |
+| [RSS/Atom 피드 파싱](./TECHNICAL_CHALLENGES.md#3-rssatom-피드-파싱-및-중복-처리) | Strategy Pattern, 도메인별 CSS 셀렉터, URL 기반 중복 감지 |
+| [Gemini API Rate Limit 관리](./TECHNICAL_CHALLENGES.md#4-gemini-api-rate-limit-관리) | Resilience4j RateLimiter, Circuit Breaker, 설정 외부화 |
+| [N+1 쿼리 최적화](./TECHNICAL_CHALLENGES.md#5-n1-쿼리-최적화) | Querydsl fetchJoin, BatchSize, DTO Projection |
+| [스트리밍 JSON 파싱](./TECHNICAL_CHALLENGES.md#6-스트리밍-json-파싱) | 실시간 청크 파싱, 메모리 효율화, 부분 응답 처리 |
+| [배치 요약 검증](./TECHNICAL_CHALLENGES.md#7-배치-요약-검증) | AI 응답 품질 검증, ID 매칭, 카테고리 유효성 |
+| [요약 실패 관리 및 재시도](./TECHNICAL_CHALLENGES.md#8-요약-실패-관리-및-재시도) | 지수 백오프, 실패 이력 추적, 재시도 큐 |
 
-기존 `recordView()` 메서드에서 중복 체크, PostView 저장, Post 조회수 증가, Company 총 조회수 증가가 단일 트랜잭션으로 묶여 있었습니다. 트랜잭션
-범위가 과도하게 넓어지면서 DB Lock 경합이 발생하고, 조회수 업데이트 실패 시 전체 조회 기록이 롤백되는 문제가 있었습니다.
-
-**해결 방안**
-
-Spring Event와 `@TransactionalEventListener`를 활용하여 관심사를 분리했습니다.
-(Redis를 현재 사용하지 못 하기 때문에 임시로 DB 기반 비동기 처리를 구현)
-
-1. 조회 기록 저장: 중복 체크 및 PostView 저장은 기존 트랜잭션 내에서 처리
-2. 조회수 증가: Post 및 Company 조회수 증가는 별도의 비동기 이벤트
-3. 트랜잭션 커밋 후 실행: 조회 기록이 성공적으로 커밋된 후에만 조회수 증가 로직 실행
-4. 장애 격리: 조회수 증가 실패 시에도 조회 기록은 유지
-5. 비동기 처리: 사용자 응답 지연 방지
-6. Eventual Consistency: 조회수는 최종적으로 일관성을 보장
-7. 성능 향상: 트랜잭션 경합 감소로 전체 처리량 증가
-
-```kotlin
-@Async
-@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-fun handleViewCountIncrement(event: ViewCountIncrementEvent) {
-  viewCountUpdater.incrementViewCount(event.postId)
-  companyViewCountUpdater.incrementTotalViewCount(event.companyId)
-}
-```
-
-- **AFTER_COMMIT**: 조회 기록 트랜잭션이 성공적으로 커밋된 후에만 카운트 증가 로직 실행
-- **@Async**: 비동기 처리로 사용자 응답 지연 방지
-- **Eventual Consistency**: 카운트 실패가 핵심 비즈니스 로직에 영향을 주지 않음
+상세 내용은 [TECHNICAL_CHALLENGES.md](./TECHNICAL_CHALLENGES.md)를 참고하세요.
 
 ---
 
-### 2. 벡터 검색 성능 최적화
+## Preview
 
-**아키텍처 설계**
-
-PostgreSQL의 pgvector 확장을 활용하여 3072차원 임베딩 벡터 기반의 유사도 검색을 구현했습니다.
-
-```kotlin
-@JdbcTypeCode(SqlTypes.VECTOR)
-@Array(length = 3072)
-@Column(name = "embedding_vector")
-val embeddingVector: FloatArray
-```
-
-**검색 로직**
-
-사용자의 최근 읽음 이력(10개)의 임베딩 벡터를 평균화하여 개인화된 추천 쿼리를 생성합니다.
-
-```sql
-SELECT * FROM post_embedding
-WHERE post_id NOT IN :excludeIds
-ORDER BY embedding_vector <-> CAST(:targetVector AS vector)
-LIMIT :limit
-```
-
-- **L2 Distance (`<->`)**: 유클리드 거리 기반 유사도 측정
-- **평균 벡터 기법**: 다수의 관심사를 단일 벡터로 응축하여 쿼리 복잡도 감소
-- **제외 필터**: 이미 읽은 게시글을 결과에서 배제하여 추천 품질 향상
+| 검색 기능                                                            | 세부 페이지                                                                | 다크모드                                                              |
+|------------------------------------------------------------------|-----------------------------------------------------------------------|-------------------------------------------------------------------|
+| <img src="./img/gif/Search_Test.gif" alt="검색 기능 데모" width="300"> | <img src="./img/gif/DetailView_Test.gif" alt="세부 페이지 데모" width="300"> | <img src="./img/gif/DarkMode_Test.gif" alt="다크모드 데모" width="300"> |
 
 ---
 
-### 3. RSS/Atom 피드 파싱 및 중복 처리
-
-**Strategy Pattern 기반 파서 설계**
-
-다양한 피드 형식(RSS 2.0, Atom 1.0)과 기업별 커스텀 구조를 유연하게 처리하기 위해 전략 패턴을 적용했습니다.
-
-```
-FeedTypeStrategyResolver
-├── RssFeedStrategy      (RSS 2.0)
-└── AtomFeedStrategy     (Atom 1.0)
-
-BlogParserResolver
-├── FeedParser           (일반 RSS/Atom)
-├── OliveYoungBlogParser (특수 처리)
-└── ElevenStBlogParser   (특수 처리)
-```
-
-**중복 감지 전략**
-
-URL 기반의 Idempotent 처리로 크롤링 시 중복 게시글을 방지합니다.
-
-```kotlin
-val existUrls = postRepository.findAllByUrlIn(originalUrls).map { it.url }.toSet()
-val filteredPosts = allPosts.filter { it.url !in existUrls }
-```
-
-**도메인별 컨텐츠 추출**
-
-13개 기업 기술블로그의 HTML 구조를 분석하여 도메인별 CSS 선택자를 매핑했습니다.
-
-```kotlin
-val selectorMapping = mapOf(
-  "techblog.woowahan.com" to ".post-content-inner > .post-content-body",
-  "tech.kakao.com" to ".inner_content > .daum-wm-content.preview",
-  "toss.tech" to "article.css-hvd0pt > div.css-1vn47db",
-  // ... 10개 추가 도메인
-)
-```
-
----
-
-### 4. Gemini API Rate Limit 관리
-
-**Resilience4j 기반 Rate Limiting**
-
-외부 API 호출의 안정성을 위해 Resilience4j RateLimiter를 적용했습니다.
-
-```kotlin
-@Bean
-fun rateLimiterRegistry(): RateLimiterRegistry {
-  val geminiConfig = RateLimiterConfig.custom()
-    .limitForPeriod(8)                    // 60초당 8회
-    .limitRefreshPeriod(Duration.ofSeconds(60))
-    .timeoutDuration(Duration.ofSeconds(30))
-    .build()
-
-  return RateLimiterRegistry.of(geminiConfig)
-}
-```
-
-**호출 전략**
-
-```kotlin
-val response = rateLimiter.executeCallable {
-  geminiClient.models.generateContent(modelName, prompt, config)
-}
-```
-
-- **청크 단위 배치 처리**: 요약(10개), 임베딩(1개) 단위로 처리하여 API 호출 최적화
-- **Fault Tolerance**: 최대 3회 재시도, 10개 스킵 허용으로 부분 실패 격리
-- **도메인별 차등 제한**: 크롤링 대상 도메인별로 보수적/기본 Rate Limit 구분 적용
-
----
-
-### 5. N+1 쿼리 최적화
-
-**Querydsl fetchJoin 전략**
-
-Post-Company 관계에서 발생하는 N+1 문제를 Querydsl의 fetchJoin으로 해결했습니다.
-
-```kotlin
-val posts = queryFactory.selectFrom(postEntity)
-  .leftJoin(postEntity.company, companyEntity).fetchJoin()
-  .where(postEntity.url.`in`(urls))
-  .fetch()
-```
-
-- Post 조회 메서드 12개 모두에 Company fetchJoin 적용
-- 검색 쿼리에도 동일한 패턴 적용
-
-**BatchSize를 통한 ElementCollection 최적화**
-
-```kotlin
-@BatchSize(size = 100)
-@ElementCollection(fetch = FetchType.LAZY, targetClass = Category::class)
-var categories: MutableSet<Category> = mutableSetOf()
-```
-
-- categories 로딩 시 N+1을 `1 + ceil(N/100)` 쿼리로 완화
-- 1000개 Post 조회 시 1000회 → 11회로 쿼리 감소
-
-**DTO Projection 활용**
-
-집계 쿼리에서 불필요한 엔티티 로딩을 방지하기 위해 Querydsl Projection을 활용했습니다.
-
-```kotlin
-.select(
-  Projections.constructor(
-    CompanyPostSummaryDto::class.java,
-    company.id, company.name, company.blogUrl,
-    company.logoImageName, company.totalViewCount,
-    post.id.count(), post.publishedAt.max()
-  )
-)
-```
-
----
-
-### Initial Design
-
-Home
+## Initial Design
 
 ![Image](https://github.com/user-attachments/assets/d5533bfa-e6cb-46af-9c32-16a3d9b98aa0)
 
+---
+
+## 접속 링크
+
+https://www.techinsights.shop/
