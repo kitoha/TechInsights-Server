@@ -6,18 +6,181 @@
 
 ## 목차
 
-- [1. 조회수 집계 트랜잭션 최적화](#1-조회수-집계-트랜잭션-최적화)
-- [2. 벡터 검색 성능 최적화](#2-벡터-검색-성능-최적화)
-- [3. RSS/Atom 피드 파싱 및 중복 처리](#3-rssatom-피드-파싱-및-중복-처리)
-- [4. Gemini API Rate Limit 관리](#4-gemini-api-rate-limit-관리)
-- [5. N+1 쿼리 최적화](#5-n1-쿼리-최적화)
-- [6. 스트리밍 JSON 파싱](#6-스트리밍-json-파싱)
-- [7. 배치 요약 검증](#7-배치-요약-검증)
-- [8. 요약 실패 관리 및 재시도](#8-요약-실패-관리-및-재시도)
+- [1. 배치 처리 아키텍처 고도화](#1-배치-처리-아키텍처-고도화)
+- [2. N+1 쿼리 최적화](#2-n1-쿼리-최적화)
+- [3. 벡터 검색 성능 최적화](#3-벡터-검색-성능-최적화)
+- [4. 조회수 집계 트랜잭션 최적화](#4-조회수-집계-트랜잭션-최적화)
+- [5. Gemini API Rate Limit 관리](#5-gemini-api-rate-limit-관리)
+- [6. 스트리밍 기반 타임아웃 방지](#6-스트리밍-기반-타임아웃-방지)
+- [7. RSS/Atom 피드 파싱 및 중복 처리](#7-rssatom-피드-파싱-및-중복-처리)
+- [8. 배치 요약 검증](#8-배치-요약-검증)
+- [9. 요약 실패 관리 및 재시도](#9-요약-실패-관리-및-재시도)
 
 ---
 
-## 1. 조회수 집계 트랜잭션 최적화
+## 1. 배치 처리 아키텍처 고도화
+
+### 문제 상황
+
+Gemini API를 사용한 대량 게시글 요약 처리 시 다음과 같은 문제가 발생했습니다:
+- 단건 요약 방식으로는 일일 처리량 제한 (초기 20건/일)
+- API Rate Limit로 인한 잦은 타임아웃 (12% 발생률)
+- 실패 시 전체 재처리로 인한 비효율
+- 대용량 응답으로 인한 메모리 부담
+
+### 해결 방안
+
+#### 1. DynamicBatchBuilder: 토큰 기반 동적 배치 분할
+
+Gemini API의 입력 토큰 제한(200K)과 출력 토큰 제한(14.7K)을 고려하여 배치를 동적으로 분할합니다.
+
+```kotlin
+@Component
+class DynamicBatchBuilder(
+    private val config: BatchBuildConfig,
+    private val limitChecker: BatchLimitChecker,
+    private val postTruncator: PostTruncator
+) {
+    fun buildBatches(posts: List<PostDto>): List<Batch> {
+        val batches = mutableListOf<Batch>()
+        var currentBatch = mutableListOf<PostDto>()
+        var currentTokens = config.basePromptTokens
+
+        for (post in posts) {
+            val postTokens = TokenEstimator.estimateTotalTokens(post.content)
+
+            // 단일 게시글이 최대 토큰 초과 시 자동 truncation
+            if (limitChecker.exceedsMaxTokens(postTokens)) {
+                handleOversizedPost(post, batches, currentBatch, currentTokens)
+                currentBatch = mutableListOf()
+                currentTokens = config.basePromptTokens
+                continue
+            }
+
+            // 입력/출력 토큰 제한 또는 배치 크기 초과 시 새 배치 시작
+            if (shouldStartNewBatch(currentBatch.size, currentTokens, postTokens)) {
+                finalizeBatch(batches, currentBatch, currentTokens)
+                currentBatch = mutableListOf()
+                currentTokens = config.basePromptTokens
+            }
+
+            currentBatch.add(post)
+            currentTokens += postTokens
+        }
+
+        finalizeBatch(batches, currentBatch, currentTokens)
+        return batches
+    }
+
+    private fun shouldStartNewBatch(
+        currentSize: Int,
+        currentTokens: Int,
+        additionalTokens: Int
+    ): Boolean {
+        if (currentSize == 0) return false
+
+        val exceedsInput = limitChecker.exceedsInputLimit(currentTokens, additionalTokens)
+        val exceedsOutput = limitChecker.exceedsOutputLimit(currentSize + 1)
+        val exceedsSize = limitChecker.exceedsBatchSize(currentSize)
+
+        return exceedsInput || exceedsOutput || exceedsSize
+    }
+}
+```
+
+#### 2. generateContentStream: 스트리밍 API로 타임아웃 방지
+
+Gemini의 스트리밍 API를 사용하여 청크 단위로 응답을 수신함으로써 타임아웃을 방지합니다.
+
+```kotlin
+@Service
+class GeminiBatchArticleSummarizer(
+    private val geminiClient: Client,
+    rateLimiterRegistry: RateLimiterRegistry,
+    circuitBreakerRegistry: CircuitBreakerRegistry
+) {
+    private val rpmLimiter = rateLimiterRegistry.rateLimiter("geminiBatchRpm")
+    private val rpdLimiter = rateLimiterRegistry.rateLimiter("geminiBatchRpd")
+    private val circuitBreaker = circuitBreakerRegistry.circuitBreaker("geminiBatch")
+
+    override fun summarizeBatch(
+        articles: List<ArticleInput>,
+        modelType: GeminiModelType
+    ): Flow<SummaryResultWithId> = channelFlow {
+        // Rate Limiter 획득
+        acquireRateLimiterPermission(rpdLimiter)
+        acquireRateLimiterPermission(rpmLimiter)
+
+        // Circuit Breaker로 보호된 스트리밍 API 호출
+        val responseStream = circuitBreaker.executeCallable {
+            geminiClient.models.generateContentStream(modelName, prompt, config)
+        }
+
+        val jsonParser = StreamingJsonParser()
+        for (res in responseStream) {
+            res.text()?.let { textChunk ->
+                // 청크 단위로 JSON 파싱 및 즉시 처리
+                jsonParser.process(textChunk).forEach { summary ->
+                    launch(ioDispatcher) { send(summary) }
+                }
+            }
+        }
+    }
+}
+```
+
+#### 3. 부분 성공 처리 (Partial Success)
+
+배치 내 일부 게시글 요약이 실패해도 성공한 게시글은 정상 처리하고, 실패 게시글만 재시도 큐에 등록합니다.
+
+```kotlin
+override fun summarizeBatch(
+    articles: List<ArticleInput>,
+    modelType: GeminiModelType
+): Flow<SummaryResultWithId> {
+    return channelFlow {
+        val results = mutableSetOf<String>()
+
+        callGeminiApi(articles, modelType).collect { result ->
+            results.add(result.id)
+            send(result)  // 성공/실패 여부와 관계없이 결과 전송
+        }
+
+        // 응답에 누락된 게시글 처리
+        articles.filter { it.id !in results }.forEach { missing ->
+            send(
+                SummaryResultWithId(
+                    id = missing.id,
+                    success = false,
+                    error = "Response missing from Gemini stream",
+                    errorType = ErrorType.CONTENT_ERROR
+                )
+            )
+        }
+    }
+}
+```
+
+#### 4. 성능 측정 결과 (2025.12.27 - 2026.01.15)
+
+| 지표 | 개선 전 | 개선 후 | 향상률 |
+|------|---------|---------|--------|
+| **일일 처리량** | 20건 | 140건 | **7배** |
+| **API 호출 효율** | 20회/20건 | 4회/20건 | **5배** |
+| **타임아웃 발생률** | 12% (6/50) | 2% (1/50) | **83% 감소** |
+| **평균 처리 시간** | 13.71분/36건 | 2.11분/36건 | **84.6% 단축** |
+
+### 핵심 포인트
+
+- **토큰 기반 동적 배치**: 입력/출력 토큰 제한을 고려한 지능적 배치 분할
+- **스트리밍 API**: 청크 단위 수신으로 타임아웃 방지 (타임아웃률 12% → 2%)
+- **부분 성공 처리**: 배치 내 개별 실패 격리로 재처리 효율 극대화
+- **Rate Limiting**: Resilience4j로 RPM/RPD 제한 준수
+- **Circuit Breaker**: 연속 실패 시 빠른 실패 반환으로 시스템 보호
+
+---
+
+## 2. N+1 쿼리 최적화
 
 ### 문제 상황
 
@@ -61,9 +224,52 @@ class ViewCountEventHandler(
 - **@Async**: 비동기 처리로 사용자 응답 지연 방지
 - **Eventual Consistency**: 카운트 실패가 핵심 비즈니스 로직에 영향을 주지 않음
 
+### Querydsl fetchJoin 전략
+
+Post-Company 관계에서 발생하는 N+1 문제를 Querydsl의 fetchJoin으로 해결했습니다.
+
+```kotlin
+val posts = queryFactory.selectFrom(postEntity)
+  .leftJoin(postEntity.company, companyEntity).fetchJoin()
+  .where(postEntity.url.`in`(urls))
+  .fetch()
+```
+
+- Post 조회 메서드 12개 모두에 Company fetchJoin 적용
+- 검색 쿼리에도 동일한 패턴 적용
+
+### BatchSize를 통한 ElementCollection 최적화
+
+```kotlin
+@BatchSize(size = 100)
+@ElementCollection(fetch = FetchType.LAZY, targetClass = Category::class)
+@CollectionTable(name = "post_categories", joinColumns = [JoinColumn(name = "post_id")])
+@Enumerated(EnumType.STRING)
+@Column(name = "category", nullable = false)
+var categories: MutableSet<Category> = mutableSetOf()
+```
+
+- categories 로딩 시 N+1을 `1 + ceil(N/100)` 쿼리로 완화
+- 1000개 Post 조회 시 1000회 → 11회로 쿼리 감소 (99.5% 감소)
+
+### DTO Projection 활용
+
+집계 쿼리에서 불필요한 엔티티 로딩을 방지하기 위해 Querydsl Projection을 활용했습니다.
+
+```kotlin
+.select(
+  Projections.constructor(
+    CompanyPostSummaryDto::class.java,
+    company.id, company.name, company.blogUrl,
+    company.logoImageName, company.totalViewCount,
+    post.id.count(), post.publishedAt.max()
+  )
+)
+```
+
 ---
 
-## 2. 벡터 검색 성능 최적화
+## 3. 벡터 검색 성능 최적화
 
 ### 아키텍처 설계
 
@@ -98,85 +304,70 @@ LIMIT :limit
 ### 핵심 포인트
 
 - **L2 Distance (`<->`)**: 유클리드 거리 기반 유사도 측정
-- **평균 벡터 기법**: 다수의 관심사를 단일 벡터로 응축하여 쿼리 복잡도 감소
+- **평균 벡터 기법**: 다수의 관심사를 단일 벡터로 응축하여 쿼리 10회 → 1회로 감소
 - **제외 필터**: 이미 읽은 게시글을 결과에서 배제하여 추천 품질 향상
 
 ---
 
-## 3. RSS/Atom 피드 파싱 및 중복 처리
+## 4. 조회수 집계 트랜잭션 최적화
 
-### Strategy Pattern 기반 파서 설계
+### 문제 상황
 
-다양한 피드 형식(RSS 2.0, Atom 1.0)과 기업별 커스텀 구조를 유연하게 처리하기 위해 전략 패턴을 적용했습니다.
+기존 `recordView()` 메서드에서 중복 체크, PostView 저장, Post 조회수 증가, Company 총 조회수 증가가 단일 트랜잭션으로 묶여 있었습니다. 트랜잭션 범위가 과도하게 넓어지면서 DB Lock 경합이 발생하고, 조회수 업데이트 실패 시 전체 조회 기록이 롤백되는 문제가 있었습니다.
 
-```
-FeedTypeStrategyResolver
-├── RssFeedStrategy      (RSS 2.0)
-└── AtomFeedStrategy     (Atom 1.0)
+### 해결 방안
 
-BlogParserResolver
-├── FeedParser           (일반 RSS/Atom)
-├── OliveYoungBlogParser (특수 처리)
-└── ElevenStBlogParser   (특수 처리)
-```
-
-### 중복 감지 전략
-
-URL 기반의 Idempotent 처리로 크롤링 시 중복 게시글을 방지합니다.
+Spring Event와 `@TransactionalEventListener`를 활용하여 관심사를 분리했습니다.
 
 ```kotlin
-val existUrls = postRepository.findAllByUrlIn(originalUrls).map { it.url }.toSet()
-val filteredPosts = allPosts.filter { it.url !in existUrls }
-```
+@Service
+class PostViewService(
+  private val postViewRepository: PostViewRepository,
+  private val eventPublisher: ApplicationEventPublisher
+) {
+  @Transactional
+  fun recordView(postId: Long, companyId: Long, ipAddress: String) {
+    // 1. 중복 체크 및 조회 기록 저장 (트랜잭션 내)
+    if (!postViewRepository.existsByPostIdAndIpAddress(postId, ipAddress)) {
+      postViewRepository.save(PostView(postId, ipAddress))
 
-### 도메인별 컨텐츠 추출
+      // 2. 조회수 증가 이벤트 발행 (트랜잭션 커밋 후 실행)
+      eventPublisher.publishEvent(
+        ViewCountIncrementEvent(postId, companyId)
+      )
+    }
+  }
+}
 
-13개 기업 기술블로그의 HTML 구조를 분석하여 도메인별 CSS 선택자를 매핑했습니다.
-
-```kotlin
-private val contentSelectorMap = mapOf(
-  "techblog.woowahan.com"   to ".post-content-inner > .post-content-body",
-  "tech.kakao.com"          to ".inner_content > .daum-wm-content.preview",
-  "toss.tech"               to "article.css-hvd0pt > div.css-1vn47db",
-  "d2.naver.com"            to ".post-area, .section-content, .post-body",
-  "techblog.lycorp.co.jp"   to "article.bui_component > div.post_content_wrap > div.content_inner > div.content",
-  "blog.banksalad.com"      to "div[class^=postDetailsstyle__PostDescription]",
-  "aws.amazon.com"          to "article.blog-post section.blog-post-content[property=articleBody]",
-  "hyperconnect.github.io"  to "article.post .post-content.e-content",
-  "helloworld.kurly.com"    to ".post-content, .article-body, .post",
-  "tech.socarcorp.kr"       to ".post-content, .article-body, .post",
-  "dev.gmarket.com"         to ".post-content, .article-body, .post",
-  "medium.com"              to "article, .meteredContent, .pw-post-body, .postArticle-content",
-  "oliveyoung.tech"         to "div.blog-post-content"
-)
-```
-
-### 컨텐츠 추출 아키텍처
-
-```kotlin
-class WebContentExtractor(
-  private val selectorRegistry: ContentSelectorRegistry,
-  private val textExtractor: HtmlTextExtractor
-) : ContentExtractor {
-  override fun extract(url: String, fallbackContent: String): String {
-    return runCatching {
-      val domain = extractDomain(url)
-      val document = fetchDocument(url)
-      val selectors = selectorRegistry.getSelectors(domain)
-
-      selectors.firstNotNullOfOrNull { selector ->
-        document.selectFirst(selector)?.let { element ->
-          textExtractor.extract(element).takeIf { it.isNotBlank() }
-        }
-      } ?: fallbackContent
-    }.getOrElse { fallbackContent }
+@Component
+class ViewCountEventHandler(
+  private val viewCountUpdater: ViewCountUpdater,
+  private val companyViewCountUpdater: CompanyViewCountUpdater
+) {
+  @Async
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  fun handleViewCountIncrement(event: ViewCountIncrementEvent) {
+    try {
+      viewCountUpdater.incrementViewCount(event.postId)
+      companyViewCountUpdater.incrementTotalViewCount(event.companyId)
+    } catch (e: Exception) {
+      logger.error(e) { "Failed to increment view count" }
+    }
   }
 }
 ```
 
+### 핵심 포인트
+
+- **트랜잭션 분리**: 조회 기록 저장과 카운트 증가를 별도 트랜잭션으로 분리
+- **AFTER_COMMIT**: 조회 기록이 성공적으로 커밋된 후에만 카운트 증가 실행
+- **@Async**: 비동기 처리로 사용자 응답 지연 방지
+- **장애 격리**: 카운트 증가 실패가 조회 기록에 영향을 주지 않음
+- **Eventual Consistency**: 조회수는 최종적으로 일관성을 보장
+
 ---
 
-## 4. Gemini API Rate Limit 관리
+## 5. Gemini API Rate Limit 관리
 
 ### Resilience4j 기반 Rate Limiting
 
@@ -233,61 +424,14 @@ class ResilienceConfig(
 
 ---
 
-## 5. N+1 쿼리 최적화
-
-### Querydsl fetchJoin 전략
-
-Post-Company 관계에서 발생하는 N+1 문제를 Querydsl의 fetchJoin으로 해결했습니다.
-
-```kotlin
-val posts = queryFactory.selectFrom(postEntity)
-  .leftJoin(postEntity.company, companyEntity).fetchJoin()
-  .where(postEntity.url.`in`(urls))
-  .fetch()
-```
-
-- Post 조회 메서드 12개 모두에 Company fetchJoin 적용
-- 검색 쿼리에도 동일한 패턴 적용
-
-### BatchSize를 통한 ElementCollection 최적화
-
-```kotlin
-@BatchSize(size = 100)
-@ElementCollection(fetch = FetchType.LAZY, targetClass = Category::class)
-@CollectionTable(name = "post_categories", joinColumns = [JoinColumn(name = "post_id")])
-@Enumerated(EnumType.STRING)
-@Column(name = "category", nullable = false)
-var categories: MutableSet<Category> = mutableSetOf()
-```
-
-- categories 로딩 시 N+1을 `1 + ceil(N/100)` 쿼리로 완화
-- 1000개 Post 조회 시 1000회 → 11회로 쿼리 감소
-
-### DTO Projection 활용
-
-집계 쿼리에서 불필요한 엔티티 로딩을 방지하기 위해 Querydsl Projection을 활용했습니다.
-
-```kotlin
-.select(
-  Projections.constructor(
-    CompanyPostSummaryDto::class.java,
-    company.id, company.name, company.blogUrl,
-    company.logoImageName, company.totalViewCount,
-    post.id.count(), post.publishedAt.max()
-  )
-)
-```
-
----
-
-## 6. 스트리밍 JSON 파싱
+## 6. 스트리밍 기반 타임아웃 방지
 
 ### 문제 상황
 
-Gemini API의 배치 요약 응답은 대용량 JSON 배열로 반환됩니다. 전체 응답을 메모리에 버퍼링하면:
-- 메모리 사용량 급증
-- 응답 완료까지 대기 시간 증가
+Gemini API의 배치 요약 응답은 대용량 JSON 배열로 반환됩니다. 전체 응답을 기다리면:
+- 응답 완료까지 대기 시간 증가로 타임아웃 발생
 - 부분 실패 시 전체 재시도 필요
+- 사용자에게 결과 전달 지연
 
 ### 해결 방안
 
@@ -362,13 +506,86 @@ class StreamingJsonParser {
 ### 핵심 포인트
 
 - **실시간 파싱**: 청크 단위로 수신하며 완성된 JSON 객체 즉시 처리
-- **메모리 효율화**: 전체 응답 버퍼링 없이 스트리밍 처리
+- **타임아웃 방지**: 전체 응답 대기 없이 중간 결과부터 처리하여 연결 유지
 - **부분 성공**: 일부 객체 파싱 실패해도 나머지 객체는 정상 처리
 - **중첩 구조 처리**: depth 추적으로 중첩 객체/문자열 내 괄호 올바르게 처리
 
 ---
 
-## 7. 배치 요약 검증
+## 7. RSS/Atom 피드 파싱 및 중복 처리
+
+### Strategy Pattern 기반 파서 설계
+
+다양한 피드 형식(RSS 2.0, Atom 1.0)과 기업별 커스텀 구조를 유연하게 처리하기 위해 전략 패턴을 적용했습니다.
+
+```
+FeedTypeStrategyResolver
+├── RssFeedStrategy      (RSS 2.0)
+└── AtomFeedStrategy     (Atom 1.0)
+
+BlogParserResolver
+├── FeedParser           (일반 RSS/Atom)
+├── OliveYoungBlogParser (특수 처리)
+└── ElevenStBlogParser   (특수 처리)
+```
+
+### 중복 감지 전략
+
+URL 기반의 Idempotent 처리로 크롤링 시 중복 게시글을 방지합니다.
+
+```kotlin
+val existUrls = postRepository.findAllByUrlIn(originalUrls).map { it.url }.toSet()
+val filteredPosts = allPosts.filter { it.url !in existUrls }
+```
+
+### 도메인별 컨텐츠 추출
+
+13개 기업 기술블로그의 HTML 구조를 분석하여 도메인별 CSS 선택자를 매핑했습니다.
+
+```kotlin
+private val contentSelectorMap = mapOf(
+  "techblog.woowahan.com"   to ".post-content-inner > .post-content-body",
+  "tech.kakao.com"          to ".inner_content > .daum-wm-content.preview",
+  "toss.tech"               to "article.css-hvd0pt > div.css-1vn47db",
+  "d2.naver.com"            to ".post-area, .section-content, .post-body",
+  "techblog.lycorp.co.jp"   to "article.bui_component > div.post_content_wrap > div.content_inner > div.content",
+  "blog.banksalad.com"      to "div[class^=postDetailsstyle__PostDescription]",
+  "aws.amazon.com"          to "article.blog-post section.blog-post-content[property=articleBody]",
+  "hyperconnect.github.io"  to "article.post .post-content.e-content",
+  "helloworld.kurly.com"    to ".post-content, .article-body, .post",
+  "tech.socarcorp.kr"       to ".post-content, .article-body, .post",
+  "dev.gmarket.com"         to ".post-content, .article-body, .post",
+  "medium.com"              to "article, .meteredContent, .pw-post-body, .postArticle-content",
+  "oliveyoung.tech"         to "div.blog-post-content"
+)
+```
+
+### 컨텐츠 추출 아키텍처
+
+```kotlin
+class WebContentExtractor(
+  private val selectorRegistry: ContentSelectorRegistry,
+  private val textExtractor: HtmlTextExtractor
+) : ContentExtractor {
+  override fun extract(url: String, fallbackContent: String): String {
+    return runCatching {
+      val domain = extractDomain(url)
+      val document = fetchDocument(url)
+      val selectors = selectorRegistry.getSelectors(domain)
+
+      selectors.firstNotNullOfOrNull { selector ->
+        document.selectFirst(selector)?.let { element ->
+          textExtractor.extract(element).takeIf { it.isNotBlank() }
+        }
+      } ?: fallbackContent
+    }.getOrElse { fallbackContent }
+  }
+}
+```
+
+---
+
+## 8. 배치 요약 검증
 
 ### 문제 상황
 
@@ -445,7 +662,7 @@ class BatchSummaryValidator {
 
 ---
 
-## 8. 요약 실패 관리 및 재시도
+## 9. 요약 실패 관리 및 재시도
 
 ### 문제 상황
 
