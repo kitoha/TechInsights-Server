@@ -4,10 +4,19 @@ batch:
     step-name: crawlPostStep
     chunk-size: 1
     retry-limit: 3
+    core-pool-size: 6
+    max-pool-size: 6
   processing:
     # Gemini API 5 RPM
     concurrency-limit: 1
     timeout-ms: 180000
+
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 8
+      minimum-idle: 3
+      connection-timeout: 20000
 
 content:
   selectors:

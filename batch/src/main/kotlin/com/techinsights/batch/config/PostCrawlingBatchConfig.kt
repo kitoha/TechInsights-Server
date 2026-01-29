@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.transaction.PlatformTransactionManager
+import kotlin.random.Random.Default.nextLong
 
 @Configuration
 class PostCrawlingBatchConfig (
@@ -37,11 +38,30 @@ class PostCrawlingBatchConfig (
     .build()
 
   @Bean
+  fun crawlingTaskExecutor(): org.springframework.core.task.TaskExecutor {
+    return org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor().apply {
+      corePoolSize = properties.corePoolSize
+      maxPoolSize = properties.maxPoolSize
+      setQueueCapacity(20)
+      setThreadNamePrefix("crawl-")
+      setTaskDecorator { runnable ->
+        Runnable {
+          Thread.sleep(nextLong(0, 2000))
+          runnable.run()
+        }
+      }
+      setRejectedExecutionHandler(java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy())
+      initialize()
+    }
+  }
+
+  @Bean
   fun crawlPostStep(): Step = StepBuilder(properties.stepName, jobRepository)
     .chunk<CompanyDto, List<PostDto>>(properties.chunkSize, transactionManager)
     .reader(companyReader)
     .processor(rawPostProcessor)
     .writer(rawPostWriter)
+    .taskExecutor(crawlingTaskExecutor())
     .faultTolerant()
     .retry(Exception::class.java)
     .retryLimit(properties.retryLimit)
