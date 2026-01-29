@@ -25,16 +25,16 @@ class DomainRateLimiterManager(
     private val domainTierMapping = mapOf(
         "medium.com" to "conservative",
         "techblog.woowahan.com" to "conservative",
-        "tech.kakao.com" to "default",
-        "toss.tech" to "default",
+        "tech.kakao.com" to "standard",
+        "toss.tech" to "standard",
         "d2.naver.com" to "conservative",
-        "hyperconnect.com" to "default"
+        "hyperconnect.com" to "standard"
     )
 
     fun getRateLimiter(url: String): RateLimiter {
         val domain = extractDomain(url)
 
-        val tier = domainTierMapping[domain] ?: "default"
+        val tier = domainTierMapping[domain] ?: "ultraSafe"
         val instanceName = "$domain-$tier"
 
         return rateLimiterRegistry.rateLimiter(instanceName) {

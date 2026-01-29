@@ -16,6 +16,8 @@ import org.springframework.batch.core.step.builder.StepBuilder
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.task.TaskExecutor
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor
 import org.springframework.transaction.PlatformTransactionManager
 import kotlin.random.Random.Default.nextLong
 
@@ -38,8 +40,8 @@ class PostCrawlingBatchConfig (
     .build()
 
   @Bean
-  fun crawlingTaskExecutor(): org.springframework.core.task.TaskExecutor {
-    return org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor().apply {
+  fun crawlingTaskExecutor(): TaskExecutor {
+    return ThreadPoolTaskExecutor().apply {
       corePoolSize = properties.corePoolSize
       maxPoolSize = properties.maxPoolSize
       setQueueCapacity(20)
@@ -55,6 +57,10 @@ class PostCrawlingBatchConfig (
     }
   }
 
+  /**
+   * throttleLimit deprecated 관련 이슈(v5 기준)
+   * https://github.com/spring-projects/spring-batch/issues/4531 (deprecated지만 대체제가 v6에서 제공될 예정 그때까지 사용해도 무방)
+   */
   @Bean
   fun crawlPostStep(): Step = StepBuilder(properties.stepName, jobRepository)
     .chunk<CompanyDto, List<PostDto>>(properties.chunkSize, transactionManager)
@@ -62,6 +68,7 @@ class PostCrawlingBatchConfig (
     .processor(rawPostProcessor)
     .writer(rawPostWriter)
     .taskExecutor(crawlingTaskExecutor())
+    .throttleLimit(properties.corePoolSize)
     .faultTolerant()
     .retry(Exception::class.java)
     .retryLimit(properties.retryLimit)

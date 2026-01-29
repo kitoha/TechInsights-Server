@@ -14,7 +14,16 @@ class WebConfig {
 
   @Bean
   fun webClient(): WebClient {
+    val httpClient = reactor.netty.http.client.HttpClient.create()
+      .option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
+      .responseTimeout(Duration.ofSeconds(15))
+      .doOnConnected { conn ->
+        conn.addHandlerLast(io.netty.handler.timeout.ReadTimeoutHandler(15))
+          .addHandlerLast(io.netty.handler.timeout.WriteTimeoutHandler(15))
+      }
+
     return WebClient.builder()
+      .clientConnector(org.springframework.http.client.reactive.ReactorClientHttpConnector(httpClient))
       .defaultHeader(
         "User-Agent",
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -40,7 +49,7 @@ class WebConfig {
       next.exchange(request)
         .retryWhen(
           Retry.backoff(3, Duration.ofSeconds(2))
-            .filter { it is WebClientResponseException.TooManyRequests }
+            .filter { it is WebClientResponseException.TooManyRequests || it is WebClientResponseException.InternalServerError || it is WebClientResponseException.BadGateway || it is WebClientResponseException.ServiceUnavailable || it is WebClientResponseException.GatewayTimeout }
         )
     }
   }
