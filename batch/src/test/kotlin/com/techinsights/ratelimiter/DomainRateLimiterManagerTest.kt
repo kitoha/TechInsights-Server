@@ -1,5 +1,6 @@
 package com.techinsights.ratelimiter
 
+import com.techinsights.batch.config.JitterConfig
 import io.github.resilience4j.ratelimiter.RateLimiter
 import io.github.resilience4j.ratelimiter.RateLimiterConfig
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry
@@ -13,18 +14,19 @@ import java.util.function.Supplier
 class DomainRateLimiterManagerTest : FunSpec({
 
     lateinit var rateLimiterRegistry: RateLimiterRegistry
+    lateinit var jitterConfig: JitterConfig
     lateinit var domainRateLimiterManager: DomainRateLimiterManager
 
     beforeEach {
         rateLimiterRegistry = mockk()
-        domainRateLimiterManager = DomainRateLimiterManager(rateLimiterRegistry)
+        jitterConfig = mockk(relaxed = true)
+        domainRateLimiterManager = DomainRateLimiterManager(rateLimiterRegistry, jitterConfig)
     }
 
     test("techblog.woowahan.com requests conservative tier") {
         val url = "https://techblog.woowahan.com/1234/post"
         val expectedRateLimiter = mockk<RateLimiter>()
-        
-        // Mocking the call with Supplier
+
         every { 
             rateLimiterRegistry.rateLimiter(
                 "techblog.woowahan.com-conservative", 

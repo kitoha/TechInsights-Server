@@ -22,6 +22,7 @@ class WebContentExtractor(
 
             val rateLimiter = rateLimiterManager.getRateLimiter(url)
             val document = rateLimiter.executeSupplier {
+                rateLimiterManager.applyJitter()
                 fetchDocument(url, domain)
             }
 

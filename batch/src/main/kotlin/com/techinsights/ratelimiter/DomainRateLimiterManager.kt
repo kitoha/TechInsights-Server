@@ -1,19 +1,27 @@
 package com.techinsights.ratelimiter
 
+import com.techinsights.batch.config.JitterConfig
 import io.github.resilience4j.ratelimiter.RateLimiter
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
+import kotlin.random.Random
 
 @Component
 class DomainRateLimiterManager(
-    private val rateLimiterRegistry: RateLimiterRegistry
+    private val rateLimiterRegistry: RateLimiterRegistry,
+    private val jitterConfig: JitterConfig
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
+    fun applyJitter() {
+        if (jitterConfig.enabled) {
+            val delay = Random.nextLong(jitterConfig.minMs, jitterConfig.maxMs)
 
+            Thread.sleep(delay)
+        }
+    }
 
-    // Domain to Tier mapping
     private val domainTierMapping = mapOf(
         "medium.com" to "conservative",
         "techblog.woowahan.com" to "conservative",

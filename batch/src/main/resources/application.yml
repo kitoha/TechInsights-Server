@@ -10,6 +10,10 @@ batch:
     # Gemini API 5 RPM
     concurrency-limit: 1
     timeout-ms: 180000
+  jitter:
+    enabled: true
+    min-ms: 100
+    max-ms: 2000
 
 spring:
   datasource:

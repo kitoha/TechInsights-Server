@@ -61,8 +61,10 @@ class WebContentExtractorTest : FunSpec({
         every { connection.timeout(any()) } returns connection
         every { connection.get() } returns document
         
-        every { rateLimiter.executeSupplier<Document>(any()) } answers { 
-            firstArg<java.util.function.Supplier<Document>>().get() 
+        every { rateLimiterManager.applyJitter() } returns Unit
+        
+        every { rateLimiter.executeSupplier(any<java.util.function.Supplier<*>>()) } answers { 
+            (it.invocation.args[0] as java.util.function.Supplier<*>).get() as Document
         }
 
         every { selectorRegistry.getSelectors(domain) } returns listOf("article")
@@ -74,6 +76,7 @@ class WebContentExtractorTest : FunSpec({
         
         verify { rateLimiterManager.getRateLimiter(url) }
         verify { rateLimiter.executeSupplier<Document>(any()) }
+        verify { rateLimiterManager.applyJitter() }
         verify { Jsoup.connect(url) }
         verify { connection.userAgent("Mozilla/Fake") }
         verify { httpHeaderProvider.getRealisticHeaders(url, "Mozilla/Fake") }
