@@ -76,4 +76,33 @@ class DomainRateLimiterManagerTest : FunSpec({
 
         result shouldBe expectedRateLimiter
     }
+
+    test("applyJitter should do nothing when disabled") {
+        every { jitterConfig.enabled } returns false
+        
+        domainRateLimiterManager.applyJitter()
+    }
+
+    test("applyJitter should sleep when enabled") {
+        every { jitterConfig.enabled } returns true
+        every { jitterConfig.minMs } returns 10
+        every { jitterConfig.maxMs } returns 20
+        
+        domainRateLimiterManager.applyJitter()
+    }
+
+    test("extractDomain should return the string itself if no protocol found") {
+        val url = "not-a-url"
+        val expectedRateLimiter = mockk<RateLimiter>()
+
+        every { 
+            rateLimiterRegistry.rateLimiter(
+                "not-a-url-ultraSafe", 
+                any<Supplier<RateLimiterConfig>>()
+            ) 
+        } returns expectedRateLimiter
+
+        val result = domainRateLimiterManager.getRateLimiter(url)
+        result shouldBe expectedRateLimiter
+    }
 })
