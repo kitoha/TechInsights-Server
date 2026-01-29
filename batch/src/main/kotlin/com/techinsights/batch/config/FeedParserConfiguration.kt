@@ -1,11 +1,13 @@
-package com.techinsights.batch.config
+import com.techinsights.batch.parser.feed.FeedTypeStrategyResolver
 
 import com.techinsights.batch.parser.content.ContentExtractor
 import com.techinsights.batch.parser.content.ContentSelectorRegistry
 import com.techinsights.batch.parser.content.HtmlTextExtractor
 import com.techinsights.batch.parser.content.WebContentExtractor
 import com.techinsights.batch.parser.date.CompositeDateParser
-import com.techinsights.batch.parser.feed.FeedTypeStrategyResolver
+import com.techinsights.batch.config.HttpHeaderProvider
+import com.techinsights.batch.config.UserAgentPool
+import com.techinsights.ratelimiter.DomainRateLimiterManager
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
@@ -27,6 +29,15 @@ class FeedParserConfiguration {
   @Bean
   fun webContentExtractor(
     selectorRegistry: ContentSelectorRegistry,
-    textExtractor: HtmlTextExtractor
-  ): ContentExtractor = WebContentExtractor(selectorRegistry, textExtractor)
+    textExtractor: HtmlTextExtractor,
+    rateLimiterManager: DomainRateLimiterManager,
+    userAgentPool: UserAgentPool,
+    httpHeaderProvider: HttpHeaderProvider
+  ): ContentExtractor = WebContentExtractor(
+    selectorRegistry,
+    textExtractor,
+    rateLimiterManager,
+    userAgentPool,
+    httpHeaderProvider
+  )
 }

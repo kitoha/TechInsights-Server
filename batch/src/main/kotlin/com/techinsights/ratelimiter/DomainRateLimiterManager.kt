@@ -7,28 +7,43 @@ import org.springframework.stereotype.Component
 
 @Component
 class DomainRateLimiterManager(
-  private val rateLimiterRegistry: RateLimiterRegistry
+    private val rateLimiterRegistry: RateLimiterRegistry
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
 
-  private val log = LoggerFactory.getLogger(DomainRateLimiterManager::class.java)
 
-  private val domainMapping = mapOf(
-    "techblog.woowahan.com" to "woowahan",
-    "techblog.gccompany.co.kr" to "gccompany"
-  )
 
-  fun getRateLimiter(url: String): RateLimiter {
-    val domain = extractDomain(url)
-    val instanceName = domainMapping[domain] ?: "defaultCrawler"
+    // Domain to Tier mapping
+    private val domainTierMapping = mapOf(
+        "medium.com" to "conservative",
+        "techblog.woowahan.com" to "conservative",
+        "tech.kakao.com" to "default",
+        "toss.tech" to "default",
+        "d2.naver.com" to "conservative",
+        "hyperconnect.com" to "default"
+    )
 
-    log.debug("Using RateLimiter [{}] for domain [{}]", instanceName, domain)
+    fun getRateLimiter(url: String): RateLimiter {
+        val domain = extractDomain(url)
 
-    return rateLimiterRegistry.rateLimiter(instanceName)
-  }
+        val tier = domainTierMapping[domain] ?: "default"
+        val instanceName = "$domain-$tier"
 
-  private fun extractDomain(url: String): String {
-    return url.substringAfter("://")
-      .substringBefore("/")
-      .substringBefore(":")
-  }
+        return rateLimiterRegistry.rateLimiter(instanceName) {
+            rateLimiterRegistry.getConfiguration(tier)
+                .orElse(rateLimiterRegistry.defaultConfig)
+        }
+    }
+
+    private fun extractDomain(url: String): String {
+        return try {
+            url.substringAfter("://")
+                .substringBefore("/")
+                .substringBefore(":")
+                .removePrefix("www.")
+        } catch (e: Exception) {
+            log.warn("Failed to extract domain from url: {}", url)
+            "unknown"
+        }
+    }
 }
