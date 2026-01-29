@@ -24,16 +24,20 @@ class ResilienceConfig(
     val geminiBatchRpmConfig = createRateLimiterConfig(rateLimiterProperties.geminiBatchRpm)
     val geminiBatchRpdConfig = createRateLimiterConfig(rateLimiterProperties.geminiBatchRpd)
     val geminiEmbeddingConfig = createRateLimiterConfig(rateLimiterProperties.geminiEmbedding)
+    val ultraSafeConfig = createRateLimiterConfig(rateLimiterProperties.crawler.ultraSafe)
     val conservativeConfig = createRateLimiterConfig(rateLimiterProperties.crawler.conservative)
-    val defaultConfig = createRateLimiterConfig(rateLimiterProperties.crawler.default)
+    val defaultConfig = createRateLimiterConfig(rateLimiterProperties.crawler.standard)
 
+    // 요약 관련 RateLimiter
     registry.rateLimiter("geminiArticleSummarizer", geminiConfig)
     registry.rateLimiter("geminiBatchRpm", geminiBatchRpmConfig)
     registry.rateLimiter("geminiBatchRpd", geminiBatchRpdConfig)
     registry.rateLimiter("geminiEmbedding", geminiEmbeddingConfig)
-    registry.rateLimiter("woowahan", conservativeConfig)
-    registry.rateLimiter("gccompany", conservativeConfig)
-    registry.rateLimiter("defaultCrawler", defaultConfig)
+
+    // 크롤링 RateLimiter
+    registry.addConfiguration("ultraSafe", ultraSafeConfig)
+    registry.addConfiguration("conservative", conservativeConfig)
+    registry.addConfiguration("standard", defaultConfig)
 
     return registry
   }

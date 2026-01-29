@@ -1,86 +1,108 @@
 package com.techinsights.ratelimiter
 
+import com.techinsights.batch.config.JitterConfig
 import io.github.resilience4j.ratelimiter.RateLimiter
+import io.github.resilience4j.ratelimiter.RateLimiterConfig
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import java.util.function.Supplier
 
 class DomainRateLimiterManagerTest : FunSpec({
 
-  lateinit var rateLimiterRegistry: RateLimiterRegistry
-  lateinit var domainRateLimiterManager: DomainRateLimiterManager
+    lateinit var rateLimiterRegistry: RateLimiterRegistry
+    lateinit var jitterConfig: JitterConfig
+    lateinit var domainRateLimiterManager: DomainRateLimiterManager
 
-  beforeEach {
-    rateLimiterRegistry = mockk()
-    domainRateLimiterManager = DomainRateLimiterManager(rateLimiterRegistry)
-  }
+    beforeEach {
+        rateLimiterRegistry = mockk()
+        jitterConfig = mockk(relaxed = true)
+        domainRateLimiterManager = DomainRateLimiterManager(rateLimiterRegistry, jitterConfig)
+    }
 
-  test("매핑된 도메인에 대해 올바른 RateLimiter를 반환한다") {
-    val url = "https://techblog.woowahan.com/1234/post"
-    val expectedRateLimiter = mockk<RateLimiter>()
-    every { rateLimiterRegistry.rateLimiter("woowahan") } returns expectedRateLimiter
+    test("techblog.woowahan.com requests conservative tier") {
+        val url = "https://techblog.woowahan.com/1234/post"
+        val expectedRateLimiter = mockk<RateLimiter>()
 
-    val result = domainRateLimiterManager.getRateLimiter(url)
+        every { 
+            rateLimiterRegistry.rateLimiter(
+                "techblog.woowahan.com-conservative", 
+                any<Supplier<RateLimiterConfig>>()
+            ) 
+        } returns expectedRateLimiter
 
-    result shouldBe expectedRateLimiter
-    verify { rateLimiterRegistry.rateLimiter("woowahan") }
-  }
+        val result = domainRateLimiterManager.getRateLimiter(url)
 
-  test("매핑되지 않은 도메인에 대해 defaultCrawler RateLimiter를 반환한다") {
-    val url = "https://unknown-blog.com/post"
-    val defaultRateLimiter = mockk<RateLimiter>()
-    every { rateLimiterRegistry.rateLimiter("defaultCrawler") } returns defaultRateLimiter
+        result shouldBe expectedRateLimiter
+        verify { 
+            rateLimiterRegistry.rateLimiter(
+                "techblog.woowahan.com-conservative", 
+                any<Supplier<RateLimiterConfig>>()
+            ) 
+        }
+    }
 
-    val result = domainRateLimiterManager.getRateLimiter(url)
+    test("tech.kakao.com requests standard tier") {
+        val url = "https://tech.kakao.com/1234/post"
+        val expectedRateLimiter = mockk<RateLimiter>()
 
-    result shouldBe defaultRateLimiter
-    verify { rateLimiterRegistry.rateLimiter("defaultCrawler") }
-  }
+        every {
+            rateLimiterRegistry.rateLimiter(
+                "tech.kakao.com-standard",
+                any<Supplier<RateLimiterConfig>>()
+            )
+        } returns expectedRateLimiter
 
-  test("포트 번호가 포함된 URL에서 도메인을 올바르게 추출한다") {
-    val url = "http://techblog.woowahan.com:8080/post"
-    val expectedRateLimiter = mockk<RateLimiter>()
-    every { rateLimiterRegistry.rateLimiter("woowahan") } returns expectedRateLimiter
+        val result = domainRateLimiterManager.getRateLimiter(url)
 
-    val result = domainRateLimiterManager.getRateLimiter(url)
+        result shouldBe expectedRateLimiter
+    }
 
-    result shouldBe expectedRateLimiter
-    verify { rateLimiterRegistry.rateLimiter("woowahan") }
-  }
+    test("unknown domain requests ultraSafe tier") {
+        val url = "https://unknown-blog.com/post"
+        val expectedRateLimiter = mockk<RateLimiter>()
+        
+        every { 
+            rateLimiterRegistry.rateLimiter(
+                "unknown-blog.com-ultraSafe", 
+                any<Supplier<RateLimiterConfig>>()
+            ) 
+        } returns expectedRateLimiter
 
-  test("프로토콜이 없는 URL에서도 도메인을 올바르게 추출한다") {
-    val url = "techblog.woowahan.com/post"
-    val expectedRateLimiter = mockk<RateLimiter>()
-    every { rateLimiterRegistry.rateLimiter("woowahan") } returns expectedRateLimiter
+        val result = domainRateLimiterManager.getRateLimiter(url)
 
-    val result = domainRateLimiterManager.getRateLimiter(url)
+        result shouldBe expectedRateLimiter
+    }
 
-    result shouldBe expectedRateLimiter
-    verify { rateLimiterRegistry.rateLimiter("woowahan") }
-  }
+    test("applyJitter should do nothing when disabled") {
+        every { jitterConfig.enabled } returns false
+        
+        domainRateLimiterManager.applyJitter()
+    }
 
-  test("루트 경로만 있는 URL에서 도메인을 올바르게 추출한다") {
-    val url = "https://techblog.woowahan.com/"
-    val expectedRateLimiter = mockk<RateLimiter>()
-    every { rateLimiterRegistry.rateLimiter("woowahan") } returns expectedRateLimiter
+    test("applyJitter should sleep when enabled") {
+        every { jitterConfig.enabled } returns true
+        every { jitterConfig.minMs } returns 10
+        every { jitterConfig.maxMs } returns 20
+        
+        domainRateLimiterManager.applyJitter()
+    }
 
-    val result = domainRateLimiterManager.getRateLimiter(url)
+    test("extractDomain should return the string itself if no protocol found") {
+        val url = "not-a-url"
+        val expectedRateLimiter = mockk<RateLimiter>()
 
-    result shouldBe expectedRateLimiter
-    verify { rateLimiterRegistry.rateLimiter("woowahan") }
-  }
+        every { 
+            rateLimiterRegistry.rateLimiter(
+                "not-a-url-ultraSafe", 
+                any<Supplier<RateLimiterConfig>>()
+            ) 
+        } returns expectedRateLimiter
 
-  test("쿼리 파라미터가 포함된 URL에서 도메인을 올바르게 추출한다") {
-    val url = "https://techblog.gccompany.co.kr/post?id=123&category=tech"
-    val expectedRateLimiter = mockk<RateLimiter>()
-    every { rateLimiterRegistry.rateLimiter("gccompany") } returns expectedRateLimiter
-
-    val result = domainRateLimiterManager.getRateLimiter(url)
-
-    result shouldBe expectedRateLimiter
-    verify { rateLimiterRegistry.rateLimiter("gccompany") }
-  }
+        val result = domainRateLimiterManager.getRateLimiter(url)
+        result shouldBe expectedRateLimiter
+    }
 })

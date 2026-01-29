@@ -4,10 +4,34 @@ batch:
     step-name: crawlPostStep
     chunk-size: 1
     retry-limit: 3
+    core-pool-size: 6
+    max-pool-size: 6
   processing:
     # Gemini API 5 RPM
     concurrency-limit: 1
     timeout-ms: 180000
+  jitter:
+    enabled: true
+    min-ms: 100
+    max-ms: 2000
+
+web-client:
+  connect-timeout-millis: 10000
+  response-timeout-seconds: 15
+  read-timeout-seconds: 15
+  write-timeout-seconds: 15
+  max-in-memory-size-mb: 5
+  user-agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  retry:
+    max-attempts: 3
+    backoff-seconds: 2
+
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 8
+      minimum-idle: 3
+      connection-timeout: 20000
 
 content:
   selectors:
@@ -60,14 +84,18 @@ rate-limiter:
     refresh-period-seconds: 86400
     timeout-seconds: 1
   crawler:
+    ultra-safe:
+      limit-for-period: 5
+      refresh-period-seconds: 60
+      timeout-seconds: 30
     conservative:
+      limit-for-period: 10
+      refresh-period-seconds: 60
+      timeout-seconds: 30
+    standard:
       limit-for-period: 15
       refresh-period-seconds: 60
-      timeout-seconds: 300
-    default:
-      limit-for-period: 20
-      refresh-period-seconds: 60
-      timeout-seconds: 300
+      timeout-seconds: 30
 
 circuit-breaker:
   gemini-batch:

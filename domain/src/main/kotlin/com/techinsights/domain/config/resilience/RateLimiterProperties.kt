@@ -34,13 +34,18 @@ data class RateLimiterProperties(
   )
 
   data class CrawlerLimiterConfig(
-    val conservative: LimiterConfig = LimiterConfig(
-      limitForPeriod = 15,
+    val ultraSafe: LimiterConfig = LimiterConfig(
+      limitForPeriod = 5,
       refreshPeriodSeconds = 60,
       timeoutSeconds = 300
     ),
-    val default: LimiterConfig = LimiterConfig(
-      limitForPeriod = 20,
+    val conservative: LimiterConfig = LimiterConfig(
+      limitForPeriod = 10,
+      refreshPeriodSeconds = 60,
+      timeoutSeconds = 300
+    ),
+    val standard: LimiterConfig = LimiterConfig(
+      limitForPeriod = 15,
       refreshPeriodSeconds = 60,
       timeoutSeconds = 300
     )

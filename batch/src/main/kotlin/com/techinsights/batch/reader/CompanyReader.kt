@@ -12,12 +12,21 @@ class CompanyReader(
   private val companyRepository: CompanyRepository
 ) : ItemReader<CompanyDto> {
 
+  private val log = org.slf4j.LoggerFactory.getLogger(javaClass)
   private var iterator: Iterator<CompanyDto>? = null
 
-  override fun read(): CompanyDto? {
+  override fun read(): CompanyDto? = synchronized(this) {
+    val threadName = Thread.currentThread().name
     if (iterator == null) {
-      iterator = companyRepository.findAll().iterator()
+      val companies = companyRepository.findAll()
+      log.info("[{}] CompanyReader initialized with {} companies", threadName, companies.size)
+      iterator = companies.iterator()
     }
-    return if (iterator!!.hasNext()) iterator!!.next() else null
+
+    val company = if (iterator!!.hasNext()) iterator!!.next() else null
+    if (company != null) {
+      log.debug("[{}] Read company: {} ({})", threadName, company.name, company.blogUrl)
+    }
+    company
   }
 }
