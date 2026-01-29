@@ -45,13 +45,29 @@ class DomainRateLimiterManagerTest : FunSpec({
         }
     }
 
-    test("unknown domain requests default tier") {
+    test("tech.kakao.com requests standard tier") {
+        val url = "https://tech.kakao.com/1234/post"
+        val expectedRateLimiter = mockk<RateLimiter>()
+
+        every {
+            rateLimiterRegistry.rateLimiter(
+                "tech.kakao.com-standard",
+                any<Supplier<RateLimiterConfig>>()
+            )
+        } returns expectedRateLimiter
+
+        val result = domainRateLimiterManager.getRateLimiter(url)
+
+        result shouldBe expectedRateLimiter
+    }
+
+    test("unknown domain requests ultraSafe tier") {
         val url = "https://unknown-blog.com/post"
         val expectedRateLimiter = mockk<RateLimiter>()
         
         every { 
             rateLimiterRegistry.rateLimiter(
-                "unknown-blog.com-default", 
+                "unknown-blog.com-ultraSafe", 
                 any<Supplier<RateLimiterConfig>>()
             ) 
         } returns expectedRateLimiter
