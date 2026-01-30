@@ -23,6 +23,8 @@ dependencies {
     implementation(project(":domain"))
 
     implementation(libs.spring.boot.starter.web)
+    implementation(libs.spring.boot.starter.oauth2.client)
+    implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.spring.data.commons)
     implementation(libs.spring.boot.starter.actuator)
     implementation(libs.micrometer.registry.prometheus)
@@ -31,6 +33,9 @@ dependencies {
     implementation(libs.bundles.kotlinx.coroutines)
     implementation(libs.logstash.logback.encoder)
     implementation(libs.kotlin.logging)
+    implementation(libs.jjwt.api)
+    runtimeOnly(libs.jjwt.impl)
+    runtimeOnly(libs.jjwt.jackson)
 
     testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.bundles.kotest)

@@ -2,6 +2,7 @@ package com.techinsights.api.exception
 
 import com.techinsights.domain.exception.CompanyNotFoundException
 import com.techinsights.domain.exception.PostNotFoundException
+import com.techinsights.api.exception.auth.AuthException
 import mu.KotlinLogging
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -14,6 +15,24 @@ import org.springframework.web.context.request.WebRequest
 class GlobalExceptionHandler {
 
     private val logger = KotlinLogging.logger {}
+
+    @ExceptionHandler(AuthException::class)
+    fun handleAuthException(
+        e: AuthException,
+        request: WebRequest
+    ): ResponseEntity<ErrorResponse> {
+        logger.warn { "Authentication failed: ${e.message} (${e.errorCode})" }
+
+        return ResponseEntity
+            .status(HttpStatus.UNAUTHORIZED)
+            .body(
+                ErrorResponse(
+                    errorCode = e.errorCode,
+                    message = e.message,
+                    path = extractPath(request)
+                )
+            )
+    }
 
     @ExceptionHandler(PostNotFoundException::class)
     fun handlePostNotFound(
