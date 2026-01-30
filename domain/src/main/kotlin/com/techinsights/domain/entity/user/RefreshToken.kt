@@ -19,6 +19,9 @@ class RefreshToken(
     @Column(name = "token_hash", nullable = false, length = 255)
     var tokenHash: String,
 
+    @Column(name = "previous_token_hash", nullable = true, length = 255)
+    var previousTokenHash: String? = null,
+
     @Column(name = "device_id", nullable = true, length = 100)
     val deviceId: String? = null,
 
@@ -27,8 +30,16 @@ class RefreshToken(
 ) : BaseEntity() {
 
     fun updateToken(newHash: String, newExpiry: Instant) {
+        this.previousTokenHash = this.tokenHash
         this.tokenHash = newHash
         this.expiryAt = newExpiry
+    }
+
+    fun isRecentlyRotated(leewaySeconds: Long = 30): Boolean {
+        val lastUpdated = updatedAt ?: return false
+        val zoneId = java.time.ZoneId.systemDefault()
+        val updatedInstant = lastUpdated.atZone(zoneId).toInstant()
+        return updatedInstant.isAfter(java.time.Instant.now().minusSeconds(leewaySeconds))
     }
 
     fun isExpired(): Boolean = Instant.now().isAfter(expiryAt)

@@ -3,6 +3,7 @@ package com.techinsights.api.util.auth
 import com.techinsights.api.exception.auth.ExpiredTokenException
 import com.techinsights.api.exception.auth.InvalidTokenException
 import com.techinsights.api.exception.auth.TokenTamperedException
+import com.techinsights.api.props.AuthProperties
 import com.techinsights.domain.enums.UserRole
 import io.jsonwebtoken.Claims
 import io.jsonwebtoken.ExpiredJwtException
@@ -10,50 +11,65 @@ import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.MalformedJwtException
 import io.jsonwebtoken.security.Keys
 import io.jsonwebtoken.security.SignatureException
-import org.springframework.beans.factory.annotation.Value
+import jakarta.annotation.PostConstruct
 import org.springframework.stereotype.Component
-import java.nio.charset.StandardCharsets
-import java.time.Instant
-import java.time.temporal.ChronoUnit
 import java.util.*
 import javax.crypto.SecretKey
 
 @Component
 class JwtPlugin(
-    @Value("\${auth.jwt.secret-key}")
-    private val secretKey: String,
-    @Value("\${auth.jwt.access-token-expiration-days:1}")
-    private val accessTokenExpirationDays: Long,
-    @Value("\${auth.jwt.refresh-token-expiration-days:30}")
-    private val refreshTokenExpirationDays: Long,
-    @Value("\${auth.jwt.issuer:techinsights}")
-    private val issuer: String
+    private val authProperties: AuthProperties
 ) {
-    private val key: SecretKey = Keys.hmacShaKeyFor(secretKey.toByteArray(StandardCharsets.UTF_8))
+    private lateinit var key: SecretKey
+
+    @PostConstruct
+    fun init() {
+        this.key = Keys.hmacShaKeyFor(authProperties.jwt.secretKey.toByteArray())
+    }
 
     fun generateAccessToken(userId: Long, email: String, role: UserRole): String {
-        return generateToken(userId, email, role, accessTokenExpirationDays)
+        return generateToken(
+            userId = userId,
+            email = email,
+            role = role,
+            expirationMillis = authProperties.jwt.accessTokenExpiration.toMillis()
+        )
     }
 
     fun generateRefreshToken(userId: Long): String {
-        return generateToken(userId, null, null, refreshTokenExpirationDays)
+        return generateToken(
+            userId = userId,
+            email = null,
+            role = null,
+            expirationMillis = authProperties.jwt.refreshTokenExpiration.toMillis()
+        )
     }
 
-    private fun generateToken(userId: Long, email: String?, role: UserRole?, expirationDays: Long): String {
-        val now = Instant.now()
-        val expiration = now.plus(expirationDays, ChronoUnit.DAYS)
+    private fun generateToken(
+        userId: Long,
+        email: String?,
+        role: UserRole?,
+        expirationMillis: Long
+    ): String {
+        val now = Date()
+        val expiration = Date(now.time + expirationMillis)
 
-        val builder = Jwts.builder()
-            .issuer(issuer)
+        val claims = Jwts.claims()
+            .add("userId", userId)
+            .apply {
+                email?.let { add("email", it) }
+                role?.let { add("role", it.name) }
+            }
+            .build()
+
+        return Jwts.builder()
+            .issuer(authProperties.jwt.issuer)
+            .issuedAt(now)
+            .expiration(expiration)
             .subject(userId.toString())
-            .issuedAt(Date.from(now))
-            .expiration(Date.from(expiration))
-            .claim("userId", userId)
-        
-        email?.let { builder.claim("email", it) }
-        role?.let { builder.claim("role", it.name) }
-
-        return builder.signWith(key).compact()
+            .claims(claims)
+            .signWith(key)
+            .compact()
     }
 
     fun validateToken(token: String): Claims {

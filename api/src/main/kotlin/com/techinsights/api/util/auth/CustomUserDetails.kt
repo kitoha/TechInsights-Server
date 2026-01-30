@@ -8,8 +8,8 @@ import org.springframework.security.oauth2.core.user.OAuth2User
 
 class CustomUserDetails(
     val userId: Long,
-    private val email: String,
-    private val role: UserRole,
+    val email: String,
+    val role: UserRole,
     private val attributes: Map<String, Any> = emptyMap()
 ) : UserDetails, OAuth2User {
 

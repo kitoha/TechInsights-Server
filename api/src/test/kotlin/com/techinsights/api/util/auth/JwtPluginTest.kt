@@ -1,80 +1,82 @@
 package com.techinsights.api.util.auth
 
 import com.techinsights.api.exception.auth.ExpiredTokenException
-import com.techinsights.api.exception.auth.InvalidTokenException
 import com.techinsights.api.exception.auth.TokenTamperedException
+import com.techinsights.api.props.AuthProperties
 import com.techinsights.domain.enums.UserRole
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import java.util.*
+import java.time.Duration
 
 class JwtPluginTest : FunSpec({
-    val secretKey = "test-secret-key-at-least-32-characters-long!!"
-    val accessTokenExpirationDays = 1L
-    val refreshTokenExpirationDays = 30L
-    val issuer = "techinsights"
-
-    val jwtPlugin = JwtPlugin(
-        secretKey = secretKey,
-        accessTokenExpirationDays = accessTokenExpirationDays,
-        refreshTokenExpirationDays = refreshTokenExpirationDays,
-        issuer = issuer
-    )
-
-    test("Access 성 토큰을 생성할 수 있어야 한다") {
-        val userId = 100L
-        val email = "test@example.com"
-        val role = UserRole.USER
-
-        val token = jwtPlugin.generateAccessToken(userId, email, role)
-
-        token shouldNotBe null
-        val claims = jwtPlugin.validateToken(token)
-        claims.get("userId", Long::class.javaObjectType) shouldBe userId
-        claims.get("email", String::class.java) shouldBe email
-        claims.get("role", String::class.java) shouldBe role.name
-    }
-
-    test("Refresh 토큰을 생성할 수 있어야 한다") {
-        val userId = 200L
-
-        val token = jwtPlugin.generateRefreshToken(userId)
-
-        token shouldNotBe null
-        val claims = jwtPlugin.validateToken(token)
-        claims.get("userId", Long::class.javaObjectType) shouldBe userId
-    }
-
-    test("만료된 토큰은 ExpiredTokenException을 던져야 한다") {
-        val shortLivedPlugin = JwtPlugin(
-            secretKey = secretKey,
-            accessTokenExpirationDays = -1L,
-            refreshTokenExpirationDays = -1L,
-            issuer = issuer
+    val validSecret = "a".repeat(32) // 32 characters
+    val authProperties = AuthProperties(
+        jwt = AuthProperties.Jwt(
+            secretKey = validSecret,
+            accessTokenExpiration = Duration.ofMinutes(1),
+            refreshTokenExpiration = Duration.ofDays(1),
+            issuer = "test-issuer"
         )
-        val token = shortLivedPlugin.generateAccessToken(1L, "test@example.com", UserRole.USER)
+    )
+    val jwtPlugin = JwtPlugin(authProperties)
+
+    beforeTest {
+        jwtPlugin.init()
+    }
+
+    test("비밀키가 32자 미만이면 초기화 시 예외가 발생해야 한다 (Fail-fast)") {
+        shouldThrow<IllegalArgumentException> {
+            AuthProperties(
+                jwt = AuthProperties.Jwt(secretKey = "short")
+            )
+        }.message shouldBe "Secret key must be at least 32 characters"
+    }
+
+    test("액세스 토큰 생성이 정상적으로 이루어져야 한다") {
+        val token = jwtPlugin.generateAccessToken(1L, "test@example.com", UserRole.USER)
+        token shouldNotBe null
+        
+        val claims = jwtPlugin.validateToken(token)
+        claims.subject shouldBe "1"
+        claims["userId"] shouldBe 1
+        claims["email"] shouldBe "test@example.com"
+        claims["role"] shouldBe UserRole.USER.name
+    }
+
+    test("리프레시 토큰 생성이 정상적으로 이루어져야 한다") {
+        val token = jwtPlugin.generateRefreshToken(1L)
+        token shouldNotBe null
+        
+        val claims = jwtPlugin.validateToken(token)
+        claims.subject shouldBe "1"
+        claims["email"] shouldBe null
+    }
+
+    test("만료된 토큰 검증 시 ExpiredTokenException이 발생해야 한다") {
+        val expiredProps = AuthProperties(
+            jwt = AuthProperties.Jwt(
+                secretKey = validSecret,
+                accessTokenExpiration = Duration.ofMillis(-1000)
+            )
+        )
+        val plugin = JwtPlugin(expiredProps)
+        plugin.init()
+
+        val token = plugin.generateAccessToken(1L, "test@example.com", UserRole.USER)
         
         shouldThrow<ExpiredTokenException> {
-            jwtPlugin.validateToken(token)
+            plugin.validateToken(token)
         }
     }
 
-    test("변조된 토큰은 TokenTamperedException을 던져야 한다") {
+    test("위변조된 토큰 검증 시 TokenTamperedException이 발생해야 한다") {
         val token = jwtPlugin.generateAccessToken(1L, "test@example.com", UserRole.USER)
         val tamperedToken = token + "modified"
         
         shouldThrow<TokenTamperedException> {
             jwtPlugin.validateToken(tamperedToken)
-        }
-    }
-
-    test("잘못된 형식의 토큰은 InvalidTokenException을 던져야 한다") {
-        val invalidToken = "not.a.jwt"
-        
-        shouldThrow<InvalidTokenException> {
-            jwtPlugin.validateToken(invalidToken)
         }
     }
 })

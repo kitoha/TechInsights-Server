@@ -1,5 +1,6 @@
 package com.techinsights.api.service.auth
 
+import com.techinsights.api.props.AuthProperties
 import com.techinsights.api.response.auth.TokenResponse
 import com.techinsights.api.util.auth.JwtPlugin
 import com.techinsights.domain.entity.user.RefreshToken
@@ -15,17 +16,20 @@ import java.time.Instant
 class TokenService(
     private val jwtPlugin: JwtPlugin,
     private val refreshTokenRepository: RefreshTokenRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val authProperties: AuthProperties
 ) {
     @Transactional
     fun issueTokens(userId: Long, email: String, role: UserRole, deviceId: String?): TokenResponse {
         val accessToken = jwtPlugin.generateAccessToken(userId, email, role)
         val refreshTokenString = jwtPlugin.generateRefreshToken(userId)
         
+        val expiryAt = Instant.now().plus(authProperties.jwt.refreshTokenExpiration)
+        
         val refreshTokenEntity = refreshTokenRepository.findByUserAndDevice(userId, deviceId)
             .map { existing ->
                 existing.apply {
-                    updateToken(refreshTokenString, Instant.now().plus(30, java.time.temporal.ChronoUnit.DAYS))
+                    updateToken(refreshTokenString, expiryAt)
                 }
             }
             .orElseGet {
@@ -34,7 +38,7 @@ class TokenService(
                     userId = userId,
                     tokenHash = refreshTokenString,
                     deviceId = deviceId,
-                    expiryAt = Instant.now().plus(30, java.time.temporal.ChronoUnit.DAYS)
+                    expiryAt = expiryAt
                 )
             }
         
@@ -48,12 +52,19 @@ class TokenService(
         val claims = jwtPlugin.validateToken(oldRefreshToken)
         val userId = claims.get("userId", Long::class.javaObjectType)
         
-        val storedToken = refreshTokenRepository.findByHash(oldRefreshToken)
-            .orElseThrow { 
-                refreshTokenRepository.deleteAllByUserId(userId)
-                com.techinsights.api.exception.auth.TokenTamperedException("재사용된 토큰이 감지되었습니다. 모든 세션이 로그아웃됩니다.")
-            }
+        val storedTokenOpt = refreshTokenRepository.findByHash(oldRefreshToken)
         
+        if (storedTokenOpt.isEmpty) {
+            return refreshTokenRepository.findByPreviousHash(oldRefreshToken)
+                .filter { it.isRecentlyRotated() }
+                .map { issueExistingTokens(userId, deviceId) }
+                .orElseThrow {
+                    refreshTokenRepository.deleteAllByUserId(userId)
+                    com.techinsights.api.exception.auth.TokenTamperedException("재사용된 토큰이 감지되었습니다. 모든 세션이 로그아웃됩니다.")
+                }
+        }
+
+        val storedToken = storedTokenOpt.get()
         if (storedToken.isExpired()) {
             refreshTokenRepository.delete(storedToken)
             throw com.techinsights.api.exception.auth.ExpiredTokenException()
@@ -70,5 +81,16 @@ class TokenService(
         refreshTokenRepository.findByHash(refreshToken).ifPresent {
             refreshTokenRepository.delete(it)
         }
+    }
+
+    private fun issueExistingTokens(userId: Long, deviceId: String?): TokenResponse {
+        val user = userRepository.findById(userId)
+            .orElseThrow { com.techinsights.api.exception.auth.InvalidTokenException("사용자를 찾을 수 없습니다.") }
+        
+        val storedToken = refreshTokenRepository.findByUserAndDevice(userId, deviceId)
+            .orElseThrow { com.techinsights.api.exception.auth.InvalidTokenException("세션을 찾을 수 없습니다.") }
+            
+        val accessToken = jwtPlugin.generateAccessToken(userId, user.email, user.role)
+        return TokenResponse(accessToken, storedToken.tokenHash)
     }
 }

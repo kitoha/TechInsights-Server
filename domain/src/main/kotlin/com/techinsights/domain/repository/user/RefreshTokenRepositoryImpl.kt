@@ -18,6 +18,9 @@ class RefreshTokenRepositoryImpl(
         return jpaRepository.findByTokenHash(hash)
     }
 
+    override fun findByPreviousHash(hash: String): Optional<RefreshToken> =
+        jpaRepository.findByPreviousTokenHash(hash)
+
     override fun findByUserAndDevice(userId: Long, deviceId: String?): Optional<RefreshToken> {
         return jpaRepository.findByUserIdAndDeviceId(userId, deviceId)
     }
