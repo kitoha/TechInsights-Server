@@ -88,6 +88,9 @@ Batch Server
 
 <img width="3930" height="2197" alt="Image" src="https://github.com/user-attachments/assets/664b2b9e-2c79-4fd1-9bbe-acd050342ca5" />
 
+Crawling Sequence Diagram
+
+<img width="1473" height="911" alt="Image" src="https://github.com/user-attachments/assets/2bd90553-d16a-4970-8cb0-0026d8b6209e" />
 
 ---
 
