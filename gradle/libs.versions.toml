@@ -18,6 +18,7 @@ sonarqube = "7.0.0.6105"
 kotlinxCoroutines = "1.8.0"
 jsoup = "1.17.2"
 logstashLogbackEncoder = "8.0"
+jjwt = "0.12.6"
 
 [libraries]
 # Spring Boot
@@ -75,6 +76,9 @@ kotest-property = { module = "io.kotest:kotest-property", version.ref = "kotest"
 kotest-extensions-spring = { module = "io.kotest.extensions:kotest-extensions-spring", version.ref = "kotestExtensions" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+jjwt-api = { module = "io.jsonwebtoken:jjwt-api", version.ref = "jjwt" }
+jjwt-impl = { module = "io.jsonwebtoken:jjwt-impl", version.ref = "jjwt" }
+jjwt-jackson = { module = "io.jsonwebtoken:jjwt-jackson", version.ref = "jjwt" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }
