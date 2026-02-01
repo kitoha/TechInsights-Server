@@ -32,9 +32,10 @@ class AuthControllerTest : FunSpec({
         val request = mockk<HttpServletRequest>()
         val response = mockk<HttpServletResponse>()
         val oldRt = "old-rt"
-        val cookies = arrayOf(Cookie("rt", oldRt))
+        val cookies = arrayOf(Cookie("__Host-ti-rt", oldRt))
 
         every { request.cookies } returns cookies
+        every { request.getHeader("X-Device-Id") } returns null
         every { request.getHeader("User-Agent") } returns "device-1"
         every { tokenService.refresh(oldRt, "device-1") } returns TokenResponse("new-at", "new-rt")
         every { response.addHeader(any(), any()) } just Runs
@@ -44,8 +45,8 @@ class AuthControllerTest : FunSpec({
 
         // then
         result.statusCode.value() shouldBe 200
-        verify { response.addHeader("Set-Cookie", match { it.contains("at=new-at") && it.contains("Secure") }) }
-        verify { response.addHeader("Set-Cookie", match { it.contains("rt=new-rt") && it.contains("Secure") }) }
+        verify { response.addHeader("Set-Cookie", match { it.contains("__Host-ti-at=new-at") && it.contains("Secure") }) }
+        verify { response.addHeader("Set-Cookie", match { it.contains("__Host-ti-rt=new-rt") && it.contains("Secure") }) }
     }
 
     test("/logout 호출 시 세션이 무효화되고 쿠키가 삭제되어야 한다") {
@@ -53,7 +54,7 @@ class AuthControllerTest : FunSpec({
         val request = mockk<HttpServletRequest>()
         val response = mockk<HttpServletResponse>()
         val rt = "valid-rt"
-        val cookies = arrayOf(Cookie("rt", rt))
+        val cookies = arrayOf(Cookie("__Host-ti-rt", rt))
 
         every { request.cookies } returns cookies
         every { tokenService.revoke(rt) } just Runs
@@ -65,6 +66,7 @@ class AuthControllerTest : FunSpec({
         // then
         result.statusCode.value() shouldBe 200
         verify { tokenService.revoke(rt) }
-        verify { response.addHeader("Set-Cookie", match { it.contains("at=") && it.contains("Max-Age=0") && it.contains("Secure") }) }
+        verify { response.addHeader("Set-Cookie", match { it.contains("__Host-ti-at=") && it.contains("Max-Age=0") && it.contains("Secure") }) }
+        verify { response.addHeader("Set-Cookie", match { it.contains("__Host-ti-rt=") && it.contains("Max-Age=0") && it.contains("Secure") }) }
     }
 })
