@@ -16,13 +16,13 @@ class RefreshToken(
     @Column(name = "user_id", nullable = false)
     val userId: Long,
 
-    @Column(name = "token_hash", nullable = false, length = 255)
+    @Column(name = "token_hash", nullable = false, columnDefinition = "TEXT")
     var tokenHash: String,
 
-    @Column(name = "previous_token_hash", nullable = true, length = 255)
+    @Column(name = "previous_token_hash", nullable = true, columnDefinition = "TEXT")
     var previousTokenHash: String? = null,
 
-    @Column(name = "device_id", nullable = true, length = 100)
+    @Column(name = "device_id", nullable = true, columnDefinition = "TEXT")
     val deviceId: String? = null,
 
     @Column(name = "expiry_at", nullable = false)

@@ -1,6 +1,7 @@
 package com.techinsights.domain.repository.user
 
 import com.techinsights.domain.entity.user.User
+import com.techinsights.domain.enums.ProviderType
 import org.springframework.stereotype.Repository
 import java.util.*
 
@@ -8,8 +9,8 @@ import java.util.*
 class UserRepositoryImpl(
     private val userJpaRepository: UserJpaRepository
 ) : UserRepository {
-    override fun findByGoogleSub(googleSub: String): Optional<User> {
-        return userJpaRepository.findByGoogleSub(googleSub)
+    override fun findByProviderAndProviderId(provider: ProviderType, providerId: String): Optional<User> {
+        return userJpaRepository.findByProviderAndProviderId(provider, providerId)
     }
 
     override fun findByEmail(email: String): Optional<User> {

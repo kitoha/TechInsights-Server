@@ -1,11 +1,10 @@
 package com.techinsights.api.props
 
 import org.springframework.boot.context.properties.ConfigurationProperties
-import org.springframework.boot.context.properties.bind.ConstructorBinding
 import java.time.Duration
 
 @ConfigurationProperties("auth")
-data class AuthProperties @ConstructorBinding constructor(
+data class AuthProperties(
     val jwt: Jwt = Jwt(),
     val oauth2: OAuth2 = OAuth2()
 ) {
@@ -14,8 +13,8 @@ data class AuthProperties @ConstructorBinding constructor(
         val accessTokenExpiration: Duration = Duration.ofMinutes(30),
         val refreshTokenExpiration: Duration = Duration.ofDays(30),
         val issuer: String = "techinsights",
-        val accessTokenCookieName: String = "at",
-        val refreshTokenCookieName: String = "rt",
+        val accessTokenCookieName: String = "__Host-ti-at",
+        val refreshTokenCookieName: String = "__Host-ti-rt",
         val cookieSecure: Boolean = true,
         val cookieSameSite: String = "Lax"
     ) {

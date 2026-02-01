@@ -15,6 +15,8 @@ import java.time.Instant
 import java.util.Optional
 import java.time.Duration
 
+import com.techinsights.domain.enums.ProviderType
+
 class TokenServiceTest : FunSpec({
     val jwtPlugin = mockk<JwtPlugin>()
     val refreshTokenRepository = mockk<RefreshTokenRepository>()
@@ -57,7 +59,7 @@ class TokenServiceTest : FunSpec({
         val oldRt = "old-rt"
         val userId = 1L
         val existingToken = RefreshToken(id = 1L, userId = userId, tokenHash = oldRt, deviceId = "dev", expiryAt = Instant.now().plusSeconds(3600))
-        val user = User(id = userId, email = "test@example.com", name = "Tester", googleSub = "sub", role = UserRole.USER)
+        val user = User(id = userId, email = "test@example.com", name = "Tester", nickname = "tester", provider = ProviderType.GOOGLE, providerId = "sub", role = UserRole.USER)
         
         val claims = mockk<Claims>()
         every { claims.get("userId", Long::class.javaObjectType) } returns userId
@@ -90,7 +92,7 @@ class TokenServiceTest : FunSpec({
             previousTokenHash = oldRt
             updatedAt = java.time.LocalDateTime.now()
         }
-        val user = User(id = userId, email = "test@example.com", name = "Tester", googleSub = "sub", role = UserRole.USER)
+        val user = User(id = userId, email = "test@example.com", name = "Tester", nickname = "tester", provider = ProviderType.GOOGLE, providerId = "sub", role = UserRole.USER)
         val claims = mockk<Claims>()
         every { claims.get("userId", Long::class.javaObjectType) } returns userId
 

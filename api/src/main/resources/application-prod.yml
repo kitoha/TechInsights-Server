@@ -7,3 +7,7 @@ cors:
   allowed-origins:
     - https://www.techinsights.shop
     - https://techinsights.shop
+
+auth:
+  oauth2:
+    success-redirect-uri: https://www.techinsights.shop/

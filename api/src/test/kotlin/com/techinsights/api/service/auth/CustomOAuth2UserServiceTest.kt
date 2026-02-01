@@ -7,13 +7,12 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.*
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User
-import org.springframework.security.oauth2.core.user.OAuth2User
 import java.util.*
 
 import com.techinsights.api.util.auth.CustomUserDetails
 import com.techinsights.domain.enums.UserRole
+import com.techinsights.domain.enums.ProviderType
 
 class CustomOAuth2UserServiceTest : FunSpec({
     val userRepository = mockk<UserRepository>()
@@ -33,7 +32,7 @@ class CustomOAuth2UserServiceTest : FunSpec({
         )
         val oAuth2User = DefaultOAuth2User(emptyList(), attributes, "sub")
 
-        every { userRepository.findByGoogleSub("google-123") } returns Optional.empty()
+        every { userRepository.findByProviderAndProviderId(ProviderType.GOOGLE, "google-123") } returns Optional.empty()
         every { userRepository.save(any()) } answers { it.invocation.args[0] as User }
 
         // when
@@ -45,7 +44,7 @@ class CustomOAuth2UserServiceTest : FunSpec({
         userDetails.userId shouldNotBe null
         userDetails.username shouldBe "test@example.com"
         
-        verify(exactly = 1) { userRepository.save(match { it.googleSub == "google-123" }) }
+        verify(exactly = 1) { userRepository.save(match { it.providerId == "google-123" && it.provider == ProviderType.GOOGLE }) }
     }
 
     test("이미 존재하는 사용자의 경우 정보를 업데이트한다") {
@@ -54,7 +53,9 @@ class CustomOAuth2UserServiceTest : FunSpec({
             id = 1L,
             email = "test@example.com",
             name = "Old Name",
-            googleSub = "google-123",
+            nickname = "OldNickname",
+            provider = ProviderType.GOOGLE,
+            providerId = "google-123",
             role = UserRole.USER
         )
         val attributes = mapOf(
@@ -65,7 +66,7 @@ class CustomOAuth2UserServiceTest : FunSpec({
         )
         val oAuth2User = DefaultOAuth2User(emptyList(), attributes, "sub")
 
-        every { userRepository.findByGoogleSub("google-123") } returns Optional.of(existingUser)
+        every { userRepository.findByProviderAndProviderId(ProviderType.GOOGLE, "google-123") } returns Optional.of(existingUser)
         every { userRepository.save(any()) } answers { it.invocation.args[0] as User }
 
         // when
