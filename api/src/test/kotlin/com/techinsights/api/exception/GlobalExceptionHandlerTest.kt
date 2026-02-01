@@ -5,6 +5,9 @@ import com.techinsights.api.exception.auth.InvalidTokenException
 import com.techinsights.api.exception.auth.TokenTamperedException
 import com.techinsights.api.exception.auth.UnauthorizedException
 import com.techinsights.domain.exception.CompanyNotFoundException
+import com.techinsights.domain.exception.user.DuplicateNicknameException
+import com.techinsights.domain.exception.user.InvalidNicknameException
+import com.techinsights.domain.exception.user.UserNotFoundException
 import com.techinsights.domain.exception.PostNotFoundException
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -24,6 +27,45 @@ class GlobalExceptionHandlerTest : FunSpec({
 
     beforeTest {
         every { mockRequest.getDescription(false) } returns "uri=/api/test"
+    }
+
+    test("handleUserException - USER_NOT_FOUND should return 404") {
+        // given
+        val exception = UserNotFoundException(1L)
+
+        // when
+        val response = handler.handleUserException(exception, mockRequest)
+
+        // then
+        response.statusCode shouldBe HttpStatus.NOT_FOUND
+        response.body?.errorCode shouldBe "USER_001"
+        response.body?.path shouldBe "/api/test"
+    }
+
+    test("handleUserException - DUPLICATE_NICKNAME should return 409") {
+        // given
+        val exception = DuplicateNicknameException("testnick")
+
+        // when
+        val response = handler.handleUserException(exception, mockRequest)
+
+        // then
+        response.statusCode shouldBe HttpStatus.CONFLICT
+        response.body?.errorCode shouldBe "USER_002"
+        response.body?.message shouldBe "이미 사용 중인 닉네임입니다. (닉네임: testnick)"
+    }
+
+    test("handleUserException - INVALID_NICKNAME should return 400") {
+        // given
+        val exception = InvalidNicknameException("bad nick", "특수문자 포함")
+
+        // when
+        val response = handler.handleUserException(exception, mockRequest)
+
+        // then
+        response.statusCode shouldBe HttpStatus.BAD_REQUEST
+        response.body?.errorCode shouldBe "USER_003"
+        response.body?.message shouldBe "유효하지 않은 닉네임입니다. (닉네임: bad nick, 사유: 특수문자 포함)"
     }
 
     test("handleAuthException - ExpiredTokenException should return 401") {

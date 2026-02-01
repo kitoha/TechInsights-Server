@@ -9,4 +9,6 @@ interface UserRepository {
     fun findByProviderAndProviderId(provider: ProviderType, providerId: String): Optional<User>
     fun save(user: User): User
     fun findById(id: Long): Optional<User>
+    fun findByNickname(nickname: String): Optional<User>
+    fun existsByNickname(nickname: String): Boolean
 }

@@ -8,4 +8,6 @@ import java.util.Optional
 interface UserJpaRepository : JpaRepository<User, Long> {
     fun findByProviderAndProviderId(provider: ProviderType, providerId: String): Optional<User>
     fun findByEmail(email: String): Optional<User>
+    fun findByNickname(nickname: String): Optional<User>
+    fun existsByNickname(nickname: String): Boolean
 }
