@@ -20,7 +20,7 @@ class SearchController(
 
   @GetMapping("/instant")
   suspend fun instantSearch(
-    @RequestParam query: String
+    @RequestParam(defaultValue = "") query: String
   ): ResponseEntity<InstantSearchResponse> = withContext(ioDispatcher) {
     val response = searchService.instantSearch(query)
     ResponseEntity.ok(response)
