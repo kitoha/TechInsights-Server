@@ -2,6 +2,9 @@ package com.techinsights.api.exception
 
 import com.techinsights.domain.exception.CompanyNotFoundException
 import com.techinsights.domain.exception.PostNotFoundException
+import com.techinsights.api.exception.auth.AuthException
+import com.techinsights.domain.exception.user.UserException
+import com.techinsights.domain.enums.exception.UserErrorCode
 import mu.KotlinLogging
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -14,6 +17,48 @@ import org.springframework.web.context.request.WebRequest
 class GlobalExceptionHandler {
 
     private val logger = KotlinLogging.logger {}
+
+    @ExceptionHandler(UserException::class)
+    fun handleUserException(
+        e: UserException,
+        request: WebRequest
+    ): ResponseEntity<ErrorResponse> {
+        logger.warn { "User exception occurred: ${e.message} (${e.errorCode})" }
+
+        val status = when (e.errorCode) {
+            UserErrorCode.USER_NOT_FOUND -> HttpStatus.NOT_FOUND
+            UserErrorCode.DUPLICATE_NICKNAME -> HttpStatus.CONFLICT
+            UserErrorCode.INVALID_NICKNAME -> HttpStatus.BAD_REQUEST
+        }
+
+        return ResponseEntity
+            .status(status)
+            .body(
+                ErrorResponse(
+                    errorCode = e.errorCode.code,
+                    message = e.message ?: "사용자 관련 오류가 발생했습니다.",
+                    path = extractPath(request)
+                )
+            )
+    }
+
+    @ExceptionHandler(AuthException::class)
+    fun handleAuthException(
+        e: AuthException,
+        request: WebRequest
+    ): ResponseEntity<ErrorResponse> {
+        logger.warn { "Authentication failed: ${e.message} (${e.errorCode})" }
+
+        return ResponseEntity
+            .status(HttpStatus.UNAUTHORIZED)
+            .body(
+                ErrorResponse(
+                    errorCode = e.errorCode,
+                    message = e.message,
+                    path = extractPath(request)
+                )
+            )
+    }
 
     @ExceptionHandler(PostNotFoundException::class)
     fun handlePostNotFound(

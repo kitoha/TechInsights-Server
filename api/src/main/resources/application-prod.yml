@@ -2,8 +2,21 @@ spring:
   config:
     import:
       - aws-parameterstore:/config/techinsights/prod/
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
 
 cors:
   allowed-origins:
     - https://www.techinsights.shop
     - https://techinsights.shop
+
+auth:
+  jwt:
+    secret-key: ${JWT_SECRET_KEY}
+  oauth2:
+    success-redirect-uri: https://www.techinsights.shop/

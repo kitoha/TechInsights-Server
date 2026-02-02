@@ -1,6 +1,13 @@
 package com.techinsights.api.exception
 
+import com.techinsights.api.exception.auth.ExpiredTokenException
+import com.techinsights.api.exception.auth.InvalidTokenException
+import com.techinsights.api.exception.auth.TokenTamperedException
+import com.techinsights.api.exception.auth.UnauthorizedException
 import com.techinsights.domain.exception.CompanyNotFoundException
+import com.techinsights.domain.exception.user.DuplicateNicknameException
+import com.techinsights.domain.exception.user.InvalidNicknameException
+import com.techinsights.domain.exception.user.UserNotFoundException
 import com.techinsights.domain.exception.PostNotFoundException
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -20,6 +27,99 @@ class GlobalExceptionHandlerTest : FunSpec({
 
     beforeTest {
         every { mockRequest.getDescription(false) } returns "uri=/api/test"
+    }
+
+    test("handleUserException - USER_NOT_FOUND should return 404") {
+        // given
+        val exception = UserNotFoundException(1L)
+
+        // when
+        val response = handler.handleUserException(exception, mockRequest)
+
+        // then
+        response.statusCode shouldBe HttpStatus.NOT_FOUND
+        response.body?.errorCode shouldBe "USER_001"
+        response.body?.path shouldBe "/api/test"
+    }
+
+    test("handleUserException - DUPLICATE_NICKNAME should return 409") {
+        // given
+        val exception = DuplicateNicknameException("testnick")
+
+        // when
+        val response = handler.handleUserException(exception, mockRequest)
+
+        // then
+        response.statusCode shouldBe HttpStatus.CONFLICT
+        response.body?.errorCode shouldBe "USER_002"
+        response.body?.message shouldBe "이미 사용 중인 닉네임입니다. (닉네임: testnick)"
+    }
+
+    test("handleUserException - INVALID_NICKNAME should return 400") {
+        // given
+        val exception = InvalidNicknameException("bad nick", "특수문자 포함")
+
+        // when
+        val response = handler.handleUserException(exception, mockRequest)
+
+        // then
+        response.statusCode shouldBe HttpStatus.BAD_REQUEST
+        response.body?.errorCode shouldBe "USER_003"
+        response.body?.message shouldBe "유효하지 않은 닉네임입니다. (닉네임: bad nick, 사유: 특수문자 포함)"
+    }
+
+    test("handleAuthException - ExpiredTokenException should return 401") {
+        // given
+        val exception = ExpiredTokenException()
+
+        // when
+        val response = handler.handleAuthException(exception, mockRequest)
+
+        // then
+        response.statusCode shouldBe HttpStatus.UNAUTHORIZED
+        response.body?.errorCode shouldBe "EXPIRED_TOKEN"
+        response.body?.message shouldBe "토큰이 만료되었습니다."
+        response.body?.path shouldBe "/api/test"
+    }
+
+    test("handleAuthException - InvalidTokenException should return 401") {
+        // given
+        val exception = InvalidTokenException("잘못된 토큰 형식")
+
+        // when
+        val response = handler.handleAuthException(exception, mockRequest)
+
+        // then
+        response.statusCode shouldBe HttpStatus.UNAUTHORIZED
+        response.body?.errorCode shouldBe "INVALID_TOKEN"
+        response.body?.message shouldBe "잘못된 토큰 형식"
+        response.body?.path shouldBe "/api/test"
+    }
+
+    test("handleAuthException - TokenTamperedException should return 401") {
+        // given
+        val exception = TokenTamperedException()
+
+        // when
+        val response = handler.handleAuthException(exception, mockRequest)
+
+        // then
+        response.statusCode shouldBe HttpStatus.UNAUTHORIZED
+        response.body?.errorCode shouldBe "TOKEN_TAMPERED"
+        response.body?.message shouldBe "토큰이 변조되었습니다."
+    }
+
+    test("handleAuthException - UnauthorizedException should return 401") {
+        // given
+        val exception = UnauthorizedException()
+
+        // when
+        val response = handler.handleAuthException(exception, mockRequest)
+
+        // then
+        response.statusCode shouldBe HttpStatus.UNAUTHORIZED
+        response.body?.errorCode shouldBe "UNAUTHORIZED"
+        response.body?.message shouldBe "인증이 필요한 서비스입니다."
     }
 
     test("handlePostNotFound should return 404 with POST_NOT_FOUND error code") {

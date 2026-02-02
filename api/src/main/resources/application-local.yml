@@ -16,8 +16,18 @@ db:
 
 cors:
   allowed-origins:
+    - http://localhost:3000
     - http://localhost:3001
 
 gemini:
   api-key: ${GEMINI_API_KEY}
   max-output-tokens: 16384
+
+auth:
+  jwt:
+    secret-key: ${JWT_SECRET_KEY}
+    access-token-cookie-name: ti_at
+    refresh-token-cookie-name: ti_rt
+    cookie-secure: false
+  oauth2:
+    success-redirect-uri: http://localhost:3000

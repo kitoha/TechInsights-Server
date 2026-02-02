@@ -117,8 +117,11 @@
     <!-- 패키지별 로그 레벨 -->
     <logger name="com.techinsights" level="${LOG_LEVEL}"/>
     <logger name="org.springframework.web" level="INFO"/>
-    <logger name="org.hibernate.SQL" level="DEBUG"/>
-    <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="TRACE"/>
+    
+    <springProfile name="local">
+        <logger name="org.hibernate.SQL" level="DEBUG"/>
+        <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="TRACE"/>
+    </springProfile>
 
     <!-- 비동기 JSON 로그 -->
     <appender name="ASYNC_JSON_FILE" class="ch.qos.logback.classic.AsyncAppender">
