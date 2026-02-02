@@ -7,6 +7,8 @@ services:
     container_name: techinsights-api-prod
     environment:
       - SPRING_PROFILES_ACTIVE=prod
+    volumes:
+      - /var/log/techinsights:/var/log/techinsights
     restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]

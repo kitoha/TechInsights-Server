@@ -4,6 +4,11 @@ echo "[prep] Ensuring cert directory..."
 sudo mkdir -p /etc/ssl/cloudflare
 sudo chmod 700 /etc/ssl/cloudflare
 
+echo "[prep] Ensuring log directory..."
+sudo mkdir -p /var/log/techinsights
+sudo chown -R ec2-user:ec2-user /var/log/techinsights
+sudo chmod -R 755 /var/log/techinsights
+
 echo "[pull] Fetching certs from SSM Parameter Store..."
 aws ssm get-parameter --name "/ti/nginx/api_cert_pem" --with-decryption \
   --query 'Parameter.Value' --output text | sudo tee /etc/ssl/cloudflare/api.pem >/dev/null
