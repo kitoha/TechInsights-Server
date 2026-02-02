@@ -25,6 +25,7 @@ spring:
 
 server:
   shutdown: graceful
+  forward-headers-strategy: framework
 
 management:
   endpoints:
