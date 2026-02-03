@@ -1,8 +1,10 @@
 package com.techinsights.domain.repository.post
 
+import com.querydsl.core.types.Expression
 import com.querydsl.core.types.dsl.BooleanExpression
 import com.querydsl.jpa.impl.JPAQuery
 import com.querydsl.jpa.impl.JPAQueryFactory
+import com.techinsights.domain.dto.catogory.CategorySummaryDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.entity.company.Company
 import com.techinsights.domain.entity.company.QCompany
@@ -300,10 +302,34 @@ class PostRepositoryImplTest : FunSpec({
   }
 
   test("should calculate category statistics correctly") {
-    val query = mockk<JPAQuery<Post>>()
+    val query = mockk<JPAQuery<CategorySummaryDto>>()
+    val summary = listOf(
+      CategorySummaryDto(
+        category = Category.AI,
+        postCount = 1,
+        totalViewCount = 100,
+        latestPostDate = LocalDateTime.of(2024, 1, 1, 0, 0)
+      ),
+      CategorySummaryDto(
+        category = Category.BackEnd,
+        postCount = 1,
+        totalViewCount = 100,
+        latestPostDate = LocalDateTime.of(2024, 1, 1, 0, 0)
+      ),
+      CategorySummaryDto(
+        category = Category.FrontEnd,
+        postCount = 1,
+        totalViewCount = 50,
+        latestPostDate = LocalDateTime.of(2024, 1, 2, 0, 0)
+      )
+    )
 
-    every { queryFactory.selectFrom(QPost.post) } returns query
-    every { query.fetch() } returns listOf(post1, post2)
+    every { queryFactory.select(any<Expression<CategorySummaryDto>>()) } returns query
+    every { query.from(QPost.post) } returns query
+    every { query.join(QPost.post.categories, any()) } returns query
+    every { query.where(any<BooleanExpression>()) } returns query
+    every { query.groupBy(any()) } returns query
+    every { query.fetch() } returns summary
 
     val result = repository.getCategoryStatistics()
 
@@ -315,23 +341,22 @@ class PostRepositoryImplTest : FunSpec({
   }
 
   test("should exclude Category.All from statistics") {
-    val postWithAll = Post(
-      id = 1L,
-      title = "Test Post 1",
-      url = "https://test.com/post1",
-      content = "Content 1",
-      publishedAt = LocalDateTime.of(2024, 1, 1, 0, 0),
-      company = company,
-      isSummary = true,
-      isEmbedding = true,
-      viewCount = 100,
-      categories = mutableSetOf(Category.All, Category.AI),
-      preview = null
+    val query = mockk<JPAQuery<CategorySummaryDto>>()
+    val summary = listOf(
+      CategorySummaryDto(
+        category = Category.AI,
+        postCount = 1,
+        totalViewCount = 100,
+        latestPostDate = LocalDateTime.of(2024, 1, 1, 0, 0)
+      )
     )
-    val query = mockk<JPAQuery<Post>>()
 
-    every { queryFactory.selectFrom(QPost.post) } returns query
-    every { query.fetch() } returns listOf(postWithAll)
+    every { queryFactory.select(any<Expression<CategorySummaryDto>>()) } returns query
+    every { query.from(QPost.post) } returns query
+    every { query.join(QPost.post.categories, any()) } returns query
+    every { query.where(any<BooleanExpression>()) } returns query
+    every { query.groupBy(any()) } returns query
+    every { query.fetch() } returns summary
 
     val result = repository.getCategoryStatistics()
 

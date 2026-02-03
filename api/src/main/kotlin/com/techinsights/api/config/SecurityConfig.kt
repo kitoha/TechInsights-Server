@@ -8,8 +8,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
 import com.techinsights.api.util.auth.JwtAuthenticationFilter
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
@@ -32,22 +32,6 @@ class SecurityConfig(
                 it.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             }
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
-            .addFilterAfter(object : org.springframework.web.filter.OncePerRequestFilter() {
-                override fun doFilterInternal(
-                    request: jakarta.servlet.http.HttpServletRequest,
-                    response: jakarta.servlet.http.HttpServletResponse,
-                    filterChain: jakarta.servlet.FilterChain
-                ) {
-                    val method = request.method
-                    if (method == "POST" || method == "PUT" || method == "DELETE" || method == "PATCH") {
-                        if (request.getHeader("X-Requested-With") == null) {
-                            response.sendError(jakarta.servlet.http.HttpServletResponse.SC_FORBIDDEN, "CSRF protection: X-Requested-With header is missing")
-                            return
-                        }
-                    }
-                    filterChain.doFilter(request, response)
-                }
-            }, UsernamePasswordAuthenticationFilter::class.java)
             .authorizeHttpRequests { auth ->
                 auth
                     .requestMatchers("/api/v1/posts/**").permitAll()
@@ -67,14 +51,10 @@ class SecurityConfig(
                     .successHandler(oAuth2SuccessHandler)
             }
             .exceptionHandling { exception ->
-                exception.authenticationEntryPoint { request, response, _ ->
-                    if (request.requestURI.startsWith("/api/")) {
-                        response.contentType = "application/json;charset=UTF-8"
-                        response.status = jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED
-                        response.writer.write("""{"status": false, "message": "Unauthorized"}""")
-                    } else {
-                        response.sendRedirect("/login")
-                    }
+                exception.authenticationEntryPoint { _, response, _ ->
+                    response.contentType = "application/json;charset=UTF-8"
+                    response.status = jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED
+                    response.writer.write("""{"status": false, "message": "Unauthorized"}""")
                 }
             }
             .logout { it.disable() }
