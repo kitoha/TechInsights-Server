@@ -3,6 +3,7 @@ package com.techinsights.domain.dto.post
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.entity.post.Post
 import com.techinsights.domain.enums.Category
+import com.techinsights.domain.enums.SummaryErrorType
 import com.techinsights.domain.utils.Tsid
 import java.time.LocalDateTime
 
@@ -18,7 +19,12 @@ data class PostDto(
     val viewCount: Long = 0L,
     var categories: Set<Category>,
     val isSummary: Boolean = false,
-    var isEmbedding: Boolean = false
+    var isEmbedding: Boolean = false,
+    // Failure metadata (only populated for failed posts)
+    var failureErrorType: SummaryErrorType? = null,
+    var failureErrorMessage: String? = null,
+    var failureBatchSize: Int? = null,
+    var failureIsBatchFailure: Boolean? = null
 ){
     fun toEntity(): Post {
         return Post(

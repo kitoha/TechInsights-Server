@@ -1,5 +1,6 @@
 package com.techinsights.domain.service.recommend
 
+import com.techinsights.domain.dto.auth.Requester
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.repository.post.PostEmbeddingRepository
 import com.techinsights.domain.repository.post.PostRepository
@@ -16,18 +17,18 @@ class RecommendationService(
 
   /**
    * get recommendations for a user based on their post embeddings.
-   * @param userId The ID of the user or Anonymous User for whom recommendations are to be generated.
+   * @param requester The requester (Authenticated or Anonymous) for whom recommendations are to be generated.
    * @return A list of recommended posts for the user.
    */
-  fun getRecommendationsForUser(anonymousId: String?, count: Long = 5): List<PostDto> {
+  fun getRecommendationsForUser(requester: Requester, count: Long = 5): List<PostDto> {
 
-    if (anonymousId == null) {
-      return postRepository.findTopViewedPosts(count)
-    }
+    val identifier = requester.identifier
 
     val pageRequest = PageRequest.of(0, 10)
+    
+    // TODO: If requester is Authenticated, we should use UserReadHistoryRepository
     val recentReadHistory = anonymousUserReadHistoryRepository.getRecentReadHistory(
-      anonymousId = anonymousId,
+      anonymousId = identifier,
       pageable = pageRequest
     )
 
@@ -48,6 +49,10 @@ class RecommendationService(
     val postIdsLong = postIds.map { it.toLongOrNull() ?: return emptyList() }
     val recentEmbeddings = postEmbeddingRepository.findByPostIdIn(postIdsLong)
     val vectors = recentEmbeddings.map { it.embeddingVector }
+
+    if (vectors.isEmpty()) {
+      return postRepository.findTopViewedPosts(count)
+    }
 
     val averageVector = calculateAverageVector(vectors)
 

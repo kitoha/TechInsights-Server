@@ -10,4 +10,6 @@ class PostCrawlingBatchProperties {
   var stepName: String = "crawlPostStep"
   var chunkSize: Int = 10
   var retryLimit: Int = 3
+  var corePoolSize: Int = 6
+  var maxPoolSize: Int = 6
 }

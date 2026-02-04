@@ -113,4 +113,39 @@ class MockEmbeddingServiceTest : FunSpec({
         result[767] shouldBe (767.0f / 768.0f)
         result[384] shouldBe (384.0f / 768.0f)
     }
+
+    context("generateEmbeddingBatch") {
+        test("should return a result for each request") {
+            // given
+            val requests = listOf(
+                EmbeddingRequest("Test", emptyList(), "content 1"),
+                EmbeddingRequest("Test", emptyList(), "content 2")
+            )
+
+            // when
+            val results = mockEmbeddingService.generateEmbeddingBatch(requests, GeminiModelType.GEMINI_EMBEDDING)
+
+            // then
+            results.size shouldBe 2
+        }
+
+        test("all results should be successful and have the correct dimension") {
+            // given
+            val requests = listOf(
+                EmbeddingRequest("Test", emptyList(), "content 1"),
+                EmbeddingRequest("Test", emptyList(), "content 2")
+            )
+
+            // when
+            val results = mockEmbeddingService.generateEmbeddingBatch(requests, GeminiModelType.GEMINI_EMBEDDING)
+
+            // then
+            results.forEach { result ->
+                result.success shouldBe true
+                result.vector.size shouldBe 768
+                result.error shouldBe null
+                result.request shouldNotBe null
+            }
+        }
+    }
 })

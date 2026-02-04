@@ -12,17 +12,17 @@ import java.time.LocalDateTime
 class Post(
   @Id
   val id: Long,
-  @Column(name = "title")
+  @Column(name = "title", length = 500)
   val title: String,
   @Column(name = "preview", columnDefinition = "TEXT")
   var preview: String?,
-  @Column(name = "url")
+  @Column(name = "url", length = 1000)
   val url: String,
   @Column(name = "content")
   val content: String,
   @Column(name = "published_at")
   val publishedAt: LocalDateTime,
-  @Column(name = "thumbnail")
+  @Column(name = "thumbnail", length = 1000)
   var thumbnail: String? = null,
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "company_id", nullable = false)
@@ -38,5 +38,7 @@ class Post(
   @Column(name = "is_summary", nullable = false)
   var isSummary: Boolean = false,
   @Column(name = "is_embedding", nullable = false)
-  var isEmbedding: Boolean = false
+  var isEmbedding: Boolean = false,
+  @Column(name = "summary_failure_count", nullable = false)
+  var summaryFailureCount: Int = 0
 ) : BaseEntity()

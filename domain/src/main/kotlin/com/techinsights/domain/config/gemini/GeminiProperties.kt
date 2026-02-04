@@ -7,5 +7,5 @@ import org.springframework.context.annotation.Configuration
 @ConfigurationProperties("gemini")
 data class GeminiProperties(
     var apiKey: String = "",
-    var maxOutputTokens: Int = 4096
+    var maxOutputTokens: Int = 16384  // Increased from 8192 to support larger batches (RPD optimization)
 )

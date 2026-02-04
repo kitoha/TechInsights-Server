@@ -22,7 +22,9 @@ java {
 
 dependencies {
   api(libs.resilience4j.ratelimiter)
+  api(libs.resilience4j.circuitbreaker)
   api(libs.resilience4j.kotlin)
+  api(libs.bundles.kotlinx.coroutines)
 
   implementation(libs.spring.boot.starter.data.jpa)
   implementation(libs.kotlin.reflect)

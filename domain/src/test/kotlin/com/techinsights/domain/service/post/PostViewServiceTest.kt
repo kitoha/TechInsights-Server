@@ -1,8 +1,5 @@
 package com.techinsights.domain.service.post
 
-import com.techinsights.domain.dto.company.CompanyDto
-import com.techinsights.domain.dto.post.PostDto
-import com.techinsights.domain.enums.Category
 import com.techinsights.domain.event.ViewCountIncrementEvent
 import com.techinsights.domain.repository.post.PostRepository
 import com.techinsights.domain.repository.post.PostViewRepository
@@ -11,7 +8,6 @@ import io.kotest.core.spec.style.FunSpec
 import io.mockk.*
 import org.springframework.context.ApplicationEventPublisher
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 class PostViewServiceTest : FunSpec({
   val postViewRepository = mockk<PostViewRepository>()
@@ -25,31 +21,6 @@ class PostViewServiceTest : FunSpec({
 
   val companyId = Tsid.encode(1)
   val postId = Tsid.encode(1)
-
-  val sampleCompanyDto = CompanyDto(
-    id = companyId,
-    name = "Test Company",
-    blogUrl = "http://testcompany.com/blog",
-    logoImageName = "logo.png",
-    rssSupported = true,
-    totalViewCount = 100,
-    postCount = 10
-  )
-
-  val samplePostDto = PostDto(
-    id = postId,
-    title = "Test Post",
-    preview = "Test preview",
-    url = "http://test.com/post1",
-    content = "Test content",
-    publishedAt = LocalDateTime.now(),
-    thumbnail = "thumbnail.png",
-    company = sampleCompanyDto,
-    viewCount = 10,
-    categories = setOf(Category.BackEnd),
-    isSummary = true,
-    isEmbedding = false
-  )
 
   beforeTest {
     clearMocks(postViewRepository, postRepository, applicationEventPublisher)

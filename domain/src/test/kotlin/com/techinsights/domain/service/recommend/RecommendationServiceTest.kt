@@ -1,5 +1,6 @@
 package com.techinsights.domain.service.recommend
 
+import com.techinsights.domain.dto.auth.Requester
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.embedding.PostEmbeddingDto
 import com.techinsights.domain.dto.post.PostDto
@@ -66,20 +67,9 @@ class RecommendationServiceTest : FunSpec({
     clearMocks(postRepository, anonymousUserReadHistoryRepository, postEmbeddingRepository)
   }
 
-  test("추천 - anonymousId가 null인 경우 인기 게시글 반환") {
-    val topPosts = listOf(samplePostDto)
-    every { postRepository.findTopViewedPosts(5) } returns topPosts
-
-    val result = recommendationService.getRecommendationsForUser(null, 5)
-
-    result shouldHaveSize 1
-    result[0] shouldBe samplePostDto
-    verify(exactly = 1) { postRepository.findTopViewedPosts(5) }
-    verify(exactly = 0) { anonymousUserReadHistoryRepository.getRecentReadHistory(any(), any()) }
-  }
-
-  test("추천 - 읽기 기록이 없는 경우 인기 게시글 반환") {
+  test("추천 - 익명 사용자의 읽기 기록이 없는 경우 인기 게시글 반환") {
     val anonymousId = "anonymous-123"
+    val requester = Requester.Anonymous(anonymousId, "127.0.0.1")
     val pageRequest = PageRequest.of(0, 10)
     val topPosts = listOf(samplePostDto)
 
@@ -88,7 +78,25 @@ class RecommendationServiceTest : FunSpec({
     } returns emptyList()
     every { postRepository.findTopViewedPosts(5) } returns topPosts
 
-    val result = recommendationService.getRecommendationsForUser(anonymousId, 5)
+    val result = recommendationService.getRecommendationsForUser(requester, 5)
+
+    result shouldHaveSize 1
+    result[0] shouldBe samplePostDto
+    verify(exactly = 1) { postRepository.findTopViewedPosts(5) }
+  }
+
+  test("추천 - 인증된 사용자의 읽기 기록이 없는 경우 인기 게시글 반환") {
+    val userId = 1L
+    val requester = Requester.Authenticated(userId, "127.0.0.1")
+    val pageRequest = PageRequest.of(0, 10)
+    val topPosts = listOf(samplePostDto)
+
+    every {
+      anonymousUserReadHistoryRepository.getRecentReadHistory(userId.toString(), pageRequest)
+    } returns emptyList()
+    every { postRepository.findTopViewedPosts(5) } returns topPosts
+
+    val result = recommendationService.getRecommendationsForUser(requester, 5)
 
     result shouldHaveSize 1
     result[0] shouldBe samplePostDto
@@ -97,6 +105,7 @@ class RecommendationServiceTest : FunSpec({
 
   test("추천 - 읽기 기록이 있는 경우 유사 게시글 반환") {
     val anonymousId = "anonymous-123"
+    val requester = Requester.Anonymous(anonymousId, "127.0.0.1")
     val pageRequest = PageRequest.of(0, 10)
 
     val readHistory = listOf(
@@ -126,7 +135,7 @@ class RecommendationServiceTest : FunSpec({
     val recommendedPostId = Tsid.encode(2)
     every { postRepository.findAllByIdIn(listOf(recommendedPostId)) } returns recommendedPosts
 
-    val result = recommendationService.getRecommendationsForUser(anonymousId, 5)
+    val result = recommendationService.getRecommendationsForUser(requester, 5)
 
     result shouldHaveSize 1
     result[0].id shouldBe recommendedPostId

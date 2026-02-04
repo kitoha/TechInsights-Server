@@ -1,8 +1,10 @@
 package com.techinsights.domain.repository.post
 
+import com.querydsl.core.types.Expression
 import com.querydsl.core.types.dsl.BooleanExpression
 import com.querydsl.jpa.impl.JPAQuery
 import com.querydsl.jpa.impl.JPAQueryFactory
+import com.techinsights.domain.dto.catogory.CategorySummaryDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.entity.company.Company
 import com.techinsights.domain.entity.company.QCompany
@@ -176,35 +178,35 @@ class PostRepositoryImplTest : FunSpec({
     every { queryFactory.selectFrom(QPost.post) } returns query
     every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
     every { query.fetchJoin() } returns query
-    every { query.where(any<BooleanExpression>()) } returns query
-    every { query.orderBy(any()) } returns query
-    every { query.offset(0L) } returns query
+    every { query.where(any<BooleanExpression>(), any<BooleanExpression>(), isNull()) } returns query
+    every { query.orderBy(any(), any()) } returns query
     every { query.limit(10L) } returns query
     every { query.fetch() } returns listOf(post2)
 
-    val result = repository.findOldestNotSummarized(limit = 10, offset = 0)
+    val result = repository.findOldestNotSummarized(limit = 10, lastPublishedAt = null, lastId = null)
 
     result shouldHaveSize 1
     result[0].isSummary shouldBe false
-    verify(exactly = 1) { query.orderBy(any()) }
+    verify(exactly = 1) { query.orderBy(any(), any()) }
   }
 
-  test("should apply offset and limit correctly") {
+  test("should apply cursor and limit correctly") {
     val query = mockk<JPAQuery<Post>>()
+    val cursorDate = LocalDateTime.of(2024, 1, 1, 12, 0)
+    val cursorId = 100L
 
     every { queryFactory.selectFrom(QPost.post) } returns query
     every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
     every { query.fetchJoin() } returns query
-    every { query.where(any<BooleanExpression>()) } returns query
-    every { query.orderBy(any()) } returns query
-    every { query.offset(20L) } returns query
+    every { query.where(any<BooleanExpression>(), any<BooleanExpression>(), any<BooleanExpression>()) } returns query
+    every { query.orderBy(any(), any()) } returns query
     every { query.limit(5L) } returns query
     every { query.fetch() } returns emptyList()
 
-    repository.findOldestNotSummarized(limit = 5, offset = 20)
+    repository.findOldestNotSummarized(limit = 5, lastPublishedAt = cursorDate, lastId = cursorId)
 
-    verify(exactly = 1) { query.offset(20L) }
     verify(exactly = 1) { query.limit(5L) }
+    verify(exactly = 0) { query.offset(any()) }
   }
 
   test("should return posts that are summarized but not embedded") {
@@ -226,13 +228,12 @@ class PostRepositoryImplTest : FunSpec({
     every { queryFactory.selectFrom(QPost.post) } returns query
     every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
     every { query.fetchJoin() } returns query
-    every { query.where(any<BooleanExpression>()) } returns query
-    every { query.orderBy(any()) } returns query
-    every { query.offset(0L) } returns query
+    every { query.where(any<BooleanExpression>(), isNull()) } returns query
+    every { query.orderBy(any(), any()) } returns query
     every { query.limit(10L) } returns query
     every { query.fetch() } returns listOf(postNotEmbedded)
 
-    val result = repository.findOldestSummarizedAndNotEmbedded(limit = 10, offset = 0)
+    val result = repository.findOldestSummarizedAndNotEmbedded(limit = 10, lastPublishedAt = null, lastId = null)
 
     result shouldHaveSize 1
     result[0].isSummary shouldBe true
@@ -245,13 +246,12 @@ class PostRepositoryImplTest : FunSpec({
     every { queryFactory.selectFrom(QPost.post) } returns query
     every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
     every { query.fetchJoin() } returns query
-    every { query.where(any<BooleanExpression>()) } returns query
-    every { query.orderBy(any()) } returns query
-    every { query.offset(0L) } returns query
+    every { query.where(any<BooleanExpression>(), isNull()) } returns query
+    every { query.orderBy(any(), any()) } returns query
     every { query.limit(10L) } returns query
     every { query.fetch() } returns listOf(post1)
 
-    val result = repository.findOldestSummarized(limit = 10, offset = 0)
+    val result = repository.findOldestSummarized(limit = 10, lastPublishedAt = null, lastId = null)
 
     result shouldHaveSize 1
     result[0].isSummary shouldBe true
@@ -302,10 +302,34 @@ class PostRepositoryImplTest : FunSpec({
   }
 
   test("should calculate category statistics correctly") {
-    val query = mockk<JPAQuery<Post>>()
+    val query = mockk<JPAQuery<CategorySummaryDto>>()
+    val summary = listOf(
+      CategorySummaryDto(
+        category = Category.AI,
+        postCount = 1,
+        totalViewCount = 100,
+        latestPostDate = LocalDateTime.of(2024, 1, 1, 0, 0)
+      ),
+      CategorySummaryDto(
+        category = Category.BackEnd,
+        postCount = 1,
+        totalViewCount = 100,
+        latestPostDate = LocalDateTime.of(2024, 1, 1, 0, 0)
+      ),
+      CategorySummaryDto(
+        category = Category.FrontEnd,
+        postCount = 1,
+        totalViewCount = 50,
+        latestPostDate = LocalDateTime.of(2024, 1, 2, 0, 0)
+      )
+    )
 
-    every { queryFactory.selectFrom(QPost.post) } returns query
-    every { query.fetch() } returns listOf(post1, post2)
+    every { queryFactory.select(any<Expression<CategorySummaryDto>>()) } returns query
+    every { query.from(QPost.post) } returns query
+    every { query.join(QPost.post.categories, any()) } returns query
+    every { query.where(any<BooleanExpression>()) } returns query
+    every { query.groupBy(any()) } returns query
+    every { query.fetch() } returns summary
 
     val result = repository.getCategoryStatistics()
 
@@ -317,23 +341,22 @@ class PostRepositoryImplTest : FunSpec({
   }
 
   test("should exclude Category.All from statistics") {
-    val postWithAll = Post(
-      id = 1L,
-      title = "Test Post 1",
-      url = "https://test.com/post1",
-      content = "Content 1",
-      publishedAt = LocalDateTime.of(2024, 1, 1, 0, 0),
-      company = company,
-      isSummary = true,
-      isEmbedding = true,
-      viewCount = 100,
-      categories = mutableSetOf(Category.All, Category.AI),
-      preview = null
+    val query = mockk<JPAQuery<CategorySummaryDto>>()
+    val summary = listOf(
+      CategorySummaryDto(
+        category = Category.AI,
+        postCount = 1,
+        totalViewCount = 100,
+        latestPostDate = LocalDateTime.of(2024, 1, 1, 0, 0)
+      )
     )
-    val query = mockk<JPAQuery<Post>>()
 
-    every { queryFactory.selectFrom(QPost.post) } returns query
-    every { query.fetch() } returns listOf(postWithAll)
+    every { queryFactory.select(any<Expression<CategorySummaryDto>>()) } returns query
+    every { query.from(QPost.post) } returns query
+    every { query.join(QPost.post.categories, any()) } returns query
+    every { query.where(any<BooleanExpression>()) } returns query
+    every { query.groupBy(any()) } returns query
+    every { query.fetch() } returns summary
 
     val result = repository.getCategoryStatistics()
 
@@ -593,6 +616,21 @@ class PostRepositoryImplTest : FunSpec({
     val result = repository.updateEmbeddingStatusBulk(postIds)
 
     result shouldBe 100L
+    verify(exactly = 1) { updateClause.execute() }
+  }
+
+  test("incrementSummaryFailureCount should increment failure count for a post") {
+    val postId = Tsid.encode(1L)
+    val updateClause = mockk<com.querydsl.jpa.impl.JPAUpdateClause>()
+
+    every { queryFactory.update(QPost.post) } returns updateClause
+    every { updateClause.set(QPost.post.summaryFailureCount, any<com.querydsl.core.types.Expression<Int>>()) } returns updateClause
+    every { updateClause.where(any<BooleanExpression>()) } returns updateClause
+    every { updateClause.execute() } returns 1L
+
+    repository.incrementSummaryFailureCount(postId)
+
+    verify(exactly = 1) { queryFactory.update(QPost.post) }
     verify(exactly = 1) { updateClause.execute() }
   }
 })

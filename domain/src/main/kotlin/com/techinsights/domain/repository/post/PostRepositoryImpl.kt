@@ -1,5 +1,6 @@
 package com.techinsights.domain.repository.post
 
+import com.querydsl.core.types.Projections
 import com.querydsl.jpa.impl.JPAQueryFactory
 import com.techinsights.domain.dto.catogory.CategorySummaryDto
 import com.techinsights.domain.dto.post.PostDto
@@ -19,6 +20,10 @@ class PostRepositoryImpl(
   private val postJpaRepository: PostJpaRepository,
   private val queryFactory: JPAQueryFactory
 ) : PostRepository {
+
+  companion object {
+    private const val MAX_RETRY_COUNT = 5
+  }
 
   override fun saveAll(posts: List<PostDto>): List<PostDto> {
     val entities = posts.map { post -> post.toEntity() }
@@ -75,15 +80,22 @@ class PostRepositoryImpl(
     return Tsid.encode(companyId)
   }
 
-  override fun findOldestNotSummarized(limit: Long, offset: Long): List<PostDto> {
+  override fun findOldestNotSummarized(
+    limit: Long,
+    lastPublishedAt: java.time.LocalDateTime?,
+    lastId: Long?
+  ): List<PostDto> {
     val post = QPost.post
     val company = QCompany.company
 
     return queryFactory.selectFrom(post)
       .leftJoin(post.company, company).fetchJoin()
-      .where(post.isSummary.isFalse)
-      .orderBy(post.publishedAt.asc())
-      .offset(offset)
+      .where(
+        post.isSummary.isFalse,
+        post.summaryFailureCount.lt(MAX_RETRY_COUNT),
+        buildCursorCondition(post, lastPublishedAt, lastId)
+      )
+      .orderBy(post.publishedAt.asc(), post.id.asc())
       .limit(limit)
       .fetch()
       .map { PostDto.fromEntity(it) }
@@ -91,30 +103,39 @@ class PostRepositoryImpl(
 
   override fun findOldestSummarizedAndNotEmbedded(
     limit: Long,
-    offset: Long
+    lastPublishedAt: java.time.LocalDateTime?,
+    lastId: Long?
   ): List<PostDto> {
     val post = QPost.post
     val company = QCompany.company
 
     return queryFactory.selectFrom(post)
       .leftJoin(post.company, company).fetchJoin()
-      .where(post.isSummary.isTrue.and(post.isEmbedding.isFalse))
-      .orderBy(post.publishedAt.asc())
-      .offset(offset)
+      .where(
+        post.isSummary.isTrue.and(post.isEmbedding.isFalse),
+        buildCursorCondition(post, lastPublishedAt, lastId)
+      )
+      .orderBy(post.publishedAt.asc(), post.id.asc())
       .limit(limit)
       .fetch()
       .map { PostDto.fromEntity(it) }
   }
 
-  override fun findOldestSummarized(limit: Long, offset: Long): List<PostDto> {
+  override fun findOldestSummarized(
+    limit: Long,
+    lastPublishedAt: java.time.LocalDateTime?,
+    lastId: Long?
+  ): List<PostDto> {
     val post = QPost.post
     val company = QCompany.company
 
     return queryFactory.selectFrom(post)
       .leftJoin(post.company, company).fetchJoin()
-      .where(post.isSummary.isTrue)
-      .orderBy(post.publishedAt.asc())
-      .offset(offset)
+      .where(
+        post.isSummary.isTrue,
+        buildCursorCondition(post, lastPublishedAt, lastId)
+      )
+      .orderBy(post.publishedAt.asc(), post.id.asc())
       .limit(limit)
       .fetch()
       .map { PostDto.fromEntity(it) }
@@ -135,21 +156,23 @@ class PostRepositoryImpl(
 
   override fun getCategoryStatistics(): List<CategorySummaryDto> {
     val post = QPost.post
+    val category = QPost.post.categories.any()
 
     return queryFactory
-      .selectFrom(post)
-      .fetch()
-      .flatMap { p -> p.categories.map { category -> p to category } }
-      .filter { (_, category) -> category != Category.All }
-      .groupBy { (_, category) -> category }
-      .map { (category, posts) ->
-        CategorySummaryDto(
-          category = category,
-          postCount = posts.size.toLong(),
-          totalViewCount = posts.sumOf { (post, _) -> post.viewCount },
-          latestPostDate = posts.maxOfOrNull { (post, _) -> post.publishedAt }
+      .select(
+        Projections.constructor(
+          CategorySummaryDto::class.java,
+          category,
+          post.id.count(),
+          post.viewCount.sum().coalesce(0L),
+          post.publishedAt.max()
         )
-      }
+      )
+      .from(post)
+      .join(post.categories, category)
+      .where(category.ne(Category.All))
+      .groupBy(category)
+      .fetch()
   }
 
   override fun getAllPosts(
@@ -231,5 +254,34 @@ class PostRepositoryImpl(
       .set(post.isEmbedding, true)
       .where(post.id.`in`(decodedIds))
       .execute()
+  }
+
+  @Transactional
+  override fun incrementSummaryFailureCount(postId: String) {
+    val post = QPost.post
+    val decodedId = Tsid.decode(postId)
+
+    queryFactory.update(post)
+      .set(post.summaryFailureCount, post.summaryFailureCount.add(1))
+      .where(post.id.eq(decodedId))
+      .execute()
+  }
+
+  private fun buildCursorCondition(
+    post: QPost,
+    lastPublishedAt: java.time.LocalDateTime?,
+    lastId: Long?
+  ): com.querydsl.core.types.dsl.BooleanExpression? {
+    if (lastPublishedAt == null || lastId == null) {
+      return null
+    }
+
+    // WHERE (published_at > lastPublishedAt) 
+    //    OR (published_at = lastPublishedAt AND id > lastId)
+    return post.publishedAt.gt(lastPublishedAt)
+      .or(
+        post.publishedAt.eq(lastPublishedAt)
+          .and(post.id.gt(lastId))
+      )
   }
 }
