@@ -36,6 +36,7 @@ class SecurityConfig(
                 auth
                     .requestMatchers("/api/v1/posts/**").permitAll()
                     .requestMatchers("/api/v1/companies/**").permitAll()
+                    .requestMatchers("/api/v1/companiesSummaries").permitAll()
                     .requestMatchers("/api/v1/categories/**").permitAll()
                     .requestMatchers("/api/v1/search/**").permitAll()
                     .requestMatchers("/api/v1/auth/**").permitAll()
