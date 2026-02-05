@@ -284,4 +284,22 @@ class PostRepositoryImpl(
           .and(post.id.gt(lastId))
       )
   }
+
+  @Transactional
+  override fun incrementLikeCount(postId: Long) {
+    val post = QPost.post
+    queryFactory.update(post)
+      .set(post.likeCount, post.likeCount.add(1))
+      .where(post.id.eq(postId))
+      .execute()
+  }
+
+  @Transactional
+  override fun decrementLikeCount(postId: Long) {
+    val post = QPost.post
+    queryFactory.update(post)
+      .set(post.likeCount, post.likeCount.subtract(1))
+      .where(post.id.eq(postId).and(post.likeCount.gt(0)))
+      .execute()
+  }
 }
