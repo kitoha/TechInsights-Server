@@ -1,5 +1,6 @@
 package com.techinsights.api.service.post
 
+import com.techinsights.domain.dto.auth.Requester
 import com.techinsights.domain.entity.post.PostLike
 import com.techinsights.domain.repository.post.PostLikeRepository
 import com.techinsights.domain.repository.post.PostRepository
@@ -16,33 +17,56 @@ class PostLikeService(
 ) {
 
     @Transactional
-    fun toggleLike(postId: String, userId: Long?, ipAddress: String): Boolean {
+    fun toggleLike(postId: String, requester: Requester): Boolean {
         val postIdLong = postId.decode()
         
-        val existingLike = if (userId != null) {
-            postLikeRepository.findByPostIdAndUserId(postIdLong, userId)
-        } else {
-            postLikeRepository.findByPostIdAndIpAddress(postIdLong, ipAddress)
+        return when (requester) {
+            is Requester.Authenticated -> toggleAuthenticatedLike(postIdLong, requester.userId, requester.ip)
+            is Requester.Anonymous -> toggleAnonymousLike(postIdLong, requester.ip)
         }
+    }
+
+    private fun toggleAuthenticatedLike(postId: Long, userId: Long, ipAddress: String): Boolean {
+        val existingLike = postLikeRepository.findByPostIdAndUserId(postId, userId)
 
         if (existingLike != null) {
-            if (userId != null) {
-                postLikeRepository.deleteByPostIdAndUserId(postIdLong, userId)
-            } else {
-                postLikeRepository.deleteByPostIdAndIpAddress(postIdLong, ipAddress)
-            }
-            postRepository.decrementLikeCount(postIdLong)
+            postLikeRepository.deleteByPostIdAndUserId(postId, userId)
+            postRepository.decrementLikeCount(postId)
             return false
         } else {
             try {
                 val newLike = PostLike(
                     id = Tsid.generate().decode(),
-                    postId = postIdLong,
+                    postId = postId,
                     userId = userId,
                     ipAddress = ipAddress
                 )
                 postLikeRepository.save(newLike)
-                postRepository.incrementLikeCount(postIdLong)
+                postRepository.incrementLikeCount(postId)
+                return true
+            } catch (e: DataIntegrityViolationException) {
+                return true
+            }
+        }
+    }
+
+    private fun toggleAnonymousLike(postId: Long, ipAddress: String): Boolean {
+        val existingLike = postLikeRepository.findByPostIdAndIpAddress(postId, ipAddress)
+
+        if (existingLike != null) {
+            postLikeRepository.deleteByPostIdAndIpAddress(postId, ipAddress)
+            postRepository.decrementLikeCount(postId)
+            return false
+        } else {
+            try {
+                val newLike = PostLike(
+                    id = Tsid.generate().decode(),
+                    postId = postId,
+                    userId = null,
+                    ipAddress = ipAddress
+                )
+                postLikeRepository.save(newLike)
+                postRepository.incrementLikeCount(postId)
                 return true
             } catch (e: DataIntegrityViolationException) {
                 return true

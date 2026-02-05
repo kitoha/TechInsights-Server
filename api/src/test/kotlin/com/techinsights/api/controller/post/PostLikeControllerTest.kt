@@ -1,7 +1,9 @@
 package com.techinsights.api.controller.post
 
+import com.techinsights.api.props.AidProperties
 import com.techinsights.api.service.post.PostLikeService
-import com.techinsights.api.util.ClientIpExtractor
+import com.techinsights.api.util.auth.RequesterResolver
+import com.techinsights.domain.dto.auth.Requester
 import com.techinsights.domain.utils.Tsid
 import io.kotest.core.spec.style.FunSpec
 import io.mockk.*
@@ -14,22 +16,24 @@ class PostLikeControllerTest : FunSpec() {
 
     private lateinit var mockMvc: MockMvc
     private val postLikeService = mockk<PostLikeService>()
-    private val clientIpExtractor = mockk<ClientIpExtractor>()
+    private val aidProperties = mockk<AidProperties>(relaxed = true)
 
     init {
         beforeTest {
             clearAllMocks()
 
-            val controller = PostLikeController(postLikeService, clientIpExtractor)
-            mockMvc = MockMvcBuilders.standaloneSetup(controller).build()
+            val controller = PostLikeController(postLikeService)
+            val requesterResolver = RequesterResolver(aidProperties)
+            
+            mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setCustomArgumentResolvers(requesterResolver)
+                .build()
         }
 
         test("POST /api/v1/posts/{postId}/like - Anonymous User - New Like") {
             val postId = Tsid.generate()
-            val clientIp = "127.0.0.1"
 
-            every { clientIpExtractor.extract(any()) } returns clientIp
-            every { postLikeService.toggleLike(postId, null, clientIp) } returns true
+            every { postLikeService.toggleLike(postId, any<Requester.Anonymous>()) } returns true
 
             mockMvc.post("/api/v1/posts/$postId/like") {
                 accept = MediaType.APPLICATION_JSON
@@ -38,16 +42,13 @@ class PostLikeControllerTest : FunSpec() {
                 jsonPath("$.liked") { value(true) }
             }
 
-            verify(exactly = 1) { clientIpExtractor.extract(any()) }
-            verify(exactly = 1) { postLikeService.toggleLike(postId, null, clientIp) }
+            verify(exactly = 1) { postLikeService.toggleLike(postId, any<Requester.Anonymous>()) }
         }
 
         test("POST /api/v1/posts/{postId}/like - Anonymous User - Unlike") {
             val postId = Tsid.generate()
-            val clientIp = "192.168.0.1"
 
-            every { clientIpExtractor.extract(any()) } returns clientIp
-            every { postLikeService.toggleLike(postId, null, clientIp) } returns false
+            every { postLikeService.toggleLike(postId, any<Requester.Anonymous>()) } returns false
 
             mockMvc.post("/api/v1/posts/$postId/like") {
                 accept = MediaType.APPLICATION_JSON
@@ -56,45 +57,37 @@ class PostLikeControllerTest : FunSpec() {
                 jsonPath("$.liked") { value(false) }
             }
 
-            verify(exactly = 1) { postLikeService.toggleLike(postId, null, clientIp) }
+            verify(exactly = 1) { postLikeService.toggleLike(postId, any<Requester.Anonymous>()) }
         }
 
         test("POST /api/v1/posts/{postId}/like - Authenticated User - New Like") {
             val postId = Tsid.generate()
-            val userId = 100L
-            val clientIp = "10.0.0.1"
 
-            every { clientIpExtractor.extract(any()) } returns clientIp
-            every { postLikeService.toggleLike(postId, userId, clientIp) } returns true
+            every { postLikeService.toggleLike(postId, any<Requester.Authenticated>()) } returns true
 
             mockMvc.post("/api/v1/posts/$postId/like") {
                 accept = MediaType.APPLICATION_JSON
-                header("X-User-Id", userId.toString())
             }.andExpect {
                 status { isOk() }
                 jsonPath("$.liked") { value(true) }
             }
 
-            verify(exactly = 1) { postLikeService.toggleLike(postId, userId, clientIp) }
+            verify(exactly = 1) { postLikeService.toggleLike(postId, any<Requester.Authenticated>()) }
         }
 
         test("POST /api/v1/posts/{postId}/like - Authenticated User - Unlike") {
             val postId = Tsid.generate()
-            val userId = 200L
-            val clientIp = "172.16.0.1"
 
-            every { clientIpExtractor.extract(any()) } returns clientIp
-            every { postLikeService.toggleLike(postId, userId, clientIp) } returns false
+            every { postLikeService.toggleLike(postId, any<Requester.Authenticated>()) } returns false
 
             mockMvc.post("/api/v1/posts/$postId/like") {
                 accept = MediaType.APPLICATION_JSON
-                header("X-User-Id", userId.toString())
             }.andExpect {
                 status { isOk() }
                 jsonPath("$.liked") { value(false) }
             }
 
-            verify(exactly = 1) { postLikeService.toggleLike(postId, userId, clientIp) }
+            verify(exactly = 1) { postLikeService.toggleLike(postId, any<Requester.Authenticated>()) }
         }
     }
 }

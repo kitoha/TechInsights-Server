@@ -1,5 +1,6 @@
 package com.techinsights.api.service.post
 
+import com.techinsights.domain.dto.auth.Requester
 import com.techinsights.domain.entity.post.PostLike
 import com.techinsights.domain.repository.post.PostLikeRepository
 import com.techinsights.domain.repository.post.PostRepository
@@ -25,12 +26,13 @@ class PostLikeServiceTest : FunSpec({
         val postId = Tsid.generate()
         val userId = 100L
         val ipAddress = "127.0.0.1"
+        val requester = Requester.Authenticated(userId, ipAddress)
 
         every { postLikeRepository.findByPostIdAndUserId(any(), userId) } returns null
         every { postLikeRepository.save(any()) } returns mockk()
         every { postRepository.incrementLikeCount(any()) } returns Unit
 
-        val result = postLikeService.toggleLike(postId = postId, userId = userId, ipAddress = ipAddress)
+        val result = postLikeService.toggleLike(postId, requester)
 
         result shouldBe true
         verify(exactly = 1) { postLikeRepository.save(any()) }
@@ -41,13 +43,14 @@ class PostLikeServiceTest : FunSpec({
         val postId = Tsid.generate()
         val userId = 100L
         val ipAddress = "127.0.0.1"
+        val requester = Requester.Authenticated(userId, ipAddress)
         val existingLike = mockk<PostLike>()
 
         every { postLikeRepository.findByPostIdAndUserId(any(), userId) } returns existingLike
         every { postLikeRepository.deleteByPostIdAndUserId(any(), userId) } returns Unit
         every { postRepository.decrementLikeCount(any()) } returns Unit
 
-        val result = postLikeService.toggleLike(postId = postId, userId = userId, ipAddress = ipAddress)
+        val result = postLikeService.toggleLike(postId, requester)
 
         result shouldBe false
         verify(exactly = 1) { postLikeRepository.deleteByPostIdAndUserId(any(), userId) }
@@ -57,12 +60,13 @@ class PostLikeServiceTest : FunSpec({
     test("toggleLike - Anonymous User - New Like") {
         val postId = Tsid.generate()
         val ipAddress = "127.0.0.1"
+        val requester = Requester.Anonymous(ipAddress, ipAddress)
 
         every { postLikeRepository.findByPostIdAndIpAddress(any(), ipAddress) } returns null
         every { postLikeRepository.save(any()) } returns mockk()
         every { postRepository.incrementLikeCount(any()) } returns Unit
 
-        val result = postLikeService.toggleLike(postId = postId, userId = null, ipAddress = ipAddress)
+        val result = postLikeService.toggleLike(postId, requester)
 
         result shouldBe true
         verify(exactly = 1) { postLikeRepository.save(any()) }
@@ -72,13 +76,14 @@ class PostLikeServiceTest : FunSpec({
     test("toggleLike - Anonymous User - Already Liked (Unlike)") {
         val postId = Tsid.generate()
         val ipAddress = "127.0.0.1"
+        val requester = Requester.Anonymous(ipAddress, ipAddress)
         val existingLike = mockk<PostLike>()
 
         every { postLikeRepository.findByPostIdAndIpAddress(any(), ipAddress) } returns existingLike
         every { postLikeRepository.deleteByPostIdAndIpAddress(any(), ipAddress) } returns Unit
         every { postRepository.decrementLikeCount(any()) } returns Unit
 
-        val result = postLikeService.toggleLike(postId = postId, userId = null, ipAddress = ipAddress)
+        val result = postLikeService.toggleLike(postId, requester)
 
         result shouldBe false
         verify(exactly = 1) { postLikeRepository.deleteByPostIdAndIpAddress(any(), ipAddress) }
@@ -89,11 +94,12 @@ class PostLikeServiceTest : FunSpec({
         val postId = Tsid.generate()
         val userId = 100L
         val ipAddress = "127.0.0.1"
+        val requester = Requester.Authenticated(userId, ipAddress)
 
         every { postLikeRepository.findByPostIdAndUserId(any(), userId) } returns null
         every { postLikeRepository.save(any()) } throws DataIntegrityViolationException("Duplicate key")
         
-        val result = postLikeService.toggleLike(postId = postId, userId = userId, ipAddress = ipAddress)
+        val result = postLikeService.toggleLike(postId, requester)
 
         result shouldBe true
     }

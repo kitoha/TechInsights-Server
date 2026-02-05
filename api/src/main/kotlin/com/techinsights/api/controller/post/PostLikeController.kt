@@ -1,27 +1,22 @@
 package com.techinsights.api.controller.post
 
 import com.techinsights.api.service.post.PostLikeService
-import com.techinsights.api.util.ClientIpExtractor
-import jakarta.servlet.http.HttpServletRequest
+import com.techinsights.domain.dto.auth.Requester
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/v1/posts")
 class PostLikeController(
-    private val postLikeService: PostLikeService,
-    private val clientIpExtractor: ClientIpExtractor
+    private val postLikeService: PostLikeService
 ) {
 
     @PostMapping("/{postId}/like")
     fun toggleLike(
         @PathVariable postId: String,
-        @RequestHeader(value = "X-User-Id", required = false) userId: Long?,
-        request: HttpServletRequest
+        requester: Requester
     ): ResponseEntity<LikeResponse> {
-        val clientIp = clientIpExtractor.extract(request)
-        val liked = postLikeService.toggleLike(postId, userId, clientIp)
-        
+        val liked = postLikeService.toggleLike(postId, requester)
         return ResponseEntity.ok(LikeResponse(liked))
     }
 
