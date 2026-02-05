@@ -40,5 +40,7 @@ class Post(
   @Column(name = "is_embedding", nullable = false)
   var isEmbedding: Boolean = false,
   @Column(name = "summary_failure_count", nullable = false)
-  var summaryFailureCount: Int = 0
+  var summaryFailureCount: Int = 0,
+  @Column(name = "like_count", nullable = false)
+  var likeCount: Long = 0L
 ) : BaseEntity()
