@@ -4,6 +4,7 @@ import com.querydsl.core.types.Expression
 import com.querydsl.core.types.dsl.BooleanExpression
 import com.querydsl.jpa.impl.JPAQuery
 import com.querydsl.jpa.impl.JPAQueryFactory
+import com.querydsl.jpa.impl.JPAUpdateClause
 import com.techinsights.domain.dto.catogory.CategorySummaryDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.entity.company.Company
@@ -632,5 +633,44 @@ class PostRepositoryImplTest : FunSpec({
 
     verify(exactly = 1) { queryFactory.update(QPost.post) }
     verify(exactly = 1) { updateClause.execute() }
+  }
+
+  test("incrementLikeCount should increment like count and throw if post not found") {
+    val postId = 1L
+    val updateClause = mockk<JPAUpdateClause>()
+
+    every { queryFactory.update(QPost.post) } returns updateClause
+    every { updateClause.set(QPost.post.likeCount, any<com.querydsl.core.types.Expression<Long>>()) } returns updateClause
+    every { updateClause.where(any<BooleanExpression>()) } returns updateClause
+
+    // Case 1: Success
+    every { updateClause.execute() } returns 1L
+    repository.incrementLikeCount(postId)
+    verify { updateClause.where(QPost.post.id.eq(postId)) }
+
+    // Case 2: Post not found
+    every { updateClause.execute() } returns 0L
+    shouldThrow<PostNotFoundException> {
+      repository.incrementLikeCount(postId)
+    }
+  }
+
+  test("decrementLikeCount should decrement like count and throw if post not found or count is 0") {
+    val postId = 1L
+    val updateClause = mockk<JPAUpdateClause>()
+
+    every { queryFactory.update(QPost.post) } returns updateClause
+    every { updateClause.set(QPost.post.likeCount, any<com.querydsl.core.types.Expression<Long>>()) } returns updateClause
+    every { updateClause.where(any<BooleanExpression>()) } returns updateClause
+
+    every { updateClause.execute() } returns 1L
+    repository.decrementLikeCount(postId)
+
+    verify { updateClause.where(any<BooleanExpression>()) }
+
+    every { updateClause.execute() } returns 0L
+    shouldThrow<PostNotFoundException> {
+      repository.decrementLikeCount(postId)
+    }
   }
 })

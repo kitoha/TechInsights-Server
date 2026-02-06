@@ -12,6 +12,7 @@ interface PostRepository {
   fun findAllByUrlIn(urls: List<String>): List<PostDto>
   fun findAllByIdIn(ids: List<String>): List<PostDto>
   fun getPostById(id: String): PostDto
+  fun existsById(id: Long): Boolean
   fun getCompanyIdByPostId(postId: String): String
   fun findOldestNotSummarized(limit: Long, lastPublishedAt: LocalDateTime? = null, lastId: Long? = null): List<PostDto>
   fun findOldestSummarizedAndNotEmbedded(limit: Long, lastPublishedAt: LocalDateTime? = null, lastId: Long? = null): List<PostDto>
@@ -22,4 +23,6 @@ interface PostRepository {
   fun getPostsByCategory(pageable: Pageable, category: Category, companyId: String?): Page<PostDto>
   fun updateEmbeddingStatusBulk(postIds: List<String>): Long
   fun incrementSummaryFailureCount(postId: String)
+  fun incrementLikeCount(postId: Long)
+  fun decrementLikeCount(postId: Long)
 }

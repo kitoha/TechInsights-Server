@@ -2,7 +2,7 @@ package com.techinsights.api.controller.post
 
 import com.techinsights.api.response.post.PageResponse
 import com.techinsights.api.response.post.PostResponse
-import com.techinsights.api.util.ClientIpExtractor
+import com.techinsights.domain.dto.auth.Requester
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.enums.Category
 import com.techinsights.domain.enums.PostSortType
@@ -24,7 +24,6 @@ import org.springframework.web.bind.annotation.RestController
 class PostController(
   private val postService: PostService,
   private val postViewService: PostViewService,
-  private val clientIpExtractor: ClientIpExtractor,
   private val anonymousUserReadHistoryRepository: AnonymousUserReadHistoryRepository,
   @param:Qualifier("ioDispatcher") private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -58,13 +57,21 @@ class PostController(
   @PostMapping("/api/v1/posts/{postId}/view")
   fun recordView(
     @PathVariable postId: String,
+    requester: Requester,
     request: HttpServletRequest
   ): ResponseEntity<Unit> {
-    val clientIp = clientIpExtractor.extract(request)
     val userAgent = request.getHeader("User-Agent")
 
-    postViewService.recordView(postId, clientIp, userAgent)
-    anonymousUserReadHistoryRepository.trackAnonymousPostRead(clientIp, postId)
+    val identifier = when (requester) {
+      is Requester.Authenticated -> "U_${requester.userId}"
+      is Requester.Anonymous -> requester.ip
+    }
+
+    postViewService.recordView(postId, identifier, userAgent)
+
+    if (requester is Requester.Anonymous) {
+      anonymousUserReadHistoryRepository.trackAnonymousPostRead(requester.ip, postId)
+    }
 
     return ResponseEntity.ok().build()
   }

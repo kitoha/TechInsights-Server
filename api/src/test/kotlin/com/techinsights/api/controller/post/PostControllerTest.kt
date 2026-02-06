@@ -1,6 +1,7 @@
 package com.techinsights.api.controller.post
 
-import com.techinsights.api.util.ClientIpExtractor
+import com.techinsights.api.props.AidProperties
+import com.techinsights.api.util.auth.RequesterResolver
 import com.techinsights.domain.repository.user.AnonymousUserReadHistoryRepository
 import com.techinsights.domain.service.post.PostService
 import com.techinsights.domain.service.post.PostViewService
@@ -18,9 +19,9 @@ class PostControllerTest : FunSpec() {
   private lateinit var mockMvc: MockMvc
   private val postService = mockk<PostService>()
   private val postViewService = mockk<PostViewService>()
-  private val clientIpExtractor = mockk<ClientIpExtractor>()
   private val dispatcher = Dispatchers.IO
   private val anonymousUserReadHistoryRepository = mockk<AnonymousUserReadHistoryRepository>()
+  private val aidProperties = mockk<AidProperties>(relaxed = true)
 
   init {
     beforeTest {
@@ -29,11 +30,14 @@ class PostControllerTest : FunSpec() {
       val controller = PostController(
         postService,
         postViewService,
-        clientIpExtractor,
         anonymousUserReadHistoryRepository,
         dispatcher
       )
-      mockMvc = MockMvcBuilders.standaloneSetup(controller).build()
+      val requesterResolver = RequesterResolver(aidProperties)
+      
+      mockMvc = MockMvcBuilders.standaloneSetup(controller)
+        .setCustomArgumentResolvers(requesterResolver)
+        .build()
     }
 
     test("GET /api/v1/posts - should return paginated posts with default parameters") {
@@ -170,11 +174,11 @@ class PostControllerTest : FunSpec() {
       val clientIp = "127.0.0.1"
       val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 
-      every { clientIpExtractor.extract(any()) } returns clientIp
-      every { postViewService.recordView(postId, clientIp, userAgent) } just Runs
+
+      every { postViewService.recordView(postId, any(), userAgent) } just Runs
       every {
         anonymousUserReadHistoryRepository.trackAnonymousPostRead(
-          clientIp,
+          any(),
           postId
         )
       } just Runs
@@ -186,11 +190,11 @@ class PostControllerTest : FunSpec() {
         status { isOk() }
       }
 
-      verify(exactly = 1) { clientIpExtractor.extract(any()) }
-      verify(exactly = 1) { postViewService.recordView(postId, clientIp, userAgent) }
+
+      verify(exactly = 1) { postViewService.recordView(postId, any(), userAgent) }
       verify(exactly = 1) {
         anonymousUserReadHistoryRepository.trackAnonymousPostRead(
-          clientIp,
+          any(),
           postId
         )
       }
@@ -201,11 +205,11 @@ class PostControllerTest : FunSpec() {
       val postId = Tsid.encode(1L)
       val clientIp = "192.168.0.1"
 
-      every { clientIpExtractor.extract(any()) } returns clientIp
-      every { postViewService.recordView(postId, clientIp, null) } just Runs
+
+      every { postViewService.recordView(postId, any(), null) } just Runs
       every {
         anonymousUserReadHistoryRepository.trackAnonymousPostRead(
-          clientIp,
+          any(),
           postId
         )
       } just Runs
@@ -217,11 +221,11 @@ class PostControllerTest : FunSpec() {
         status { isOk() }
       }
 
-      verify(exactly = 1) { clientIpExtractor.extract(any()) }
-      verify(exactly = 1) { postViewService.recordView(postId, clientIp, null) }
+
+      verify(exactly = 1) { postViewService.recordView(postId, any(), null) }
       verify(exactly = 1) {
         anonymousUserReadHistoryRepository.trackAnonymousPostRead(
-          clientIp,
+          any(),
           postId
         )
       }
@@ -234,11 +238,11 @@ class PostControllerTest : FunSpec() {
       val mobileUserAgent =
         "Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15"
 
-      every { clientIpExtractor.extract(any()) } returns clientIp
-      every { postViewService.recordView(postId, clientIp, mobileUserAgent) } just Runs
+
+      every { postViewService.recordView(postId, any(), mobileUserAgent) } just Runs
       every {
         anonymousUserReadHistoryRepository.trackAnonymousPostRead(
-          clientIp,
+          any(),
           postId
         )
       } just Runs
@@ -250,11 +254,11 @@ class PostControllerTest : FunSpec() {
         status { isOk() }
       }
 
-      verify(exactly = 1) { clientIpExtractor.extract(any()) }
-      verify(exactly = 1) { postViewService.recordView(postId, clientIp, mobileUserAgent) }
+
+      verify(exactly = 1) { postViewService.recordView(postId, any(), mobileUserAgent) }
       verify(exactly = 1) {
         anonymousUserReadHistoryRepository.trackAnonymousPostRead(
-          clientIp,
+          any(),
           postId
         )
       }
