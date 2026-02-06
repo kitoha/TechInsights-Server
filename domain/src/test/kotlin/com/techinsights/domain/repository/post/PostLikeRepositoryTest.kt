@@ -60,14 +60,27 @@ class PostLikeRepositoryTest : FunSpec({
         verify(exactly = 1) { postLikeJpaRepository.findByPostIdAndIpAddress(postId, ipAddress) }
     }
 
-    test("delete should delegate to JpaRepository") {
+    test("deleteByPostIdAndUserId should delegate to JpaRepository and return count") {
         val postId = Tsid.generate().decode()
         val userId = 100L
 
-        every { postLikeJpaRepository.deleteByPostIdAndUserId(postId, userId) } returns Unit
+        every { postLikeJpaRepository.deleteByPostIdAndUserId(postId, userId) } returns 1L
 
-        postLikeRepository.deleteByPostIdAndUserId(postId, userId)
+        val result = postLikeRepository.deleteByPostIdAndUserId(postId, userId)
 
+        result shouldBe 1L
         verify(exactly = 1) { postLikeJpaRepository.deleteByPostIdAndUserId(postId, userId) }
+    }
+
+    test("deleteByPostIdAndIpAddress should delegate to JpaRepository and return count") {
+        val postId = Tsid.generate().decode()
+        val ipAddress = "127.0.0.1"
+
+        every { postLikeJpaRepository.deleteByPostIdAndIpAddress(postId, ipAddress) } returns 1L
+
+        val result = postLikeRepository.deleteByPostIdAndIpAddress(postId, ipAddress)
+
+        result shouldBe 1L
+        verify(exactly = 1) { postLikeJpaRepository.deleteByPostIdAndIpAddress(postId, ipAddress) }
     }
 })

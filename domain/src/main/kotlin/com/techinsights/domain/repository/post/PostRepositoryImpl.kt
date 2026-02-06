@@ -69,6 +69,17 @@ class PostRepositoryImpl(
     return PostDto.fromEntity(post)
   }
 
+  override fun existsById(id: Long): Boolean {
+    val postEntity = QPost.post
+    
+    val count = queryFactory.selectOne()
+      .from(postEntity)
+      .where(postEntity.id.eq(id))
+      .fetchFirst()
+    
+    return count != null
+  }
+
   override fun getCompanyIdByPostId(postId: String): String {
     val postEntity = QPost.post
 
@@ -288,18 +299,26 @@ class PostRepositoryImpl(
   @Transactional
   override fun incrementLikeCount(postId: Long) {
     val post = QPost.post
-    queryFactory.update(post)
+    val affected = queryFactory.update(post)
       .set(post.likeCount, post.likeCount.add(1))
       .where(post.id.eq(postId))
       .execute()
+      
+    if (affected == 0L) {
+      throw PostNotFoundException("Post with ID $postId not found")
+    }
   }
 
   @Transactional
   override fun decrementLikeCount(postId: Long) {
     val post = QPost.post
-    queryFactory.update(post)
+    val affected = queryFactory.update(post)
       .set(post.likeCount, post.likeCount.subtract(1))
       .where(post.id.eq(postId).and(post.likeCount.gt(0)))
       .execute()
+      
+    if (affected == 0L) {
+      throw PostNotFoundException("Post with ID $postId not found or like count is already 0")
+    }
   }
 }
