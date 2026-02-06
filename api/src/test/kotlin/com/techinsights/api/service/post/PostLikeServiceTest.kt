@@ -78,8 +78,9 @@ class PostLikeServiceTest : FunSpec({
     test("toggleLike - Anonymous User - New Like") {
         val postIdStr = Tsid.generate()
         val postId = Tsid.decode(postIdStr)
+        val anonymousId = java.util.UUID.randomUUID().toString()
         val ipAddress = "127.0.0.1"
-        val requester = Requester.Anonymous(ipAddress, ipAddress)
+        val requester = Requester.Anonymous(anonymousId, ipAddress)
 
         every { postRepository.existsById(any()) } returns true
         every { postLikeRepository.findAnonymousByPostIdAndIpAddress(postId, ipAddress) } returns null
@@ -96,8 +97,9 @@ class PostLikeServiceTest : FunSpec({
     test("toggleLike - Anonymous User - Already Liked (Unlike)") {
         val postIdStr = Tsid.generate()
         val postId = Tsid.decode(postIdStr)
+        val anonymousId = java.util.UUID.randomUUID().toString()
         val ipAddress = "127.0.0.1"
-        val requester = Requester.Anonymous(ipAddress, ipAddress)
+        val requester = Requester.Anonymous(anonymousId, ipAddress)
         val existingLike = mockk<PostLike>()
 
         every { postRepository.existsById(any()) } returns true
