@@ -7,8 +7,7 @@ import jakarta.persistence.*
 @Table(
     name = "post_likes",
     uniqueConstraints = [
-        UniqueConstraint(name = "uk_post_likes_post_user", columnNames = ["post_id", "user_id"]),
-        UniqueConstraint(name = "uk_post_likes_post_ip", columnNames = ["post_id", "ip_address"])
+        UniqueConstraint(name = "uk_post_likes_post_user", columnNames = ["post_id", "user_id"])
     ]
 )
 class PostLike(

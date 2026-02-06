@@ -82,7 +82,7 @@ class PostLikeServiceTest : FunSpec({
         val requester = Requester.Anonymous(ipAddress, ipAddress)
 
         every { postRepository.existsById(any()) } returns true
-        every { postLikeRepository.findByPostIdAndIpAddress(postId, ipAddress) } returns null
+        every { postLikeRepository.findAnonymousByPostIdAndIpAddress(postId, ipAddress) } returns null
         every { postLikeRepository.save(any()) } returns mockk()
         every { postRepository.incrementLikeCount(postId) } returns Unit
 
@@ -101,15 +101,36 @@ class PostLikeServiceTest : FunSpec({
         val existingLike = mockk<PostLike>()
 
         every { postRepository.existsById(any()) } returns true
-        every { postLikeRepository.findByPostIdAndIpAddress(postId, ipAddress) } returns existingLike
-        every { postLikeRepository.deleteByPostIdAndIpAddress(postId, ipAddress) } returns 1L
+        every { postLikeRepository.findAnonymousByPostIdAndIpAddress(postId, ipAddress) } returns existingLike
+        every { postLikeRepository.deleteAnonymousByPostIdAndIpAddress(postId, ipAddress) } returns 1L
         every { postRepository.decrementLikeCount(postId) } returns Unit
 
         val result = postLikeService.toggleLike(postIdStr, requester)
 
         result shouldBe false
-        verify(exactly = 1) { postLikeRepository.deleteByPostIdAndIpAddress(postId, ipAddress) }
+        verify(exactly = 1) { postLikeRepository.deleteAnonymousByPostIdAndIpAddress(postId, ipAddress) }
         verify(exactly = 1) { postRepository.decrementLikeCount(postId) }
+    }
+
+    test("toggleLike - Office IP Scenario - Different Users Same IP") {
+        val postIdStr = Tsid.generate()
+        val postId = Tsid.decode(postIdStr)
+        val ipAddress = "1.2.3.4"
+        val userA = Requester.Authenticated(101L, ipAddress)
+        val userB = Requester.Authenticated(102L, ipAddress)
+
+        every { postRepository.existsById(any()) } returns true
+        every { postLikeRepository.findByPostIdAndUserId(postId, 101L) } returns null
+        every { postLikeRepository.findByPostIdAndUserId(postId, 102L) } returns null
+        every { postLikeRepository.save(any()) } returns mockk()
+        every { postRepository.incrementLikeCount(postId) } returns Unit
+
+        postLikeService.toggleLike(postIdStr, userA) shouldBe true
+
+        postLikeService.toggleLike(postIdStr, userB) shouldBe true
+
+        verify(exactly = 2) { postLikeRepository.save(any()) }
+        verify(exactly = 2) { postRepository.incrementLikeCount(postId) }
     }
 
     test("toggleLike - Concurrency Exception (Race Condition) - Authenticated - Duplicate Found") {
@@ -120,12 +141,12 @@ class PostLikeServiceTest : FunSpec({
         val requester = Requester.Authenticated(userId, ipAddress)
 
         every { postRepository.existsById(any()) } returns true
-        every { postLikeRepository.findByPostIdAndUserId(postId, userId) } returns null
+        every { postLikeRepository.findByPostIdAndUserId(postId, userId) } returnsMany listOf(null, mockk())
         every { postLikeRepository.save(any()) } throws DataIntegrityViolationException("Duplicate key")
-        
+
         val result = postLikeService.toggleLike(postIdStr, requester)
 
-        result shouldBe true
+        result shouldBe false // saveLikeIfAbsent returns false
         verify(exactly = 0) { postRepository.incrementLikeCount(any()) }
     }
 

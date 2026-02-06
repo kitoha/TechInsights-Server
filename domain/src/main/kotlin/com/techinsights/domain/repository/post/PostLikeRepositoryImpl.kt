@@ -21,12 +21,20 @@ class PostLikeRepositoryImpl(
         return postLikeJpaRepository.findByPostIdAndIpAddress(postId, ipAddress)
     }
 
+    override fun findAnonymousByPostIdAndIpAddress(postId: Long, ipAddress: String): PostLike? {
+        return postLikeJpaRepository.findByPostIdAndIpAddressAndUserIdIsNull(postId, ipAddress)
+    }
+
     override fun deleteByPostIdAndUserId(postId: Long, userId: Long): Long {
         return postLikeJpaRepository.deleteByPostIdAndUserId(postId, userId)
     }
 
     override fun deleteByPostIdAndIpAddress(postId: Long, ipAddress: String): Long {
         return postLikeJpaRepository.deleteByPostIdAndIpAddress(postId, ipAddress)
+    }
+
+    override fun deleteAnonymousByPostIdAndIpAddress(postId: Long, ipAddress: String): Long {
+        return postLikeJpaRepository.deleteByPostIdAndIpAddressAndUserIdIsNull(postId, ipAddress)
     }
 
     override fun findAllByUserId(userId: Long, pageable: Pageable): Page<PostLike> {

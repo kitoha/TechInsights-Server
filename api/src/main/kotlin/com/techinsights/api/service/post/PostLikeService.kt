@@ -34,21 +34,20 @@ class PostLikeService(
             false
         } else {
             handleLike(postIdLong, requester)
-            true
         }
     }
 
     private fun findExistingLike(postId: Long, requester: Requester): PostLike? {
         return when (requester) {
             is Requester.Authenticated -> postLikeRepository.findByPostIdAndUserId(postId, requester.userId)
-            is Requester.Anonymous -> postLikeRepository.findByPostIdAndIpAddress(postId, requester.ip)
+            is Requester.Anonymous -> postLikeRepository.findAnonymousByPostIdAndIpAddress(postId, requester.ip)
         }
     }
 
     private fun handleUnlike(postId: Long, requester: Requester) {
         val deleted = when (requester) {
             is Requester.Authenticated -> postLikeRepository.deleteByPostIdAndUserId(postId, requester.userId)
-            is Requester.Anonymous -> postLikeRepository.deleteByPostIdAndIpAddress(postId, requester.ip)
+            is Requester.Anonymous -> postLikeRepository.deleteAnonymousByPostIdAndIpAddress(postId, requester.ip)
         }
         
         if (deleted > 0L) {
@@ -56,7 +55,7 @@ class PostLikeService(
         }
     }
 
-    private fun handleLike(postId: Long, requester: Requester) {
+    private fun handleLike(postId: Long, requester: Requester): Boolean {
         val newLike = PostLike(
             id = Tsid.generateLong(),
             postId = postId,
@@ -64,9 +63,11 @@ class PostLikeService(
             ipAddress = requester.ip
         )
 
-        if (saveLikeIfAbsent(newLike)) {
+        val saved = saveLikeIfAbsent(newLike)
+        if (saved) {
             postRepository.incrementLikeCount(postId)
         }
+        return saved
     }
 
     private fun saveLikeIfAbsent(postLike: PostLike): Boolean {
@@ -74,8 +75,8 @@ class PostLikeService(
             postLikeRepository.save(postLike)
             true
         } catch (e: DataIntegrityViolationException) {
-            log.info("Concurrent like detected (idempotent): postId={}, userId={}", 
-                postLike.postId, postLike.userId)
+            log.info("Concurrent like detected (idempotent): postId={}, userId={}, ip={}", 
+                postLike.postId, postLike.userId, postLike.ipAddress)
             false
         }
     }
