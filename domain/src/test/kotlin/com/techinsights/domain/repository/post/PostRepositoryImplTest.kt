@@ -11,6 +11,7 @@ import com.techinsights.domain.entity.company.Company
 import com.techinsights.domain.entity.company.QCompany
 import com.techinsights.domain.entity.post.Post
 import com.techinsights.domain.entity.post.QPost
+import com.techinsights.domain.entity.post.QPostCategory
 import com.techinsights.domain.enums.Category
 import com.techinsights.domain.exception.PostNotFoundException
 import com.techinsights.domain.utils.Tsid
@@ -47,10 +48,9 @@ class PostRepositoryImplTest : FunSpec({
     isSummary = true,
     isEmbedding = true,
     viewCount = 100,
-    categories = mutableSetOf(Category.AI, Category.BackEnd),
     preview = "Preview 1",
     thumbnail = "thumbnail1.png"
-  )
+  ).also { it.updateCategories(setOf(Category.AI, Category.BackEnd)) }
 
   val post2 = Post(
     id = 2L,
@@ -62,10 +62,9 @@ class PostRepositoryImplTest : FunSpec({
     isSummary = false,
     isEmbedding = false,
     viewCount = 50,
-    categories = mutableSetOf(Category.FrontEnd),
     preview = "Preview 1",
     thumbnail = "thumbnail1.png"
-  )
+  ).also { it.updateCategories(setOf(Category.FrontEnd)) }
 
   beforeTest {
     clearAllMocks()
@@ -221,9 +220,8 @@ class PostRepositoryImplTest : FunSpec({
       isSummary = true,
       isEmbedding = false,
       viewCount = 100,
-      categories = mutableSetOf(Category.AI, Category.BackEnd),
       preview = null
-    )
+    ).also { it.updateCategories(setOf(Category.AI, Category.BackEnd)) }
     val query = mockk<JPAQuery<Post>>()
 
     every { queryFactory.selectFrom(QPost.post) } returns query
@@ -269,9 +267,8 @@ class PostRepositoryImplTest : FunSpec({
       isSummary = true,
       isEmbedding = true,
       viewCount = 200,
-      categories = mutableSetOf(Category.AI, Category.BackEnd),
       preview = null
-    )
+    ).also { it.updateCategories(setOf(Category.AI, Category.BackEnd)) }
     val lowViewPost = Post(
       id = 2L,
       title = "Test Post 2",
@@ -282,9 +279,8 @@ class PostRepositoryImplTest : FunSpec({
       isSummary = true,
       isEmbedding = false,
       viewCount = 50,
-      categories = mutableSetOf(Category.FrontEnd),
       preview = null
-    )
+    ).also { it.updateCategories(setOf(Category.FrontEnd)) }
     val query = mockk<JPAQuery<Post>>()
 
     every { queryFactory.selectFrom(QPost.post) } returns query
@@ -326,9 +322,9 @@ class PostRepositoryImplTest : FunSpec({
     )
 
     every { queryFactory.select(any<Expression<CategorySummaryDto>>()) } returns query
-    every { query.from(QPost.post) } returns query
-    every { query.join(QPost.post.categories, any()) } returns query
-    every { query.where(any<BooleanExpression>()) } returns query
+    every { query.from(QPostCategory.postCategory) } returns query
+    every { query.join(QPostCategory.postCategory.post, QPost.post) } returns query
+    every { query.where(any<BooleanExpression>(), any<BooleanExpression>()) } returns query
     every { query.groupBy(any()) } returns query
     every { query.fetch() } returns summary
 
@@ -353,15 +349,43 @@ class PostRepositoryImplTest : FunSpec({
     )
 
     every { queryFactory.select(any<Expression<CategorySummaryDto>>()) } returns query
-    every { query.from(QPost.post) } returns query
-    every { query.join(QPost.post.categories, any()) } returns query
-    every { query.where(any<BooleanExpression>()) } returns query
+    every { query.from(QPostCategory.postCategory) } returns query
+    every { query.join(QPostCategory.postCategory.post, QPost.post) } returns query
+    every { query.where(any<BooleanExpression>(), any<BooleanExpression>()) } returns query
     every { query.groupBy(any()) } returns query
     every { query.fetch() } returns summary
 
     val result = repository.getCategoryStatistics()
 
     result.none { it.category == Category.All } shouldBe true
+  }
+
+  test("should only count summarized posts in category statistics") {
+    val query = mockk<JPAQuery<CategorySummaryDto>>()
+    val summary = listOf(
+      CategorySummaryDto(
+        category = Category.AI,
+        postCount = 5,
+        totalViewCount = 300,
+        latestPostDate = LocalDateTime.of(2024, 1, 1, 0, 0)
+      )
+    )
+
+    every { queryFactory.select(any<Expression<CategorySummaryDto>>()) } returns query
+    every { query.from(QPostCategory.postCategory) } returns query
+    every { query.join(QPostCategory.postCategory.post, QPost.post) } returns query
+    every { query.where(any<BooleanExpression>(), any<BooleanExpression>()) } returns query
+    every { query.groupBy(any()) } returns query
+    every { query.fetch() } returns summary
+
+    val result = repository.getCategoryStatistics()
+
+    result shouldHaveSize 1
+    result[0].postCount shouldBe 5
+
+    verify(exactly = 1) {
+      query.where(any<BooleanExpression>(), any<BooleanExpression>())
+    }
   }
 
   test("should return paginated summarized posts") {
@@ -430,6 +454,7 @@ class PostRepositoryImplTest : FunSpec({
     every { query.distinct() } returns query
     every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
     every { query.fetchJoin() } returns query
+    every { query.join(QPost.post.postCategories, QPostCategory.postCategory) } returns query
     every {
       query.where(
         any<BooleanExpression>(),
@@ -443,6 +468,7 @@ class PostRepositoryImplTest : FunSpec({
     every { query.fetch() } returns listOf(post1)
 
     every { countQuery.from(QPost.post) } returns countQuery
+    every { countQuery.join(QPost.post.postCategories, QPostCategory.postCategory) } returns countQuery
     every {
       countQuery.where(
         any<BooleanExpression>(),
@@ -471,6 +497,7 @@ class PostRepositoryImplTest : FunSpec({
     every { query.distinct() } returns query
     every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
     every { query.fetchJoin() } returns query
+    every { query.join(QPost.post.postCategories, QPostCategory.postCategory) } returns query
     every {
       query.where(
         any<BooleanExpression>(),
@@ -484,6 +511,7 @@ class PostRepositoryImplTest : FunSpec({
     every { query.fetch() } returns listOf(post1)
 
     every { countQuery.from(QPost.post) } returns countQuery
+    every { countQuery.join(QPost.post.postCategories, QPostCategory.postCategory) } returns countQuery
     every {
       countQuery.where(
         any<BooleanExpression>(),
@@ -509,6 +537,7 @@ class PostRepositoryImplTest : FunSpec({
     every { query.distinct() } returns query
     every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
     every { query.fetchJoin() } returns query
+    every { query.join(QPost.post.postCategories, QPostCategory.postCategory) } returns query
     every {
       query.where(
         any<BooleanExpression>(),
@@ -522,6 +551,7 @@ class PostRepositoryImplTest : FunSpec({
     every { query.fetch() } returns listOf(post1)
 
     every { countQuery.from(QPost.post) } returns countQuery
+    every { countQuery.join(QPost.post.postCategories, QPostCategory.postCategory) } returns countQuery
     every {
       countQuery.where(
         any<BooleanExpression>(),
