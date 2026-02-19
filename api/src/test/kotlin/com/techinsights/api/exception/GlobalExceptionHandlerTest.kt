@@ -1,9 +1,9 @@
 package com.techinsights.api.exception
 
-import com.techinsights.api.exception.auth.ExpiredTokenException
-import com.techinsights.api.exception.auth.InvalidTokenException
-import com.techinsights.api.exception.auth.TokenTamperedException
-import com.techinsights.api.exception.auth.UnauthorizedException
+import com.techinsights.api.auth.ExpiredTokenException
+import com.techinsights.api.auth.InvalidTokenException
+import com.techinsights.api.auth.TokenTamperedException
+import com.techinsights.api.auth.UnauthorizedException
 import com.techinsights.domain.exception.CompanyNotFoundException
 import com.techinsights.domain.exception.user.DuplicateNicknameException
 import com.techinsights.domain.exception.user.InvalidNicknameException

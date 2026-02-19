@@ -1,13 +1,18 @@
 package com.techinsights.domain.service.user
 
+import com.techinsights.domain.dto.user.AuthUserDto
+import com.techinsights.domain.dto.user.UserProfileDto
 import com.techinsights.domain.entity.user.User
+import com.techinsights.domain.enums.ProviderType
 import com.techinsights.domain.exception.user.DuplicateNicknameException
 import com.techinsights.domain.exception.user.UserNotFoundException
 import com.techinsights.domain.repository.user.UserRepository
+import com.techinsights.domain.utils.Tsid
 import com.techinsights.domain.validator.NicknameValidator
 import mu.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
 
 @Service
 @Transactional(readOnly = true)
@@ -27,6 +32,15 @@ class UserService(
     fun getUserById(userId: Long): User {
         return userRepository.findById(userId)
             .orElseThrow { UserNotFoundException(userId) }
+    }
+
+    fun getUserProfileById(userId: Long): UserProfileDto {
+        return UserProfileDto.fromEntity(getUserById(userId))
+    }
+
+    fun getAuthUserById(userId: Long): AuthUserDto {
+        val user = getUserById(userId)
+        return AuthUserDto.fromEntity(user)
     }
 
     /**
@@ -60,5 +74,42 @@ class UserService(
 
         logger.info { "닉네임 변경 완료: userId=$userId, newNickname=$trimmedNickname" }
         return updatedUser
+    }
+
+    @Transactional
+    fun updateNicknameProfile(userId: Long, newNickname: String): UserProfileDto {
+        return UserProfileDto.fromEntity(updateNickname(userId, newNickname))
+    }
+
+    @Transactional
+    fun upsertGoogleOAuthUser(
+        providerId: String,
+        email: String,
+        name: String,
+        profileImage: String?
+    ): AuthUserDto {
+        val user = userRepository.findByProviderAndProviderId(ProviderType.GOOGLE, providerId)
+            .map { existingUser ->
+                existingUser.apply {
+                    this.name = name
+                    this.profileImage = profileImage
+                    this.login()
+                }
+            }
+            .orElseGet {
+                val randomNickname = "User_${Tsid.generate()}"
+                User(
+                    id = Tsid.decode(Tsid.generate()),
+                    email = email,
+                    name = name,
+                    nickname = randomNickname,
+                    provider = ProviderType.GOOGLE,
+                    providerId = providerId,
+                    profileImage = profileImage,
+                    lastLoginAt = LocalDateTime.now()
+                )
+            }
+
+        return AuthUserDto.fromEntity(userRepository.save(user))
     }
 }

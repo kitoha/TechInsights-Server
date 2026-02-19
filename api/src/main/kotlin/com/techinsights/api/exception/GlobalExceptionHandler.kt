@@ -2,7 +2,7 @@ package com.techinsights.api.exception
 
 import com.techinsights.domain.exception.CompanyNotFoundException
 import com.techinsights.domain.exception.PostNotFoundException
-import com.techinsights.api.exception.auth.AuthException
+import com.techinsights.api.auth.AuthException
 import com.techinsights.domain.exception.user.UserException
 import com.techinsights.domain.enums.exception.UserErrorCode
 import mu.KotlinLogging

@@ -1,6 +1,6 @@
 package com.techinsights.domain.repository.post
 
-import com.techinsights.domain.dto.catogory.CategorySummaryDto
+import com.techinsights.domain.dto.category.CategorySummaryDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.enums.Category
 import org.springframework.data.domain.Page

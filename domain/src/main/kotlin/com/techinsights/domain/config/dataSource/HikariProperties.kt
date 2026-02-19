@@ -1,4 +1,4 @@
-package com.techinsights.domain.config.dataSource
+package com.techinsights.domain.config.datasource
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Configuration

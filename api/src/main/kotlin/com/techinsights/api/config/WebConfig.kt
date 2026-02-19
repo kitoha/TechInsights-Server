@@ -1,8 +1,8 @@
 package com.techinsights.api.config
 
-import com.techinsights.api.interceptor.AidInterceptor
-import com.techinsights.api.props.AidProperties
-import com.techinsights.api.util.auth.RequesterResolver
+import com.techinsights.api.aid.AidInterceptor
+import com.techinsights.api.aid.AidProperties
+import com.techinsights.api.auth.RequesterResolver
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry

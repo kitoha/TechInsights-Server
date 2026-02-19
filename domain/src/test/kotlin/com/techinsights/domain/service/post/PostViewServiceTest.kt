@@ -3,6 +3,7 @@ package com.techinsights.domain.service.post
 import com.techinsights.domain.event.ViewCountIncrementEvent
 import com.techinsights.domain.repository.post.PostRepository
 import com.techinsights.domain.repository.post.PostViewRepository
+import com.techinsights.domain.repository.user.AnonymousUserReadHistoryRepository
 import com.techinsights.domain.utils.Tsid
 import io.kotest.core.spec.style.FunSpec
 import io.mockk.*
@@ -12,10 +13,12 @@ import java.time.LocalDate
 class PostViewServiceTest : FunSpec({
   val postViewRepository = mockk<PostViewRepository>()
   val postRepository = mockk<PostRepository>()
+  val anonymousUserReadHistoryRepository = mockk<AnonymousUserReadHistoryRepository>()
   val applicationEventPublisher = mockk<ApplicationEventPublisher>()
   val postViewService = PostViewService(
     postViewRepository,
     postRepository,
+    anonymousUserReadHistoryRepository,
     applicationEventPublisher
   )
 
@@ -23,7 +26,7 @@ class PostViewServiceTest : FunSpec({
   val postId = Tsid.encode(1)
 
   beforeTest {
-    clearMocks(postViewRepository, postRepository, applicationEventPublisher)
+    clearMocks(postViewRepository, postRepository, anonymousUserReadHistoryRepository, applicationEventPublisher)
   }
 
   test("조회 기록 - 첫 방문자") {
@@ -97,5 +100,13 @@ class PostViewServiceTest : FunSpec({
         match<ViewCountIncrementEvent> { it.postId == postId && it.companyId == companyId }
       )
     }
+  }
+
+  test("비회원 최근 본 글 추적") {
+    every { anonymousUserReadHistoryRepository.trackAnonymousPostRead("anon-1", postId) } just Runs
+
+    postViewService.trackAnonymousPostRead("anon-1", postId)
+
+    verify(exactly = 1) { anonymousUserReadHistoryRepository.trackAnonymousPostRead("anon-1", postId) }
   }
 })
