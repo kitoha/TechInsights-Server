@@ -3,7 +3,7 @@ package com.techinsights.batch.crawling
 import com.techinsights.batch.parser.BlogParserResolver
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
-import com.techinsights.ratelimiter.DomainRateLimiterManager
+import com.techinsights.batch.ratelimiter.DomainRateLimiterManager
 import io.github.resilience4j.kotlin.ratelimiter.executeSuspendFunction
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient

@@ -5,7 +5,7 @@ import com.techinsights.batch.parser.BlogParserResolver
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.utils.Tsid
-import com.techinsights.ratelimiter.DomainRateLimiterManager
+import com.techinsights.batch.ratelimiter.DomainRateLimiterManager
 import io.github.resilience4j.ratelimiter.RateLimiter
 import io.github.resilience4j.ratelimiter.RateLimiterConfig
 import io.kotest.assertions.throwables.shouldThrow

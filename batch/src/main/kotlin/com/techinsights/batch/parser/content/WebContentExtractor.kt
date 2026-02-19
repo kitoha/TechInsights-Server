@@ -2,7 +2,7 @@ package com.techinsights.batch.parser.content
 
 import com.techinsights.batch.config.HttpHeaderProvider
 import com.techinsights.batch.config.UserAgentPool
-import com.techinsights.ratelimiter.DomainRateLimiterManager
+import com.techinsights.batch.ratelimiter.DomainRateLimiterManager
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.net.URI

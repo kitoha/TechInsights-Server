@@ -7,7 +7,7 @@ import com.techinsights.batch.parser.feed.FeedTypeStrategyResolver
 import com.techinsights.batch.parser.feed.RssFeedStrategy
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.utils.Tsid
-import com.techinsights.ratelimiter.DomainRateLimiterManager
+import com.techinsights.batch.ratelimiter.DomainRateLimiterManager
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize

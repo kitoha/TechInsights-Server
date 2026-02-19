@@ -2,7 +2,7 @@ package com.techinsights.batch.parser.content
 
 import com.techinsights.batch.config.HttpHeaderProvider
 import com.techinsights.batch.config.UserAgentPool
-import com.techinsights.ratelimiter.DomainRateLimiterManager
+import com.techinsights.batch.ratelimiter.DomainRateLimiterManager
 import io.github.resilience4j.ratelimiter.RateLimiter
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
