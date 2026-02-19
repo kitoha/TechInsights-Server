@@ -15,10 +15,23 @@ class DomainRateLimiterManager(
     private val log = LoggerFactory.getLogger(javaClass)
 
     fun applyJitter() {
-        if (jitterConfig.enabled) {
-            val delay = Random.nextLong(jitterConfig.minMs, jitterConfig.maxMs)
+        if (!jitterConfig.enabled) return
 
+        val minMs = jitterConfig.minMs
+        val maxMs = jitterConfig.maxMs
+        if (minMs < 0 || maxMs <= minMs) {
+            log.warn("Invalid jitter config. skipping jitter: minMs={}, maxMs={}", minMs, maxMs)
+            return
+        }
+
+        val delay = Random.nextLong(minMs, maxMs)
+        if (delay <= 0L) return
+
+        try {
             Thread.sleep(delay)
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+            log.warn("Jitter sleep interrupted")
         }
     }
 

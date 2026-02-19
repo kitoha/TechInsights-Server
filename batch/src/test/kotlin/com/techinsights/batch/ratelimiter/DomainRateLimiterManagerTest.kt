@@ -91,6 +91,28 @@ class DomainRateLimiterManagerTest : FunSpec({
         domainRateLimiterManager.applyJitter()
     }
 
+    test("applyJitter should skip when jitter range is invalid") {
+        every { jitterConfig.enabled } returns true
+        every { jitterConfig.minMs } returns 20
+        every { jitterConfig.maxMs } returns 10
+
+        domainRateLimiterManager.applyJitter()
+    }
+
+    test("applyJitter should restore interrupt flag when sleep is interrupted") {
+        every { jitterConfig.enabled } returns true
+        every { jitterConfig.minMs } returns 10
+        every { jitterConfig.maxMs } returns 20
+
+        Thread.currentThread().interrupt()
+        try {
+            domainRateLimiterManager.applyJitter()
+            Thread.currentThread().isInterrupted shouldBe true
+        } finally {
+            Thread.interrupted()
+        }
+    }
+
     test("extractDomain should return the string itself if no protocol found") {
         val url = "not-a-url"
         val expectedRateLimiter = mockk<RateLimiter>()

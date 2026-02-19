@@ -2,6 +2,7 @@ package com.techinsights.api.aid
 
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.stereotype.Component
+import java.net.URI
 
 @Component
 class DefaultCookiePolicy : CookiePolicy{
@@ -20,13 +21,42 @@ class DefaultCookiePolicy : CookiePolicy{
     request: HttpServletRequest,
     props: AidProperties
   ): String {
-    val origin  = request.getHeader("Origin") ?: props.cookie.sameSiteDefault
-    val sameSite = if(isCrossSite(request, origin)) "None" else props.cookie.sameSiteDefault
-    return sameSite
+    val originHeader = request.getHeader("Origin")?.takeIf { it.isNotBlank() } ?: return props.cookie.sameSiteDefault
+    val requestHost = extractRequestHost(request) ?: return props.cookie.sameSiteDefault
+    val originHost = extractOriginHost(originHeader) ?: return props.cookie.sameSiteDefault
+
+    return if (isCrossSite(requestHost, originHost) && secure(request, props)) {
+      "None"
+    } else {
+      props.cookie.sameSiteDefault
+    }
   }
 
-  private fun isCrossSite(req: HttpServletRequest, origin: String): Boolean {
-    val host = req.getHeader("X-Forwarded-Host") ?: req.serverName
-    return !origin.contains(host, ignoreCase = true)
+  private fun extractRequestHost(req: HttpServletRequest): String? {
+    val forwardedHost = req.getHeader("X-Forwarded-Host")
+      ?.substringBefore(",")
+      ?.trim()
+      ?.substringBefore(":")
+      ?.lowercase()
+      ?.takeIf { it.isNotBlank() }
+
+    return forwardedHost ?: req.serverName
+      ?.substringBefore(":")
+      ?.lowercase()
+      ?.takeIf { it.isNotBlank() }
+  }
+
+  private fun extractOriginHost(origin: String): String? {
+    return runCatching {
+      URI(origin).host?.lowercase()?.takeIf { it.isNotBlank() }
+    }.getOrNull()
+  }
+
+  private fun isCrossSite(requestHost: String, originHost: String): Boolean {
+    return !(isSameHostOrSubdomain(requestHost, originHost) || isSameHostOrSubdomain(originHost, requestHost))
+  }
+
+  private fun isSameHostOrSubdomain(parentHost: String, childHost: String): Boolean {
+    return childHost == parentHost || childHost.endsWith(".$parentHost")
   }
 }

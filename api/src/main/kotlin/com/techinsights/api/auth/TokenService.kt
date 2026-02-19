@@ -2,6 +2,7 @@ package com.techinsights.api.auth
 
 import com.techinsights.api.props.AuthProperties
 import com.techinsights.domain.enums.UserRole
+import com.techinsights.domain.exception.user.UserNotFoundException
 import com.techinsights.domain.service.user.RefreshTokenService
 import com.techinsights.domain.service.user.UserService
 import org.springframework.stereotype.Service
@@ -38,11 +39,14 @@ class TokenService(
     fun refresh(oldRefreshToken: String, deviceId: String?): TokenResponse {
         val claims = jwtPlugin.validateToken(oldRefreshToken)
         val userId = claims.get("userId", Long::class.javaObjectType)
+            ?: throw com.techinsights.api.auth.InvalidTokenException("유효하지 않은 토큰입니다.")
         val refreshTokenHash = tokenHasher.hash(oldRefreshToken)
 
-        val user = runCatching { userService.getAuthUserById(userId) }
-            .getOrNull()
-            ?: throw com.techinsights.api.auth.InvalidTokenException("사용자를 찾을 수 없습니다.")
+        val user = try {
+            userService.getAuthUserById(userId)
+        } catch (_: UserNotFoundException) {
+            throw com.techinsights.api.auth.InvalidTokenException("사용자를 찾을 수 없습니다.")
+        }
 
         val storedToken = refreshTokenService.findByHash(refreshTokenHash)
 
