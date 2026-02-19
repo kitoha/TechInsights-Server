@@ -5,16 +5,22 @@ import com.techinsights.domain.enums.ProviderType
 import com.techinsights.domain.enums.UserRole
 import com.techinsights.domain.enums.UserStatus
 import jakarta.persistence.*
+import org.springframework.data.domain.Persistable
 import java.time.LocalDateTime
 
 @Entity
-@Table(name = "users")
+@Table(
+    name = "users",
+    uniqueConstraints = [
+        UniqueConstraint(name = "uk_users_provider_provider_id", columnNames = ["provider", "provider_id"])
+    ]
+)
 class User(
     @Id
     val id: Long,
 
     @Column(name = "email", nullable = false, unique = true)
-    val email: String,
+    var email: String,
 
     @Column(name = "name", nullable = false)
     var name: String,
@@ -45,9 +51,21 @@ class User(
 
     @Column(name = "marketing_agreed", nullable = false)
     var marketingAgreed: Boolean = false
-) : BaseEntity() {
+) : BaseEntity(), Persistable<Long> {
+    @Transient
+    private var isNewEntity: Boolean = true
 
     fun login() {
         this.lastLoginAt = LocalDateTime.now()
+    }
+
+    override fun getId(): Long = id
+
+    override fun isNew(): Boolean = isNewEntity
+
+    @PostPersist
+    @PostLoad
+    private fun markNotNew() {
+        isNewEntity = false
     }
 }

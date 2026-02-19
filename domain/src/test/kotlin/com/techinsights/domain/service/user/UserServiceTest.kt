@@ -11,10 +11,12 @@ import com.techinsights.domain.validator.NicknameValidator
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import org.springframework.dao.DataIntegrityViolationException
 import java.util.Optional
 
 class UserServiceTest : FunSpec({
@@ -118,6 +120,84 @@ class UserServiceTest : FunSpec({
 
             shouldThrow<UserNotFoundException> {
                 userService.updateNickname(1L, "any")
+            }
+        }
+    }
+
+    context("upsertGoogleOAuthUser") {
+        test("기존 Google 사용자면 email/name/profileImage를 갱신한다") {
+            val existing = createTestUser().apply {
+                email = "old@example.com"
+                name = "Old Name"
+                profileImage = "old.png"
+            }
+
+            every {
+                userRepository.findByProviderAndProviderId(ProviderType.GOOGLE, "google-123")
+            } returns Optional.of(existing)
+            every { userRepository.save(any()) } answers { it.invocation.args[0] as User }
+
+            val result = userService.upsertGoogleOAuthUser(
+                providerId = "google-123",
+                email = "new@example.com",
+                name = "New Name",
+                profileImage = "new.png"
+            )
+
+            result.id shouldBe existing.id
+            result.email shouldBe "new@example.com"
+            existing.email shouldBe "new@example.com"
+            existing.name shouldBe "New Name"
+            existing.profileImage shouldBe "new.png"
+            existing.lastLoginAt shouldNotBe null
+
+            verify(exactly = 1) { userRepository.save(existing) }
+        }
+
+        test("동시성으로 save 충돌 시 재조회 후 복구 저장한다") {
+            val existingAfterRace = createTestUser().apply {
+                email = "before@example.com"
+            }
+
+            every {
+                userRepository.findByProviderAndProviderId(ProviderType.GOOGLE, "google-123")
+            } returnsMany listOf(Optional.empty(), Optional.of(existingAfterRace))
+            var saveInvocationCount = 0
+            every { userRepository.save(any()) } answers {
+                saveInvocationCount += 1
+                if (saveInvocationCount == 1) {
+                    throw DataIntegrityViolationException("duplicate")
+                }
+                it.invocation.args[0] as User
+            }
+
+            val result = userService.upsertGoogleOAuthUser(
+                providerId = "google-123",
+                email = "new@example.com",
+                name = "New Name",
+                profileImage = "new.png"
+            )
+
+            result.id shouldBe existingAfterRace.id
+            result.email shouldBe "new@example.com"
+            existingAfterRace.email shouldBe "new@example.com"
+
+            verify(exactly = 2) { userRepository.save(any()) }
+        }
+
+        test("동시성 충돌 후 재조회에도 사용자가 없으면 예외를 재던진다") {
+            every {
+                userRepository.findByProviderAndProviderId(ProviderType.GOOGLE, "google-123")
+            } returnsMany listOf(Optional.empty(), Optional.empty())
+            every { userRepository.save(any()) } throws DataIntegrityViolationException("duplicate")
+
+            shouldThrow<DataIntegrityViolationException> {
+                userService.upsertGoogleOAuthUser(
+                    providerId = "google-123",
+                    email = "new@example.com",
+                    name = "New Name",
+                    profileImage = "new.png"
+                )
             }
         }
     }

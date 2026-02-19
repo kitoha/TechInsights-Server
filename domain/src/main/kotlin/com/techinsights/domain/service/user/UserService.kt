@@ -10,6 +10,7 @@ import com.techinsights.domain.repository.user.UserRepository
 import com.techinsights.domain.utils.Tsid
 import com.techinsights.domain.validator.NicknameValidator
 import mu.KotlinLogging
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
@@ -90,26 +91,64 @@ class UserService(
     ): AuthUserDto {
         val user = userRepository.findByProviderAndProviderId(ProviderType.GOOGLE, providerId)
             .map { existingUser ->
-                existingUser.apply {
-                    this.name = name
-                    this.profileImage = profileImage
-                    this.login()
-                }
+                applyGoogleProfile(existingUser, email, name, profileImage)
             }
             .orElseGet {
-                val randomNickname = "User_${Tsid.generate()}"
-                User(
-                    id = Tsid.decode(Tsid.generate()),
-                    email = email,
-                    name = name,
-                    nickname = randomNickname,
-                    provider = ProviderType.GOOGLE,
-                    providerId = providerId,
-                    profileImage = profileImage,
-                    lastLoginAt = LocalDateTime.now()
-                )
+                createGoogleUser(providerId, email, name, profileImage)
             }
 
-        return AuthUserDto.fromEntity(userRepository.save(user))
+        return try {
+            AuthUserDto.fromEntity(userRepository.save(user))
+        } catch (e: DataIntegrityViolationException) {
+            logger.warn { "Google OAuth upsert race detected: providerId=$providerId, recovering by re-query" }
+            recoverFromConcurrentUpsert(providerId, email, name, profileImage, e)
+        }
+    }
+
+    private fun applyGoogleProfile(
+        user: User,
+        email: String,
+        name: String,
+        profileImage: String?
+    ): User {
+        return user.apply {
+            this.email = email
+            this.name = name
+            this.profileImage = profileImage
+            this.login()
+        }
+    }
+
+    private fun createGoogleUser(
+        providerId: String,
+        email: String,
+        name: String,
+        profileImage: String?
+    ): User {
+        val randomNickname = "User_${Tsid.generate()}"
+        return User(
+            id = Tsid.decode(Tsid.generate()),
+            email = email,
+            name = name,
+            nickname = randomNickname,
+            provider = ProviderType.GOOGLE,
+            providerId = providerId,
+            profileImage = profileImage,
+            lastLoginAt = LocalDateTime.now()
+        )
+    }
+
+    private fun recoverFromConcurrentUpsert(
+        providerId: String,
+        email: String,
+        name: String,
+        profileImage: String?,
+        cause: DataIntegrityViolationException
+    ): AuthUserDto {
+        val existing = userRepository.findByProviderAndProviderId(ProviderType.GOOGLE, providerId)
+            .map { applyGoogleProfile(it, email, name, profileImage) }
+            .orElseThrow { cause }
+
+        return AuthUserDto.fromEntity(userRepository.save(existing))
     }
 }
