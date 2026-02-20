@@ -4,6 +4,4 @@ import com.techinsights.domain.enums.PostSortType
 
 data class PostSearchCondition(
   val sortType: PostSortType = PostSortType.RECENT,
-) {
-
-}
+)

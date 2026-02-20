@@ -23,6 +23,7 @@ dependencies {
     implementation(project(":domain"))
 
     implementation(libs.spring.boot.starter.web)
+    implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation(libs.spring.boot.starter.oauth2.client)
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.spring.data.commons)

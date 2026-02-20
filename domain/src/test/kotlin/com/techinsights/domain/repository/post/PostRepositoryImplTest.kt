@@ -5,7 +5,7 @@ import com.querydsl.core.types.dsl.BooleanExpression
 import com.querydsl.jpa.impl.JPAQuery
 import com.querydsl.jpa.impl.JPAQueryFactory
 import com.querydsl.jpa.impl.JPAUpdateClause
-import com.techinsights.domain.dto.catogory.CategorySummaryDto
+import com.techinsights.domain.dto.category.CategorySummaryDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.entity.company.Company
 import com.techinsights.domain.entity.company.QCompany

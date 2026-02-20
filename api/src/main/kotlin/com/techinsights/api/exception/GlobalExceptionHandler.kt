@@ -2,9 +2,10 @@ package com.techinsights.api.exception
 
 import com.techinsights.domain.exception.CompanyNotFoundException
 import com.techinsights.domain.exception.PostNotFoundException
-import com.techinsights.api.exception.auth.AuthException
+import com.techinsights.api.auth.AuthException
 import com.techinsights.domain.exception.user.UserException
 import com.techinsights.domain.enums.exception.UserErrorCode
+import jakarta.validation.ConstraintViolationException
 import mu.KotlinLogging
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -12,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.context.request.WebRequest
+import org.springframework.web.method.annotation.HandlerMethodValidationException
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
@@ -105,6 +107,57 @@ class GlobalExceptionHandler {
 
         val errors = e.bindingResult.fieldErrors
             .associate { it.field to (it.defaultMessage ?: "Invalid value") }
+
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(
+                ErrorResponse(
+                    errorCode = "INVALID_PARAMETER",
+                    message = "입력값이 올바르지 않습니다.",
+                    path = extractPath(request),
+                    details = errors
+                )
+            )
+    }
+
+    @ExceptionHandler(ConstraintViolationException::class)
+    fun handleConstraintViolation(
+        e: ConstraintViolationException,
+        request: WebRequest
+    ): ResponseEntity<ErrorResponse> {
+        logger.warn { "Constraint violation: ${e.constraintViolations}" }
+
+        val errors = e.constraintViolations.associate {
+            it.propertyPath.toString() to it.message
+        }
+
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(
+                ErrorResponse(
+                    errorCode = "INVALID_PARAMETER",
+                    message = "입력값이 올바르지 않습니다.",
+                    path = extractPath(request),
+                    details = errors
+                )
+            )
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException::class)
+    fun handleHandlerMethodValidation(
+        e: HandlerMethodValidationException,
+        request: WebRequest
+    ): ResponseEntity<ErrorResponse> {
+        logger.warn { "Handler method validation failed: ${e.message}" }
+
+        val errors = e.allValidationResults
+            .flatMap { result ->
+                result.resolvableErrors.map { error ->
+                    result.methodParameter.parameterName.orEmpty() to
+                        (error.defaultMessage ?: "Invalid value")
+                }
+            }
+            .toMap()
 
         return ResponseEntity
             .status(HttpStatus.BAD_REQUEST)
