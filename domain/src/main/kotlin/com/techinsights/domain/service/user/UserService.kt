@@ -19,7 +19,8 @@ import java.time.LocalDateTime
 @Transactional(readOnly = true)
 class UserService(
     private val userRepository: UserRepository,
-    private val nicknameValidator: NicknameValidator
+    private val nicknameValidator: NicknameValidator,
+    private val googleOAuthUserRecoveryService: GoogleOAuthUserRecoveryService
 ) {
     private val logger = KotlinLogging.logger {}
 
@@ -101,7 +102,13 @@ class UserService(
             AuthUserDto.fromEntity(userRepository.save(user))
         } catch (e: DataIntegrityViolationException) {
             logger.warn { "Google OAuth upsert race detected: providerId=$providerId, recovering by re-query" }
-            recoverFromConcurrentUpsert(providerId, email, name, profileImage, e)
+            googleOAuthUserRecoveryService.recoverFromConcurrentUpsertInNewTx(
+                providerId = providerId,
+                email = email,
+                name = name,
+                profileImage = profileImage,
+                cause = e
+            )
         }
     }
 
@@ -136,19 +143,5 @@ class UserService(
             profileImage = profileImage,
             lastLoginAt = LocalDateTime.now()
         )
-    }
-
-    private fun recoverFromConcurrentUpsert(
-        providerId: String,
-        email: String,
-        name: String,
-        profileImage: String?,
-        cause: DataIntegrityViolationException
-    ): AuthUserDto {
-        val existing = userRepository.findByProviderAndProviderId(ProviderType.GOOGLE, providerId)
-            .map { applyGoogleProfile(it, email, name, profileImage) }
-            .orElseThrow { cause }
-
-        return AuthUserDto.fromEntity(userRepository.save(existing))
     }
 }

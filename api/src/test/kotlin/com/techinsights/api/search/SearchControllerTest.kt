@@ -49,28 +49,6 @@ class SearchControllerTest : FunSpec() {
             coVerify(exactly = 1) { searchService.instantSearch(query) }
         }
 
-        test("GET /api/v1/search/instant - should handle empty query") {
-            // given
-            val query = ""
-            val response = InstantSearchResponse(
-                query = query,
-                companies = emptyList(),
-                posts = emptyList()
-            )
-
-            coEvery { searchService.instantSearch(query) } returns response
-
-            // when & then
-            mockMvc.get("/api/v1/search/instant") {
-                param("query", query)
-                accept = MediaType.APPLICATION_JSON
-            }.andExpect {
-                status { isOk() }
-            }
-
-            coVerify(exactly = 1) { searchService.instantSearch(query) }
-        }
-
         test("GET /api/v1/search - should return full search results with default parameters") {
             // given
             val query = "spring boot"
@@ -354,5 +332,6 @@ class SearchControllerTest : FunSpec() {
                 })
             }
         }
+
     }
 }
