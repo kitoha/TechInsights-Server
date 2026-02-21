@@ -1,7 +1,9 @@
 package com.techinsights.api.search
 
 import com.techinsights.api.exception.GlobalExceptionHandler
+import com.techinsights.domain.config.search.SemanticSearchProperties
 import com.techinsights.domain.service.search.SearchService
+import com.techinsights.domain.service.search.SemanticSearchService
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import org.junit.jupiter.api.Test
@@ -52,6 +54,9 @@ class SearchControllerValidationIntegrationTest {
 
     @MockitoBean
     private lateinit var searchService: SearchService
+
+    @MockitoBean
+    private lateinit var semanticSearchService: SemanticSearchService
 
     @Test
     fun `fullSearch should return 400 when page is negative`() {
@@ -135,5 +140,9 @@ class SearchControllerValidationIntegrationTest {
     class CoroutineTestConfig {
         @Bean("ioDispatcher")
         fun ioDispatcher(): CoroutineDispatcher = Dispatchers.Unconfined
+
+        @Bean
+        fun semanticSearchProperties(): SemanticSearchProperties =
+            SemanticSearchProperties(defaultSize = 10, maxSize = 20)
     }
 }

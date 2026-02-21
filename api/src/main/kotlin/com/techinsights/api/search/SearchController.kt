@@ -1,13 +1,16 @@
 package com.techinsights.api.search
 
+import com.techinsights.domain.config.search.SemanticSearchProperties
 import com.techinsights.domain.dto.search.FullSearchResponse
 import com.techinsights.domain.dto.search.InstantSearchResponse
 import com.techinsights.domain.dto.search.SearchRequest
 import com.techinsights.domain.enums.search.SearchSortType
 import com.techinsights.domain.service.search.SearchService
+import com.techinsights.domain.service.search.SemanticSearchService
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Size
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.springframework.beans.factory.annotation.Qualifier
@@ -20,7 +23,9 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/api/v1/search")
 class SearchController(
   private val searchService: SearchService,
-  @param:Qualifier("ioDispatcher")private val ioDispatcher: CoroutineDispatcher
+  private val semanticSearchService: SemanticSearchService,
+  private val properties: SemanticSearchProperties,
+  @param:Qualifier("ioDispatcher") private val ioDispatcher: CoroutineDispatcher
 ) {
 
   @GetMapping("/instant")
@@ -49,5 +54,24 @@ class SearchController(
 
     val response = searchService.fullSearch(request)
     ResponseEntity.ok(response)
+  }
+
+  @GetMapping("/semantic")
+  suspend fun semanticSearch(
+    @RequestParam @NotBlank(message = "query must not be blank") @Size(max = MAX_QUERY_LENGTH) query: String,
+    @RequestParam(required = false) @Min(1) @Max(20) size: Int?,
+    @RequestParam(required = false) companyId: Long?
+  ): ResponseEntity<SemanticSearchResponse> = withContext(ioDispatcher) {
+    val resolvedSize = size ?: properties.defaultSize
+    val startTime = System.currentTimeMillis()
+
+    val results = semanticSearchService.search(query.trim(), resolvedSize, companyId)
+    val processingTimeMs = System.currentTimeMillis() - startTime
+
+    ResponseEntity.ok(SemanticSearchResponse.of(query.trim(), results, processingTimeMs))
+  }
+
+  companion object {
+    private const val MAX_QUERY_LENGTH = 500
   }
 }

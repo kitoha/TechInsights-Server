@@ -1,10 +1,12 @@
 package com.techinsights.api.search
 
+import com.techinsights.domain.config.search.SemanticSearchProperties
 import com.techinsights.domain.dto.search.FullSearchResponse
 import com.techinsights.domain.dto.search.InstantSearchResponse
 import com.techinsights.domain.dto.search.SearchRequest
 import com.techinsights.domain.enums.search.SearchSortType
 import com.techinsights.domain.service.search.SearchService
+import com.techinsights.domain.service.search.SemanticSearchService
 import io.kotest.core.spec.style.FunSpec
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
@@ -17,13 +19,20 @@ class SearchControllerTest : FunSpec() {
 
     private lateinit var mockMvc: MockMvc
     private val searchService = mockk<SearchService>()
+    private val semanticSearchService = mockk<SemanticSearchService>(relaxed = true)
+    private val properties = SemanticSearchProperties(defaultSize = 10, maxSize = 20)
     private val ioDispatcher = Dispatchers.IO
 
     init {
         beforeTest {
             clearAllMocks()
 
-            val controller = SearchController(searchService, ioDispatcher)
+            val controller = SearchController(
+                searchService = searchService,
+                semanticSearchService = semanticSearchService,
+                properties = properties,
+                ioDispatcher = ioDispatcher
+            )
             mockMvc = MockMvcBuilders.standaloneSetup(controller).build()
         }
 
