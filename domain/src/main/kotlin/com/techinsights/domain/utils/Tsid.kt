@@ -10,6 +10,10 @@ object Tsid {
     return TSID.Factory.getTsid().toString();
   }
 
+  fun generateLong(): Long {
+    return TSID.Factory.getTsid().toLong()
+  }
+
   fun encode(id: Long): String {
     return TSID.from(id).toString()
   }

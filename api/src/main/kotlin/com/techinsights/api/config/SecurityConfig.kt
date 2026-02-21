@@ -1,13 +1,13 @@
 package com.techinsights.api.config
 
-import com.techinsights.api.service.auth.CustomOAuth2UserService
-import com.techinsights.api.service.auth.OAuth2SuccessHandler
+import com.techinsights.api.auth.CustomOAuth2UserService
+import com.techinsights.api.auth.OAuth2SuccessHandler
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
-import com.techinsights.api.util.auth.JwtAuthenticationFilter
+import com.techinsights.api.auth.JwtAuthenticationFilter
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.web.cors.CorsConfiguration

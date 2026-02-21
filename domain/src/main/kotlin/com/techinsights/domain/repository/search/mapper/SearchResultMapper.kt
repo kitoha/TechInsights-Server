@@ -35,7 +35,7 @@ class SearchResultMapper(
       viewCount = post.viewCount,
       publishedAt = post.publishedAt,
       highlightedTitle = textHighlighter.highlight(post.title, query),
-      categories = post.categories
+      categories = post.categoryValues
     )
   }
 
@@ -53,7 +53,7 @@ class SearchResultMapper(
       viewCount = post.viewCount,
       publishedAt = post.publishedAt,
       isSummary = post.isSummary,
-      categories = post.categories,
+      categories = post.categoryValues,
       relevanceScore = projection.relevanceScore
     )
   }

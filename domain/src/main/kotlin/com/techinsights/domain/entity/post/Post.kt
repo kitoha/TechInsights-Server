@@ -3,6 +3,7 @@ package com.techinsights.domain.entity.post
 import com.techinsights.domain.entity.BaseEntity
 import com.techinsights.domain.entity.company.Company
 import com.techinsights.domain.enums.Category
+import com.techinsights.domain.utils.Tsid
 import jakarta.persistence.*
 import org.hibernate.annotations.BatchSize
 import java.time.LocalDateTime
@@ -29,16 +30,41 @@ class Post(
   val company: Company,
   @Column(name = "view_count", nullable = false)
   var viewCount: Long = 0L,
+  @OneToMany(
+    mappedBy = "post",
+    cascade = [CascadeType.ALL],
+    orphanRemoval = true,
+    fetch = FetchType.LAZY
+  )
   @BatchSize(size = 100)
-  @ElementCollection(fetch = FetchType.LAZY, targetClass = Category::class)
-  @CollectionTable(name = "post_categories", joinColumns = [JoinColumn(name = "post_id")])
-  @Enumerated(EnumType.STRING)
-  @Column(name = "category", nullable = false)
-  var categories: MutableSet<Category> = mutableSetOf(),
+  var postCategories: MutableSet<PostCategory> = mutableSetOf(),
   @Column(name = "is_summary", nullable = false)
   var isSummary: Boolean = false,
   @Column(name = "is_embedding", nullable = false)
   var isEmbedding: Boolean = false,
   @Column(name = "summary_failure_count", nullable = false)
-  var summaryFailureCount: Int = 0
-) : BaseEntity()
+  var summaryFailureCount: Int = 0,
+  @Column(name = "like_count", nullable = false)
+  var likeCount: Long = 0L
+) : BaseEntity() {
+
+  val categoryValues: Set<Category>
+    get() = postCategories.map { it.category }.toSet()
+
+  fun updateCategories(categories: Set<Category>) {
+    postCategories.removeAll { it.category !in categories }
+
+    val existingCategories = postCategories.map { it.category }.toSet()
+    categories
+      .filter { it !in existingCategories }
+      .forEach { category ->
+        postCategories.add(
+          PostCategory(
+            id = Tsid.generateLong(),
+            post = this,
+            category = category
+          )
+        )
+      }
+  }
+}

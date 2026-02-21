@@ -1,4 +1,4 @@
-package com.techinsights.domain.config.dataSource
+package com.techinsights.domain.config.datasource
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource

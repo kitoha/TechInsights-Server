@@ -1,6 +1,6 @@
 package com.techinsights.domain.service.category
 
-import com.techinsights.domain.dto.catogory.CategorySummaryDto
+import com.techinsights.domain.dto.category.CategorySummaryDto
 import com.techinsights.domain.enums.Category
 import com.techinsights.domain.repository.post.PostRepository
 import io.kotest.core.spec.style.FunSpec

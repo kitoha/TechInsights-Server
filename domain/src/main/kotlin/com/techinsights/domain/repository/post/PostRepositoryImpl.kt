@@ -2,10 +2,11 @@ package com.techinsights.domain.repository.post
 
 import com.querydsl.core.types.Projections
 import com.querydsl.jpa.impl.JPAQueryFactory
-import com.techinsights.domain.dto.catogory.CategorySummaryDto
+import com.techinsights.domain.dto.category.CategorySummaryDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.entity.company.QCompany
 import com.techinsights.domain.entity.post.QPost
+import com.techinsights.domain.entity.post.QPostCategory
 import com.techinsights.domain.enums.Category
 import com.techinsights.domain.exception.PostNotFoundException
 import com.techinsights.domain.utils.Tsid
@@ -67,6 +68,17 @@ class PostRepositoryImpl(
       .fetchOne()?: throw PostNotFoundException("Post with ID $id not found")
 
     return PostDto.fromEntity(post)
+  }
+
+  override fun existsById(id: Long): Boolean {
+    val postEntity = QPost.post
+    
+    val count = queryFactory.selectOne()
+      .from(postEntity)
+      .where(postEntity.id.eq(id))
+      .fetchFirst()
+    
+    return count != null
   }
 
   override fun getCompanyIdByPostId(postId: String): String {
@@ -156,22 +168,25 @@ class PostRepositoryImpl(
 
   override fun getCategoryStatistics(): List<CategorySummaryDto> {
     val post = QPost.post
-    val category = QPost.post.categories.any()
+    val postCategory = QPostCategory.postCategory
 
     return queryFactory
       .select(
         Projections.constructor(
           CategorySummaryDto::class.java,
-          category,
+          postCategory.category,
           post.id.count(),
           post.viewCount.sum().coalesce(0L),
           post.publishedAt.max()
         )
       )
-      .from(post)
-      .join(post.categories, category)
-      .where(category.ne(Category.All))
-      .groupBy(category)
+      .from(postCategory)
+      .join(postCategory.post, post)
+      .where(
+        postCategory.category.ne(Category.All),
+        post.isSummary.isTrue
+      )
+      .groupBy(postCategory.category)
       .fetch()
   }
 
@@ -213,14 +228,16 @@ class PostRepositoryImpl(
   ): Page<PostDto> {
     val postEntity = QPost.post
     val companyEntity = QCompany.company
+    val postCategory = QPostCategory.postCategory
     val companyIdLong = companyId?.let { Tsid.decode(it) }
 
     val results = queryFactory.selectFrom(postEntity)
       .distinct()
       .leftJoin(postEntity.company, companyEntity).fetchJoin()
+      .join(postEntity.postCategories, postCategory)
       .where(
         postEntity.isSummary.isTrue,
-        postEntity.categories.any().eq(category),
+        postCategory.category.eq(category),
         companyIdLong?.let { postEntity.company.id.eq(it) }
       )
       .orderBy(postEntity.publishedAt.desc())
@@ -230,9 +247,10 @@ class PostRepositoryImpl(
 
     val total = queryFactory.select(postEntity.id.countDistinct())
       .from(postEntity)
+      .join(postEntity.postCategories, postCategory)
       .where(
         postEntity.isSummary.isTrue,
-        postEntity.categories.any().eq(category),
+        postCategory.category.eq(category),
         companyIdLong?.let { postEntity.company.id.eq(it) }
       )
       .fetchOne() ?: 0L
@@ -283,5 +301,31 @@ class PostRepositoryImpl(
         post.publishedAt.eq(lastPublishedAt)
           .and(post.id.gt(lastId))
       )
+  }
+
+  @Transactional
+  override fun incrementLikeCount(postId: Long) {
+    val post = QPost.post
+    val affected = queryFactory.update(post)
+      .set(post.likeCount, post.likeCount.add(1))
+      .where(post.id.eq(postId))
+      .execute()
+      
+    if (affected == 0L) {
+      throw PostNotFoundException("Post with ID $postId not found")
+    }
+  }
+
+  @Transactional
+  override fun decrementLikeCount(postId: Long) {
+    val post = QPost.post
+    val affected = queryFactory.update(post)
+      .set(post.likeCount, post.likeCount.subtract(1))
+      .where(post.id.eq(postId).and(post.likeCount.gt(0)))
+      .execute()
+      
+    if (affected == 0L) {
+      throw PostNotFoundException("Post with ID $postId not found or like count is already 0")
+    }
   }
 }

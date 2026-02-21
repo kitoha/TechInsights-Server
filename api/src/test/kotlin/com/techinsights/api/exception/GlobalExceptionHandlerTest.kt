@@ -1,24 +1,29 @@
 package com.techinsights.api.exception
 
-import com.techinsights.api.exception.auth.ExpiredTokenException
-import com.techinsights.api.exception.auth.InvalidTokenException
-import com.techinsights.api.exception.auth.TokenTamperedException
-import com.techinsights.api.exception.auth.UnauthorizedException
+import com.techinsights.api.auth.ExpiredTokenException
+import com.techinsights.api.auth.InvalidTokenException
+import com.techinsights.api.auth.TokenTamperedException
+import com.techinsights.api.auth.UnauthorizedException
 import com.techinsights.domain.exception.CompanyNotFoundException
 import com.techinsights.domain.exception.user.DuplicateNicknameException
 import com.techinsights.domain.exception.user.InvalidNicknameException
 import com.techinsights.domain.exception.user.UserNotFoundException
 import com.techinsights.domain.exception.PostNotFoundException
+import jakarta.validation.ConstraintViolation
+import jakarta.validation.ConstraintViolationException
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
+import org.springframework.context.MessageSourceResolvable
+import org.springframework.core.MethodParameter
 import org.springframework.http.HttpStatus
 import org.springframework.validation.BindingResult
 import org.springframework.validation.FieldError
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.context.request.WebRequest
+import org.springframework.web.method.annotation.HandlerMethodValidationException
 
 class GlobalExceptionHandlerTest : FunSpec({
 
@@ -244,6 +249,75 @@ class GlobalExceptionHandlerTest : FunSpec({
         response.body?.errorCode shouldBe "INVALID_PARAMETER"
         response.body?.details shouldNotBe null
         response.body?.details?.isEmpty() shouldBe true
+    }
+
+    test("handleConstraintViolation should return 400 with violation details") {
+        // given
+        val violation = mockk<ConstraintViolation<Any>>()
+        every { violation.propertyPath.toString() } returns "fullSearch.page"
+        every { violation.message } returns "must be greater than or equal to 0"
+        val exception = ConstraintViolationException(setOf(violation))
+
+        // when
+        val response = handler.handleConstraintViolation(exception, mockRequest)
+
+        // then
+        response.statusCode shouldBe HttpStatus.BAD_REQUEST
+        response.body?.errorCode shouldBe "INVALID_PARAMETER"
+        response.body?.message shouldBe "입력값이 올바르지 않습니다."
+        response.body?.path shouldBe "/api/test"
+        response.body?.details?.get("fullSearch.page") shouldBe "must be greater than or equal to 0"
+    }
+
+    test("handleHandlerMethodValidation should return 400 with parameter violation details") {
+        // given
+        val resolvableError = mockk<MessageSourceResolvable>()
+        every { resolvableError.defaultMessage } returns "must not be blank"
+
+        val methodParameter = mockk<MethodParameter>()
+        every { methodParameter.parameterName } returns "query"
+
+        val validationResult = mockk<org.springframework.validation.method.ParameterValidationResult>()
+        every { validationResult.methodParameter } returns methodParameter
+        every { validationResult.resolvableErrors } returns listOf(resolvableError)
+
+        val exception = mockk<HandlerMethodValidationException>()
+        every { exception.message } returns "Validation failed for query"
+        every { exception.allValidationResults } returns listOf(validationResult)
+
+        // when
+        val response = handler.handleHandlerMethodValidation(exception, mockRequest)
+
+        // then
+        response.statusCode shouldBe HttpStatus.BAD_REQUEST
+        response.body?.errorCode shouldBe "INVALID_PARAMETER"
+        response.body?.message shouldBe "입력값이 올바르지 않습니다."
+        response.body?.path shouldBe "/api/test"
+        response.body?.details?.get("query") shouldBe "must not be blank"
+    }
+
+    test("handleHandlerMethodValidation should use fallback message when defaultMessage is null") {
+        // given
+        val resolvableError = mockk<MessageSourceResolvable>()
+        every { resolvableError.defaultMessage } returns null
+
+        val methodParameter = mockk<MethodParameter>()
+        every { methodParameter.parameterName } returns "size"
+
+        val validationResult = mockk<org.springframework.validation.method.ParameterValidationResult>()
+        every { validationResult.methodParameter } returns methodParameter
+        every { validationResult.resolvableErrors } returns listOf(resolvableError)
+
+        val exception = mockk<HandlerMethodValidationException>()
+        every { exception.message } returns "Validation failed"
+        every { exception.allValidationResults } returns listOf(validationResult)
+
+        // when
+        val response = handler.handleHandlerMethodValidation(exception, mockRequest)
+
+        // then
+        response.statusCode shouldBe HttpStatus.BAD_REQUEST
+        response.body?.details?.get("size") shouldBe "Invalid value"
     }
 
     test("handleIllegalArgument should return 400 with INVALID_PARAMETER error code") {
