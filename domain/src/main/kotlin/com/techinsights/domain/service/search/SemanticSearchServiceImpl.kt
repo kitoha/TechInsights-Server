@@ -24,9 +24,8 @@ class SemanticSearchServiceImpl(
         val questionVector = embeddingService.generateQuestionEmbedding(query)
         val vectorString = formatVectorString(questionVector)
 
-        val embeddings = postEmbeddingRepository.findSimilarPosts(
+        val embeddings = postEmbeddingRepository.findSimilarPostsAll(
             targetVector = vectorString,
-            excludeIds = emptyList(),
             limit = fetchLimit.toLong()
         )
 

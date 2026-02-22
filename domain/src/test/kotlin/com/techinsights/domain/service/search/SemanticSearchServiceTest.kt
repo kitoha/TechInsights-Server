@@ -71,7 +71,7 @@ class SemanticSearchServiceTest : FunSpec({
 
         test("질문과 관련된 게시글 목록을 반환한다") {
             every { embeddingService.generateQuestionEmbedding(any()) } returns questionVector
-            every { postEmbeddingRepository.findSimilarPosts(any(), any(), any()) } returns listOf(sampleEmbedding)
+            every { postEmbeddingRepository.findSimilarPostsAll(any(), any()) } returns listOf(sampleEmbedding)
             every { postRepository.findAllByIdIn(listOf("post-1")) } returns listOf(samplePost)
 
             val results = service.search(query = "토스 MSA 전환", size = 10, companyId = null)
@@ -83,7 +83,7 @@ class SemanticSearchServiceTest : FunSpec({
 
         test("유사도 점수는 0.0 초과 1.0 이하여야 한다") {
             every { embeddingService.generateQuestionEmbedding(any()) } returns questionVector
-            every { postEmbeddingRepository.findSimilarPosts(any(), any(), any()) } returns listOf(sampleEmbedding)
+            every { postEmbeddingRepository.findSimilarPostsAll(any(), any()) } returns listOf(sampleEmbedding)
             every { postRepository.findAllByIdIn(any()) } returns listOf(samplePost)
 
             val results = service.search(query = "MSA", size = 10, companyId = null)
@@ -95,7 +95,7 @@ class SemanticSearchServiceTest : FunSpec({
         test("유사도 점수는 DB에서 반환된 실제 distance를 기반으로 계산된다") {
             val embeddingWithDistance = sampleEmbedding.copy(distance = 0.25)
             every { embeddingService.generateQuestionEmbedding(any()) } returns questionVector
-            every { postEmbeddingRepository.findSimilarPosts(any(), any(), any()) } returns listOf(embeddingWithDistance)
+            every { postEmbeddingRepository.findSimilarPostsAll(any(), any()) } returns listOf(embeddingWithDistance)
             every { postRepository.findAllByIdIn(any()) } returns listOf(samplePost)
 
             val results = service.search(query = "MSA", size = 10, companyId = null)
@@ -110,7 +110,7 @@ class SemanticSearchServiceTest : FunSpec({
             val post2 = samplePost.copy(id = "post-2")
 
             every { embeddingService.generateQuestionEmbedding(any()) } returns questionVector
-            every { postEmbeddingRepository.findSimilarPosts(any(), any(), any()) } returns listOf(closeEmbedding, farEmbedding)
+            every { postEmbeddingRepository.findSimilarPostsAll(any(), any()) } returns listOf(closeEmbedding, farEmbedding)
             every { postRepository.findAllByIdIn(any()) } returns listOf(samplePost, post2)
 
             val results = service.search(query = "MSA", size = 10, companyId = null)
@@ -120,7 +120,7 @@ class SemanticSearchServiceTest : FunSpec({
 
         test("관련 게시글이 없으면 빈 목록을 반환한다") {
             every { embeddingService.generateQuestionEmbedding(any()) } returns questionVector
-            every { postEmbeddingRepository.findSimilarPosts(any(), any(), any()) } returns emptyList()
+            every { postEmbeddingRepository.findSimilarPostsAll(any(), any()) } returns emptyList()
 
             val results = service.search(query = "없는 주제", size = 10, companyId = null)
 
@@ -130,20 +130,20 @@ class SemanticSearchServiceTest : FunSpec({
 
         test("companyId 없을 때 limit은 resolvedSize 그대로 전달된다") {
             every { embeddingService.generateQuestionEmbedding(any()) } returns questionVector
-            every { postEmbeddingRepository.findSimilarPosts(any(), emptyList(), 5L) } returns emptyList()
+            every { postEmbeddingRepository.findSimilarPostsAll(any(), 5L) } returns emptyList()
 
             service.search(query = "쿠버네티스", size = 5, companyId = null)
 
-            verify(exactly = 1) { postEmbeddingRepository.findSimilarPosts(any(), emptyList(), 5L) }
+            verify(exactly = 1) { postEmbeddingRepository.findSimilarPostsAll(any(), 5L) }
         }
 
         test("companyId 있을 때 limit은 resolvedSize * 3으로 over-fetch된다") {
             every { embeddingService.generateQuestionEmbedding(any()) } returns questionVector
-            every { postEmbeddingRepository.findSimilarPosts(any(), emptyList(), 15L) } returns emptyList()
+            every { postEmbeddingRepository.findSimilarPostsAll(any(), 15L) } returns emptyList()
 
             service.search(query = "쿠버네티스", size = 5, companyId = 1L)
 
-            verify(exactly = 1) { postEmbeddingRepository.findSimilarPosts(any(), emptyList(), 15L) }
+            verify(exactly = 1) { postEmbeddingRepository.findSimilarPostsAll(any(), 15L) }
         }
 
         test("companyId 필터가 있으면 해당 회사 게시글만 반환한다") {
@@ -151,7 +151,7 @@ class SemanticSearchServiceTest : FunSpec({
             val otherEmbedding = sampleEmbedding.copy(postId = "post-2", companyName = "Kakao")
 
             every { embeddingService.generateQuestionEmbedding(any()) } returns questionVector
-            every { postEmbeddingRepository.findSimilarPosts(any(), any(), any()) } returns listOf(sampleEmbedding, otherEmbedding)
+            every { postEmbeddingRepository.findSimilarPostsAll(any(), any()) } returns listOf(sampleEmbedding, otherEmbedding)
             every { postRepository.findAllByIdIn(any()) } returns listOf(samplePost, otherPost)
 
             val results = service.search(query = "MSA", size = 10, companyId = 1L)
@@ -166,7 +166,7 @@ class SemanticSearchServiceTest : FunSpec({
             val embedding2 = sampleEmbedding.copy(postId = "post-2") // 2순위
 
             every { embeddingService.generateQuestionEmbedding(any()) } returns questionVector
-            every { postEmbeddingRepository.findSimilarPosts(any(), any(), any()) } returns listOf(embedding1, embedding2)
+            every { postEmbeddingRepository.findSimilarPostsAll(any(), any()) } returns listOf(embedding1, embedding2)
             // DB가 embedding 순서와 반대로 반환
             every { postRepository.findAllByIdIn(any()) } returns listOf(post2, samplePost)
 
@@ -187,7 +187,7 @@ class SemanticSearchServiceTest : FunSpec({
             val invalidEmbedding = sampleEmbedding.copy(postId = "post-2")
 
             every { embeddingService.generateQuestionEmbedding(any()) } returns questionVector
-            every { postEmbeddingRepository.findSimilarPosts(any(), any(), any()) } returns listOf(sampleEmbedding, invalidEmbedding)
+            every { postEmbeddingRepository.findSimilarPostsAll(any(), any()) } returns listOf(sampleEmbedding, invalidEmbedding)
             every { postRepository.findAllByIdIn(any()) } returns listOf(samplePost, invalidCompanyPost)
 
             val results = service.search(query = "MSA", size = 10, companyId = 1L)
