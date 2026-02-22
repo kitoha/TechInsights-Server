@@ -7,13 +7,17 @@ import org.springframework.data.jpa.repository.Query
 interface PostEmbeddingJpaRepository : JpaRepository<PostEmbedding, Long>{
   @Query(
     value = """
-    SELECT *
+    SELECT post_id       AS postId,
+           company_name  AS companyName,
+           categories,
+           content,
+           embedding_vector <-> CAST(:targetVector AS vector) AS distance
     FROM post_embedding
     WHERE post_id NOT IN :excludeIds
-    ORDER BY embedding_vector <-> CAST(:targetVector AS vector)
+    ORDER BY distance
     LIMIT :limit
   """,
     nativeQuery = true
   )
-  fun findSimilarPosts(targetVector: String, excludeIds: List<Long>, limit: Long): List<PostEmbedding>
+  fun findSimilarPosts(targetVector: String, excludeIds: List<Long>, limit: Long): List<PostEmbeddingWithDistance>
 }

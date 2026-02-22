@@ -152,7 +152,7 @@ class SearchControllerValidationIntegrationTest {
     }
 
     @Test
-    fun `semanticSearch should return 400 when size exceeds max (greater than 20)`() {
+    fun `semanticSearch should return 400 when size exceeds maxSize from properties`() {
         val mvcResult = mockMvc.perform(
             get("/api/v1/search/semantic")
                 .param("query", "kotlin")

@@ -35,17 +35,18 @@ class SemanticSearchServiceImpl(
         val postIds = embeddings.map { it.postId }
         val postsById = postRepository.findAllByIdIn(postIds).associateBy { it.id }
 
-        // Preserve embedding similarity order; skip posts missing from DB
-        val orderedPosts = embeddings
-            .mapNotNull { postsById[it.postId] }
-            .filter { matchesCompany(it, companyId) }
+        val orderedResults = embeddings
+            .mapNotNull { embedding ->
+                val post = postsById[embedding.postId] ?: return@mapNotNull null
+                embedding to post
+            }
+            .filter { (_, post) -> matchesCompany(post, companyId) }
             .take(resolvedSize)
 
-        return orderedPosts.mapIndexed { index, post ->
-            val distance = calculateDistanceByRank(index)
+        return orderedResults.mapIndexed { index, (embedding, post) ->
             SemanticSearchResult(
                 post = post,
-                similarityScore = toSimilarityScore(distance),
+                similarityScore = toSimilarityScore(embedding.distance ?: 0.0),
                 rank = index + 1
             )
         }
@@ -65,11 +66,7 @@ class SemanticSearchServiceImpl(
     private fun toSimilarityScore(distance: Double): Double =
         1.0 / (1.0 + distance)
 
-    private fun calculateDistanceByRank(rank: Int): Double =
-        rank * DISTANCE_STEP_PER_RANK
-
     companion object {
-        private const val DISTANCE_STEP_PER_RANK = 0.1
         private const val OVER_FETCH_MULTIPLIER = 3
     }
 }

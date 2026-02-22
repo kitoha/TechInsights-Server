@@ -59,7 +59,8 @@ class SemanticSearchServiceTest : FunSpec({
     val sampleEmbedding = PostEmbeddingDto(
         postId = "post-1", companyName = "Toss", categories = "BackEnd",
         content = "토스는 MSA 전환을 단계적으로 진행했다.",
-        embeddingVector = FloatArray(3072) { 0.1f }
+        embeddingVector = FloatArray(0),
+        distance = 0.08,
     )
 
     val questionVector = List(3072) { 0.1f }
@@ -89,6 +90,32 @@ class SemanticSearchServiceTest : FunSpec({
 
             results[0].similarityScore shouldBeGreaterThan 0.0
             results[0].similarityScore shouldBeLessThanOrEqualTo 1.0
+        }
+
+        test("유사도 점수는 DB에서 반환된 실제 distance를 기반으로 계산된다") {
+            val embeddingWithDistance = sampleEmbedding.copy(distance = 0.25)
+            every { embeddingService.generateQuestionEmbedding(any()) } returns questionVector
+            every { postEmbeddingRepository.findSimilarPosts(any(), any(), any()) } returns listOf(embeddingWithDistance)
+            every { postRepository.findAllByIdIn(any()) } returns listOf(samplePost)
+
+            val results = service.search(query = "MSA", size = 10, companyId = null)
+
+            // similarityScore = 1.0 / (1.0 + distance) = 1.0 / 1.25 = 0.8
+            results[0].similarityScore shouldBe (1.0 / (1.0 + 0.25))
+        }
+
+        test("distance가 클수록 similarityScore는 낮아진다") {
+            val closeEmbedding = sampleEmbedding.copy(postId = "post-1", distance = 0.1)
+            val farEmbedding = sampleEmbedding.copy(postId = "post-2", distance = 0.9)
+            val post2 = samplePost.copy(id = "post-2")
+
+            every { embeddingService.generateQuestionEmbedding(any()) } returns questionVector
+            every { postEmbeddingRepository.findSimilarPosts(any(), any(), any()) } returns listOf(closeEmbedding, farEmbedding)
+            every { postRepository.findAllByIdIn(any()) } returns listOf(samplePost, post2)
+
+            val results = service.search(query = "MSA", size = 10, companyId = null)
+
+            results[0].similarityScore shouldBeGreaterThan results[1].similarityScore
         }
 
         test("관련 게시글이 없으면 빈 목록을 반환한다") {

@@ -59,9 +59,13 @@ class SearchController(
   @GetMapping("/semantic")
   suspend fun semanticSearch(
     @RequestParam @NotBlank(message = "query must not be blank") @Size(max = MAX_QUERY_LENGTH) query: String,
-    @RequestParam(required = false) @Min(1) @Max(20) size: Int?,
+    @RequestParam(required = false) @Min(1) size: Int?,
     @RequestParam(required = false) companyId: Long?
   ): ResponseEntity<SemanticSearchResponse> = withContext(ioDispatcher) {
+    if (size != null && size > properties.maxSize) {
+      throw IllegalArgumentException("size must not exceed maxSize(${properties.maxSize})")
+    }
+
     val resolvedSize = size ?: properties.defaultSize
     val startTime = System.currentTimeMillis()
 

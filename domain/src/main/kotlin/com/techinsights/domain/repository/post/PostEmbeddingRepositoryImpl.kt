@@ -31,6 +31,6 @@ class PostEmbeddingRepositoryImpl(
       limit = limit
     )
 
-    return postEmbedding.map { PostEmbeddingDto.fromEntity(it) }
+    return postEmbedding.map { PostEmbeddingDto.fromProjection(it) }
   }
 }

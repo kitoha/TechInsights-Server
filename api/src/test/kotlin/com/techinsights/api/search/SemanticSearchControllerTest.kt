@@ -6,6 +6,7 @@ import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.dto.search.SemanticSearchResult
 import com.techinsights.domain.enums.Category
 import com.techinsights.domain.service.search.SemanticSearchService
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
@@ -145,6 +146,31 @@ class SemanticSearchControllerTest : FunSpec() {
             val body = response.body!!
             body.query shouldBe "MSA"
             verify(exactly = 1) { semanticSearchService.search("MSA", 10, null) }
+        }
+
+        test("semanticSearch - should throw when size exceeds properties.maxSize") {
+            val ex = shouldThrow<IllegalArgumentException> {
+                controller.semanticSearch(
+                    query = "MSA",
+                    size = properties.maxSize + 1,
+                    companyId = null
+                )
+            }
+            ex.message shouldBe "size must not exceed maxSize(${properties.maxSize})"
+            verify(exactly = 0) { semanticSearchService.search(any(), any(), any()) }
+        }
+
+        test("semanticSearch - should allow size equal to properties.maxSize") {
+            every { semanticSearchService.search(any(), properties.maxSize, null) } returns emptyList()
+
+            val response = controller.semanticSearch(
+                query = "MSA",
+                size = properties.maxSize,
+                companyId = null
+            )
+
+            response.statusCode.value() shouldBe 200
+            verify(exactly = 1) { semanticSearchService.search(any(), properties.maxSize, null) }
         }
     }
 }
