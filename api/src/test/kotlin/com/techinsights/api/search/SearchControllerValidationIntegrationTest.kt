@@ -136,6 +136,70 @@ class SearchControllerValidationIntegrationTest {
         verifyNoInteractions(searchService)
     }
 
+    @Test
+    fun `semanticSearch should return 400 when query is blank`() {
+        val mvcResult = mockMvc.perform(
+            get("/api/v1/search/semantic")
+                .param("query", " ")
+                .accept(MediaType.APPLICATION_JSON)
+        ).andExpect(request().asyncStarted())
+            .andReturn()
+
+        mockMvc.perform(asyncDispatch(mvcResult))
+            .andExpect(status().isBadRequest)
+
+        verifyNoInteractions(semanticSearchService)
+    }
+
+    @Test
+    fun `semanticSearch should return 400 when size exceeds max (greater than 20)`() {
+        val mvcResult = mockMvc.perform(
+            get("/api/v1/search/semantic")
+                .param("query", "kotlin")
+                .param("size", "21")
+                .accept(MediaType.APPLICATION_JSON)
+        ).andExpect(request().asyncStarted())
+            .andReturn()
+
+        mockMvc.perform(asyncDispatch(mvcResult))
+            .andExpect(status().isBadRequest)
+
+        verifyNoInteractions(semanticSearchService)
+    }
+
+    @Test
+    fun `semanticSearch should return 400 when size is less than 1`() {
+        val mvcResult = mockMvc.perform(
+            get("/api/v1/search/semantic")
+                .param("query", "kotlin")
+                .param("size", "0")
+                .accept(MediaType.APPLICATION_JSON)
+        ).andExpect(request().asyncStarted())
+            .andReturn()
+
+        mockMvc.perform(asyncDispatch(mvcResult))
+            .andExpect(status().isBadRequest)
+
+        verifyNoInteractions(semanticSearchService)
+    }
+
+    @Test
+    fun `semanticSearch should return 400 when query exceeds max length`() {
+        val tooLongQuery = "a".repeat(501) // MAX_QUERY_LENGTH = 500
+
+        val mvcResult = mockMvc.perform(
+            get("/api/v1/search/semantic")
+                .param("query", tooLongQuery)
+                .accept(MediaType.APPLICATION_JSON)
+        ).andExpect(request().asyncStarted())
+            .andReturn()
+
+        mockMvc.perform(asyncDispatch(mvcResult))
+            .andExpect(status().isBadRequest)
+
+        verifyNoInteractions(semanticSearchService)
+    }
+
     @TestConfiguration
     class CoroutineTestConfig {
         @Bean("ioDispatcher")

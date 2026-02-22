@@ -19,6 +19,7 @@ class SemanticSearchServiceImpl(
 
     override fun search(query: String, size: Int, companyId: Long?): List<SemanticSearchResult> {
         val resolvedSize = resolveSize(size)
+        val fetchLimit = if (companyId != null) resolvedSize * OVER_FETCH_MULTIPLIER else resolvedSize
 
         val questionVector = embeddingService.generateQuestionEmbedding(query)
         val vectorString = formatVectorString(questionVector)
@@ -26,17 +27,21 @@ class SemanticSearchServiceImpl(
         val embeddings = postEmbeddingRepository.findSimilarPosts(
             targetVector = vectorString,
             excludeIds = emptyList(),
-            limit = resolvedSize.toLong()
+            limit = fetchLimit.toLong()
         )
 
         if (embeddings.isEmpty()) return emptyList()
 
         val postIds = embeddings.map { it.postId }
-        val posts = postRepository.findAllByIdIn(postIds)
+        val postsById = postRepository.findAllByIdIn(postIds).associateBy { it.id }
 
-        val filteredPosts = filterByCompany(posts, companyId)
+        // Preserve embedding similarity order; skip posts missing from DB
+        val orderedPosts = embeddings
+            .mapNotNull { postsById[it.postId] }
+            .filter { matchesCompany(it, companyId) }
+            .take(resolvedSize)
 
-        return filteredPosts.mapIndexed { index, post ->
+        return orderedPosts.mapIndexed { index, post ->
             val distance = calculateDistanceByRank(index)
             SemanticSearchResult(
                 post = post,
@@ -52,9 +57,9 @@ class SemanticSearchServiceImpl(
     private fun formatVectorString(vector: List<Float>): String =
         vector.joinToString(prefix = "[", postfix = "]")
 
-    private fun filterByCompany(posts: List<com.techinsights.domain.dto.post.PostDto>, companyId: Long?): List<com.techinsights.domain.dto.post.PostDto> {
-        if (companyId == null) return posts
-        return posts.filter { it.company.id == companyId.toString() }
+    private fun matchesCompany(post: com.techinsights.domain.dto.post.PostDto, companyId: Long?): Boolean {
+        if (companyId == null) return true
+        return post.company.id.toLongOrNull() == companyId
     }
 
     private fun toSimilarityScore(distance: Double): Double =
@@ -65,5 +70,6 @@ class SemanticSearchServiceImpl(
 
     companion object {
         private const val DISTANCE_STEP_PER_RANK = 0.1
+        private const val OVER_FETCH_MULTIPLIER = 3
     }
 }

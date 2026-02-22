@@ -8,4 +8,9 @@ import org.springframework.context.annotation.Configuration
 data class SemanticSearchProperties(
     val defaultSize: Int = 10,
     val maxSize: Int = 20
-)
+) {
+    init {
+        require(defaultSize > 0) { "defaultSize must be positive, got $defaultSize" }
+        require(maxSize >= defaultSize) { "maxSize($maxSize) must be >= defaultSize($defaultSize)" }
+    }
+}
