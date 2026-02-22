@@ -7,6 +7,8 @@ interface EmbeddingService {
     fun generateEmbedding(request: EmbeddingRequest, modelType: GeminiModelType): List<Float>
 
     fun generateEmbeddingBatch(requests: List<EmbeddingRequest>, modelType: GeminiModelType): List<EmbeddingResult>
+
+    fun generateQuestionEmbedding(question: String): List<Float>
     
     data class EmbeddingResult(
         val request: EmbeddingRequest,

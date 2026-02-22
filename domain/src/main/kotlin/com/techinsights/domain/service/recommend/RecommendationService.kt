@@ -58,7 +58,7 @@ class RecommendationService(
 
     val vectorString = averageVector.joinToString(prefix = "[", postfix = "]")
 
-    val embeddingDto = postEmbeddingRepository.findSimilarPosts(vectorString, postIdsLong, count)
+    val embeddingDto = postEmbeddingRepository.findSimilarPostsExcluding(vectorString, postIdsLong, count)
 
     if (embeddingDto.isEmpty()) {
       return postRepository.findTopViewedPosts(count)

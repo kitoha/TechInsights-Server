@@ -20,17 +20,20 @@ class PostEmbeddingRepositoryImpl(
       .map { PostEmbeddingDto.fromEntity(it) }
   }
 
-  override fun findSimilarPosts(
+  override fun findSimilarPostsAll(
+    targetVector: String,
+    limit: Long,
+  ): List<PostEmbeddingDto> =
+    postEmbeddingJpaRepository
+      .findSimilarPostsAll(targetVector = targetVector, limit = limit)
+      .map { PostEmbeddingDto.fromProjection(it) }
+
+  override fun findSimilarPostsExcluding(
     targetVector: String,
     excludeIds: List<Long>,
-    limit: Long
-  ): List<PostEmbeddingDto> {
-    val postEmbedding = postEmbeddingJpaRepository.findSimilarPosts(
-      targetVector = targetVector,
-      excludeIds = excludeIds,
-      limit = limit
-    )
-
-    return postEmbedding.map { PostEmbeddingDto.fromEntity(it) }
-  }
+    limit: Long,
+  ): List<PostEmbeddingDto> =
+    postEmbeddingJpaRepository
+      .findSimilarPostsExcluding(targetVector = targetVector, excludeIds = excludeIds, limit = limit)
+      .map { PostEmbeddingDto.fromProjection(it) }
 }

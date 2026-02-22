@@ -26,6 +26,15 @@ class EmbeddingServiceImpl(
     }
   }
 
+  override fun generateQuestionEmbedding(question: String): List<Float> {
+    val request = EmbeddingRequest(
+      content = question,
+      categories = emptyList(),
+      companyName = ""
+    )
+    return generateEmbedding(request, GeminiModelType.GEMINI_EMBEDDING)
+  }
+
   override fun generateEmbeddingBatch(
     requests: List<EmbeddingRequest>,
     modelType: GeminiModelType

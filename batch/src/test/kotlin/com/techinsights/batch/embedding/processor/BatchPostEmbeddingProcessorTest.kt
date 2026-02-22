@@ -38,17 +38,17 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
         verify(exactly = 0) { embeddingService.generateEmbeddingBatch(any(), any()) }
     }
 
-    test("process should successfully generate embeddings for valid posts") {
+    test("process should successfully generate embeddings using content field") {
         // given
         val posts = listOf(
-            createPostDto("1", "Title 1", "Preview 1", isSummary = true),
-            createPostDto("2", "Title 2", "Preview 2", isSummary = true)
+            createPostDto("1", "Title 1", content = "Detailed content 1", isSummary = true),
+            createPostDto("2", "Title 2", content = "Detailed content 2", isSummary = true)
         )
 
         val embeddingResults = posts.map { post ->
             EmbeddingService.EmbeddingResult(
                 request = EmbeddingRequest(
-                    content = post.preview!!,
+                    content = post.content,
                     categories = post.categories.map { it.name },
                     companyName = post.company.name
                 ),
@@ -66,10 +66,10 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
         result.shouldNotBeNull()
         result shouldHaveSize 2
         result[0].postId shouldBe "1"
-        result[0].content shouldBe "Preview 1"
+        result[0].content shouldBe "Detailed content 1"
         result[0].embeddingVector.size shouldBe 768
         result[1].postId shouldBe "2"
-        result[1].content shouldBe "Preview 2"
+        result[1].content shouldBe "Detailed content 2"
 
         verify(exactly = 1) { embeddingService.generateEmbeddingBatch(any(), GeminiModelType.GEMINI_EMBEDDING) }
     }
@@ -77,13 +77,13 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
     test("process should filter out posts that are not summarized") {
         // given
         val posts = listOf(
-            createPostDto("1", "Title 1", "Preview 1", isSummary = false),
-            createPostDto("2", "Title 2", "Preview 2", isSummary = true)
+            createPostDto("1", "Title 1", content = "Content 1", isSummary = false),
+            createPostDto("2", "Title 2", content = "Content 2", isSummary = true)
         )
 
         val embeddingResult = EmbeddingService.EmbeddingResult(
             request = EmbeddingRequest(
-                content = "Preview 2",
+                content = "Content 2",
                 categories = emptyList(),
                 companyName = "Test Company"
             ),
@@ -109,15 +109,15 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
         }
     }
 
-    test("process should filter out posts with null preview") {
+    test("process should filter out posts with blank content") {
         // given
         val posts = listOf(
-            createPostDto("1", "Title 1", null, isSummary = true),
-            createPostDto("2", "Title 2", "Preview 2", isSummary = true)
+            createPostDto("1", "Title 1", content = "", isSummary = true),
+            createPostDto("2", "Title 2", content = "Detailed content 2", isSummary = true)
         )
 
         val embeddingResult = EmbeddingService.EmbeddingResult(
-            request = EmbeddingRequest("Preview 2", emptyList(), "Test Company"),
+            request = EmbeddingRequest("Detailed content 2", emptyList(), "Test Company"),
             vector = List(768) { it.toFloat() },
             success = true
         )
@@ -133,15 +133,15 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
         result[0].postId shouldBe "2"
     }
 
-    test("process should filter out posts with blank preview") {
+    test("process should filter out posts with whitespace-only content") {
         // given
         val posts = listOf(
-            createPostDto("1", "Title 1", "", isSummary = true),
-            createPostDto("2", "Title 2", "Preview 2", isSummary = true)
+            createPostDto("1", "Title 1", content = "   ", isSummary = true),
+            createPostDto("2", "Title 2", content = "Detailed content 2", isSummary = true)
         )
 
         val embeddingResult = EmbeddingService.EmbeddingResult(
-            request = EmbeddingRequest("Preview 2", emptyList(), "Test Company"),
+            request = EmbeddingRequest("Detailed content 2", emptyList(), "Test Company"),
             vector = List(768) { it.toFloat() },
             success = true
         )
@@ -160,8 +160,8 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
     test("process should return null when all posts are filtered out") {
         // given
         val posts = listOf(
-            createPostDto("1", "Title 1", null, isSummary = false),
-            createPostDto("2", "Title 2", "", isSummary = true)
+            createPostDto("1", "Title 1", content = "", isSummary = false),
+            createPostDto("2", "Title 2", content = "", isSummary = true)
         )
 
         // when
@@ -175,18 +175,18 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
     test("process should handle partial embedding failures") {
         // given
         val posts = listOf(
-            createPostDto("1", "Title 1", "Preview 1", isSummary = true),
-            createPostDto("2", "Title 2", "Preview 2", isSummary = true)
+            createPostDto("1", "Title 1", content = "Content 1", isSummary = true),
+            createPostDto("2", "Title 2", content = "Content 2", isSummary = true)
         )
 
         val embeddingResults = listOf(
             EmbeddingService.EmbeddingResult(
-                request = EmbeddingRequest("Preview 1", emptyList(), "Test Company"),
+                request = EmbeddingRequest("Content 1", emptyList(), "Test Company"),
                 vector = List(768) { it.toFloat() },
                 success = true
             ),
             EmbeddingService.EmbeddingResult(
-                request = EmbeddingRequest("Preview 2", emptyList(), "Test Company"),
+                request = EmbeddingRequest("Content 2", emptyList(), "Test Company"),
                 vector = emptyList(),
                 success = false,
                 error = "API error"
@@ -207,11 +207,11 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
     test("process should return null when all embeddings fail") {
         // given
         val posts = listOf(
-            createPostDto("1", "Title 1", "Preview 1", isSummary = true)
+            createPostDto("1", "Title 1", content = "Content 1", isSummary = true)
         )
 
         val embeddingResult = EmbeddingService.EmbeddingResult(
-            request = EmbeddingRequest("Preview 1", emptyList(), "Test Company"),
+            request = EmbeddingRequest("Content 1", emptyList(), "Test Company"),
             vector = emptyList(),
             success = false,
             error = "API error"
@@ -226,14 +226,14 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
         result.shouldBeNull()
     }
 
-    test("process should include categories in embedding request") {
+    test("process should include categories in embedding request using content") {
         // given
         val posts = listOf(
-            createPostDto("1", "Title 1", "Preview 1", isSummary = true, categories = setOf(Category.AI, Category.BackEnd))
+            createPostDto("1", "Title 1", content = "Content 1", isSummary = true, categories = setOf(Category.AI, Category.BackEnd))
         )
 
         val embeddingResult = EmbeddingService.EmbeddingResult(
-            request = EmbeddingRequest("Preview 1", listOf("AI", "BACKEND"), "Test Company"),
+            request = EmbeddingRequest("Content 1", listOf("AI", "BackEnd"), "Test Company"),
             vector = List(768) { it.toFloat() },
             success = true
         )
@@ -261,7 +261,7 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
     test("process should handle exception from embedding service") {
         // given
         val posts = listOf(
-            createPostDto("1", "Title 1", "Preview 1", isSummary = true)
+            createPostDto("1", "Title 1", content = "Content 1", isSummary = true)
         )
 
         every { embeddingService.generateEmbeddingBatch(any(), any()) } throws RuntimeException("Service error")
@@ -271,13 +271,13 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
         exception.shouldBeInstanceOf<RuntimeException>()
     }
 
-    test("process should create correct EmbeddingRequest with all fields") {
+    test("process should create correct EmbeddingRequest with content field") {
         // given
         val posts = listOf(
             createPostDto(
                 id = "1",
                 title = "Title",
-                preview = "Test preview content",
+                content = "Markdown detailed summary content",
                 isSummary = true,
                 categories = setOf(Category.AI),
                 companyName = "Tech Company"
@@ -285,7 +285,7 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
         )
 
         val embeddingResult = EmbeddingService.EmbeddingResult(
-            request = EmbeddingRequest("Test preview content", listOf("AI"), "Tech Company"),
+            request = EmbeddingRequest("Markdown detailed summary content", listOf("AI"), "Tech Company"),
             vector = List(768) { it.toFloat() },
             success = true
         )
@@ -295,11 +295,11 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
         // when
         processor.process(posts)
 
-        // then
+        // then — content (not preview) is sent to embedding service
         verify(exactly = 1) {
             embeddingService.generateEmbeddingBatch(
                 match { requests ->
-                    requests[0].content == "Test preview content" &&
+                    requests[0].content == "Markdown detailed summary content" &&
                     requests[0].categories == listOf("AI") &&
                     requests[0].companyName == "Tech Company"
                 },
@@ -312,7 +312,7 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
 private fun createPostDto(
     id: String,
     title: String,
-    preview: String?,
+    content: String,
     isSummary: Boolean = false,
     categories: Set<Category> = emptySet(),
     companyName: String = "Test Company"
@@ -320,7 +320,7 @@ private fun createPostDto(
     return PostDto(
         id = id,
         title = title,
-        content = "Content",
+        content = content,
         url = "https://example.com/$id",
         publishedAt = LocalDateTime.now(),
         company = CompanyDto(
@@ -330,7 +330,7 @@ private fun createPostDto(
             logoImageName = ""
         ),
         isSummary = isSummary,
-        preview = preview,
+        preview = null,
         categories = categories,
         isEmbedding = false
     )

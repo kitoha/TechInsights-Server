@@ -86,3 +86,6 @@ search:
   full:
     default-size: 20
     max-size: 100
+  semantic:
+    default-size: 10
+    max-size: 20

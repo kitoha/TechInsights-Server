@@ -130,7 +130,7 @@ class RecommendationServiceTest : FunSpec({
     } returns readHistory
     every { postEmbeddingRepository.findByPostIdIn(listOf(1L)) } returns embeddings
     every {
-      postEmbeddingRepository.findSimilarPosts(any(), listOf(1L), 5)
+      postEmbeddingRepository.findSimilarPostsExcluding(any(), listOf(1L), 5)
     } returns similarEmbeddings
     val recommendedPostId = Tsid.encode(2)
     every { postRepository.findAllByIdIn(listOf(recommendedPostId)) } returns recommendedPosts
@@ -139,7 +139,7 @@ class RecommendationServiceTest : FunSpec({
 
     result shouldHaveSize 1
     result[0].id shouldBe recommendedPostId
-    verify(exactly = 1) { postEmbeddingRepository.findSimilarPosts(any(), listOf(1L), 5) }
+    verify(exactly = 1) { postEmbeddingRepository.findSimilarPostsExcluding(any(), listOf(1L), 5) }
   }
 
   test("평균 벡터 계산 - 정상") {
@@ -182,7 +182,7 @@ class RecommendationServiceTest : FunSpec({
 
     every { postEmbeddingRepository.findByPostIdIn(listOf(1L)) } returns embeddings
     every {
-      postEmbeddingRepository.findSimilarPosts(any(), listOf(1L), 10)
+      postEmbeddingRepository.findSimilarPostsExcluding(any(), listOf(1L), 10)
     } returns emptyList()
     every { postRepository.findTopViewedPosts(10) } returns topPosts
 

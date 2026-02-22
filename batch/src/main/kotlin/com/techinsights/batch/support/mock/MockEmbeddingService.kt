@@ -36,6 +36,11 @@ class MockEmbeddingService : EmbeddingService {
         return embedding
     }
 
+    override fun generateQuestionEmbedding(question: String): List<Float> {
+        Thread.sleep(API_RESPONSE_TIME_MS)
+        return List(EMBEDDING_DIMENSION) { index -> (index.toFloat() / EMBEDDING_DIMENSION) }
+    }
+
     override fun generateEmbeddingBatch(
         requests: List<EmbeddingRequest>,
         modelType: GeminiModelType
