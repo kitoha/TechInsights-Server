@@ -31,7 +31,7 @@ class BatchPostEmbeddingProcessor(
         try {
             val requests = validPosts.map { post ->
                 EmbeddingRequest(
-                    content = post.preview!!,
+                    content = post.content,
                     categories = post.categories.map { it.name },
                     companyName = post.company.name
                 )
@@ -54,7 +54,7 @@ class BatchPostEmbeddingProcessor(
                             postId = post.id,
                             companyName = post.company.name,
                             categories = post.categories.joinToString(",") { it.name },
-                            content = post.preview!!,
+                            content = post.content,
                             embeddingVector = result.vector.toFloatArray()
                         )
                     )
@@ -85,8 +85,8 @@ class BatchPostEmbeddingProcessor(
             return false
         }
 
-        if (post.preview.isNullOrBlank()) {
-            log.warn("Post ${post.id} has no preview content, skipping")
+        if (post.content.isBlank()) {
+            log.warn("Post ${post.id} has no content for embedding, skipping")
             return false
         }
 
