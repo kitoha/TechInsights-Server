@@ -9,9 +9,19 @@ CREATE TABLE IF NOT EXISTS post_likes (
     created_at TIMESTAMP   NOT NULL,
     updated_at TIMESTAMP   NOT NULL,
     deleted_at TIMESTAMP,
-    CONSTRAINT pk_post_likes          PRIMARY KEY (id),
-    CONSTRAINT uk_post_likes_post_user UNIQUE (post_id, user_id)
+    CONSTRAINT pk_post_likes      PRIMARY KEY (id),
+    CONSTRAINT fk_post_likes_post FOREIGN KEY (post_id) REFERENCES posts (id),
+    CONSTRAINT fk_post_likes_user FOREIGN KEY (user_id) REFERENCES users (id)
 );
+
+-- 로그인 사용자: 같은 게시글에 중복 좋아요 방지
+-- (UNIQUE (post_id, user_id) 는 user_id=NULL 인 행을 모두 통과시켜 무효 → 부분 인덱스 사용)
+CREATE UNIQUE INDEX IF NOT EXISTS uk_post_likes_user
+    ON post_likes (post_id, user_id) WHERE user_id IS NOT NULL;
+
+-- 익명 사용자: 같은 IP로 같은 게시글 중복 좋아요 방지
+CREATE UNIQUE INDEX IF NOT EXISTS uk_post_likes_anon
+    ON post_likes (post_id, ip_address) WHERE user_id IS NULL;
 
 -- ------------------------------------------------------------
 -- summary_retry_queue (SummaryRetryQueue 엔티티)
