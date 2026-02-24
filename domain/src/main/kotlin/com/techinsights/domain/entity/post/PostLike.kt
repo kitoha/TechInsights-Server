@@ -1,15 +1,13 @@
 package com.techinsights.domain.entity.post
 
 import com.techinsights.domain.entity.BaseEntity
-import jakarta.persistence.*
+import jakarta.persistence.Column
+import jakarta.persistence.Entity
+import jakarta.persistence.Id
+import jakarta.persistence.Table
 
 @Entity
-@Table(
-    name = "post_likes",
-    uniqueConstraints = [
-        UniqueConstraint(name = "uk_post_likes_post_user", columnNames = ["post_id", "user_id"])
-    ]
-)
+@Table(name = "post_likes")
 class PostLike(
     @Id
     val id: Long,

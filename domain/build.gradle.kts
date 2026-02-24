@@ -27,6 +27,8 @@ dependencies {
   api(libs.bundles.kotlinx.coroutines)
 
   implementation(libs.spring.boot.starter.data.jpa)
+  implementation(libs.flyway.core)
+  implementation(libs.flyway.database.postgresql)
   implementation(libs.kotlin.reflect)
   implementation(libs.jackson.module.kotlin)
   implementation(libs.postgresql)

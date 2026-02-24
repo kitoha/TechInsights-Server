@@ -27,6 +27,8 @@ web-client:
     backoff-seconds: 2
 
 spring:
+  flyway:
+    enabled: false
   datasource:
     hikari:
       maximum-pool-size: 8
