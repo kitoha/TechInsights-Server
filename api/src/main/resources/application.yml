@@ -44,7 +44,7 @@ management:
         include: health,info,prometheus,metrics
   endpoint:
     health:
-      show-details: when-authorized
+      show-details: never
     prometheus:
       enabled: true
   metrics:
