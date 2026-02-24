@@ -48,6 +48,8 @@ kotlinx-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutine
 # Database
 postgresql = { module = "org.postgresql:postgresql" }
 hibernate-vector = { module = "org.hibernate.orm:hibernate-vector", version.ref = "hibernateVector" }
+flyway-core = { module = "org.flywaydb:flyway-core" }
+flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
 
 # Utilities
 hypersistence-tsid = { module = "io.hypersistence:hypersistence-tsid", version.ref = "hypersistenceTsid" }
