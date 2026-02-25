@@ -13,4 +13,10 @@ interface GithubRepositoryRepository {
     ): Page<GithubRepositoryDto>
 
     fun findById(id: Long): GithubRepositoryDto?
+
+    fun findUnsummarized(
+        pageSize: Int,
+        afterStarCount: Long?,
+        afterId: Long?,
+    ): List<GithubRepositoryDto>
 }

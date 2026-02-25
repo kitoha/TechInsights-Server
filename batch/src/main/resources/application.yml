@@ -14,6 +14,21 @@ batch:
     enabled: true
     min-ms: 100
     max-ms: 2000
+  github-trending:
+    job-name: githubTrendingJob
+    step-name: githubTrendingStep
+    chunk-size: 50
+  github-readme-summary:
+    job-name: githubReadmeSummaryJob
+    step-name: githubReadmeSummarizeStep
+    chunk-size: 150   # Gemini 요청 1회 당 처리할 레포 수.
+    page-size: 100    # DB에서 한 번에 읽어올 레포 수
+
+github:
+  api:
+    base-url: https://api.github.com
+    token: ${GITHUB_TOKEN:}
+    per-page: 100
 
 web-client:
   connect-timeout-millis: 10000
@@ -85,6 +100,18 @@ rate-limiter:
     limit-for-period: 20
     refresh-period-seconds: 86400
     timeout-seconds: 1
+  gemini-readme-rpm:
+    limit-for-period: 2       # TPM 제약: 250K TPM ÷ 100K tokens/req = 2.5 → 2 RPM 안전
+    refresh-period-seconds: 60
+    timeout-seconds: 60
+  gemini-readme-rpd:
+    limit-for-period: 20      # 독립 API 키 사용 시 전체 일일 한도 사용 가능
+    refresh-period-seconds: 86400
+    timeout-seconds: 1
+  github:
+    limit-for-period: 8       # 인증 없음: Search API 10 req/min 안전마진. GITHUB_TOKEN 있으면 25로 변경
+    refresh-period-seconds: 60
+    timeout-seconds: 90
   crawler:
     ultra-safe:
       limit-for-period: 5

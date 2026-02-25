@@ -55,4 +55,27 @@ class GithubRepositoryRepositoryImpl(
             .fetchOne()
             ?.let { GithubRepositoryDto.fromEntity(it) }
     }
+
+    override fun findUnsummarized(
+        pageSize: Int,
+        afterStarCount: Long?,
+        afterId: Long?,
+    ): List<GithubRepositoryDto> {
+        val repo = QGithubRepository.githubRepository
+
+        val cursorCondition = if (afterStarCount != null && afterId != null) {
+            repo.starCount.lt(afterStarCount)
+                .or(repo.starCount.eq(afterStarCount).and(repo.id.lt(afterId)))
+        } else null
+
+        return queryFactory.selectFrom(repo)
+            .where(
+                repo.readmeSummarizedAt.isNull,
+                cursorCondition,
+            )
+            .orderBy(repo.starCount.desc(), repo.id.desc())
+            .limit(pageSize.toLong())
+            .fetch()
+            .map { GithubRepositoryDto.fromEntity(it) }
+    }
 }

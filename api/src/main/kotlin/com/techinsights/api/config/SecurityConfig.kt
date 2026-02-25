@@ -41,6 +41,7 @@ class SecurityConfig(
                     .requestMatchers("/api/v1/search/**").permitAll()
                     .requestMatchers("/api/v1/auth/**").permitAll()
                     .requestMatchers("/api/v1/recommendations/**").permitAll()
+                    .requestMatchers("/api/v1/github/**").permitAll()
                     .requestMatchers("/login/**", "/oauth2/**").permitAll()
                     .requestMatchers("/actuator/health").permitAll()
                     .anyRequest().authenticated()
