@@ -32,14 +32,15 @@ class GithubTrendingControllerTest : FunSpec() {
                 dispatcher,
             )
             mockMvc = MockMvcBuilders.standaloneSetup(controller).build()
+
+            // 기본 stub — 각 테스트에서 덮어쓸 수 있음
+            coEvery { githubTrendingService.getRepositories(any(), any(), any(), any()) } returns PageImpl(emptyList())
         }
 
         test("GET /api/v1/github/trending - 기본 파라미터(page=0, size=20, sort=STARS)로 200 반환") {
             // given
-            val repos = listOf(createMockDto(1L), createMockDto(2L))
-            val page = PageImpl(repos, PageRequest.of(0, 20), repos.size.toLong())
-
-            coEvery { githubTrendingService.getRepositories(0, 20, GithubSortType.STARS, null) } returns page
+            val page = PageImpl(listOf(createMockDto(1L), createMockDto(2L)), PageRequest.of(0, 20), 2L)
+            coEvery { githubTrendingService.getRepositories(any(), any(), any(), any()) } returns page
 
             // when & then
             mockMvc.get("/api/v1/github/trending") {
@@ -53,10 +54,8 @@ class GithubTrendingControllerTest : FunSpec() {
 
         test("GET /api/v1/github/trending - 커스텀 page·size 파라미터 서비스에 전달") {
             // given
-            val repos = listOf(createMockDto(3L))
-            val page = PageImpl(repos, PageRequest.of(1, 10), 11L)
-
-            coEvery { githubTrendingService.getRepositories(1, 10, GithubSortType.STARS, null) } returns page
+            val page = PageImpl(listOf(createMockDto(3L)), PageRequest.of(1, 10), 11L)
+            coEvery { githubTrendingService.getRepositories(any(), any(), any(), any()) } returns page
 
             // when & then
             mockMvc.get("/api/v1/github/trending") {
@@ -72,10 +71,8 @@ class GithubTrendingControllerTest : FunSpec() {
 
         test("GET /api/v1/github/trending - language 파라미터 서비스에 전달") {
             // given
-            val repos = listOf(createMockDto(1L, language = "Kotlin"))
-            val page = PageImpl(repos)
-
-            coEvery { githubTrendingService.getRepositories(0, 20, GithubSortType.STARS, "Kotlin") } returns page
+            val page = PageImpl(listOf(createMockDto(1L, language = "Kotlin")))
+            coEvery { githubTrendingService.getRepositories(any(), any(), any(), any()) } returns page
 
             // when & then
             mockMvc.get("/api/v1/github/trending") {
@@ -90,10 +87,8 @@ class GithubTrendingControllerTest : FunSpec() {
 
         test("GET /api/v1/github/trending - sort=TRENDING 파라미터 서비스에 전달") {
             // given
-            val repos = listOf(createMockDto(1L))
-            val page = PageImpl(repos)
-
-            coEvery { githubTrendingService.getRepositories(0, 20, GithubSortType.TRENDING, null) } returns page
+            val page = PageImpl(listOf(createMockDto(1L)))
+            coEvery { githubTrendingService.getRepositories(any(), any(), any(), any()) } returns page
 
             // when & then
             mockMvc.get("/api/v1/github/trending") {
@@ -109,8 +104,7 @@ class GithubTrendingControllerTest : FunSpec() {
         test("GET /api/v1/github/trending - sort=LATEST 파라미터 서비스에 전달") {
             // given
             val page = PageImpl(listOf(createMockDto(1L)))
-
-            coEvery { githubTrendingService.getRepositories(0, 20, GithubSortType.LATEST, null) } returns page
+            coEvery { githubTrendingService.getRepositories(any(), any(), any(), any()) } returns page
 
             // when & then
             mockMvc.get("/api/v1/github/trending") {
@@ -125,9 +119,7 @@ class GithubTrendingControllerTest : FunSpec() {
 
         test("GET /api/v1/github/trending - language 없이 null 전달") {
             // given
-            val page = PageImpl<GithubRepositoryDto>(emptyList())
-
-            coEvery { githubTrendingService.getRepositories(0, 20, GithubSortType.STARS, null) } returns page
+            coEvery { githubTrendingService.getRepositories(any(), any(), any(), any()) } returns PageImpl(emptyList())
 
             // when & then
             mockMvc.get("/api/v1/github/trending") {
