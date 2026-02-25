@@ -24,6 +24,21 @@ data class RateLimiterProperties(
     refreshPeriodSeconds = 60,
     timeoutSeconds = 30
   ),
+  val github: LimiterConfig = LimiterConfig(
+    limitForPeriod = 25,
+    refreshPeriodSeconds = 60,
+    timeoutSeconds = 30
+  ),
+  val geminiReadmeRpm: LimiterConfig = LimiterConfig(
+    limitForPeriod = 2,
+    refreshPeriodSeconds = 60,
+    timeoutSeconds = 60
+  ),
+  val geminiReadmeRpd: LimiterConfig = LimiterConfig(
+    limitForPeriod = 20,
+    refreshPeriodSeconds = 86400,
+    timeoutSeconds = 1
+  ),
   val crawler: CrawlerLimiterConfig = CrawlerLimiterConfig()
 ) {
 
