@@ -10,12 +10,14 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.supervisorScope
 import org.slf4j.LoggerFactory
+import org.springframework.batch.core.configuration.annotation.StepScope
 import org.springframework.batch.item.ItemReader
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Component
 import java.util.concurrent.ConcurrentHashMap
 
 @Component
+@StepScope
 class GithubRepoReader(
     private val fetchService: GithubTrendingFetchService,
     private val batchProperties: GithubBatchProperties,

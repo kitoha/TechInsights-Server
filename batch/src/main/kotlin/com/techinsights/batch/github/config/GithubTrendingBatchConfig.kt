@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.transaction.PlatformTransactionManager
 
 @Configuration
@@ -54,7 +55,7 @@ class GithubTrendingBatchConfig(
             .processor(githubRepoProcessor)
             .writer(githubRepoWriter)
             .faultTolerant()
-            .skip(Exception::class.java)
-            .skipLimit(50)
+            .skip(DataIntegrityViolationException::class.java)
+            .skipLimit(10)
             .build()
 }

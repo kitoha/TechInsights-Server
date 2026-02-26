@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
+import org.springframework.http.HttpMethod
 import org.springframework.security.config.http.SessionCreationPolicy
 import com.techinsights.api.auth.JwtAuthenticationFilter
 import org.springframework.security.web.SecurityFilterChain
@@ -41,7 +42,7 @@ class SecurityConfig(
                     .requestMatchers("/api/v1/search/**").permitAll()
                     .requestMatchers("/api/v1/auth/**").permitAll()
                     .requestMatchers("/api/v1/recommendations/**").permitAll()
-                    .requestMatchers("/api/v1/github/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/v1/github/**").permitAll()
                     .requestMatchers("/login/**", "/oauth2/**").permitAll()
                     .requestMatchers("/actuator/health").permitAll()
                     .anyRequest().authenticated()

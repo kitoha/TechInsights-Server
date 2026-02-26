@@ -46,7 +46,5 @@ class GithubReadmeSummaryJobConfig(
             .reader(unsummarizedRepoReader)
             .processor(githubReadmeFetchProcessor)
             .writer(githubReadmeBatchSummaryWriter)
-            .faultTolerant()
-            .skip(Exception::class.java).skipLimit(50)
             .build()
 }

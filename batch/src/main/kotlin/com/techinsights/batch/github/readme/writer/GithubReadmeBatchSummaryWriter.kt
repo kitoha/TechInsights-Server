@@ -39,9 +39,9 @@ class GithubReadmeBatchSummaryWriter(
             log.info("[ReadmeSummaryWriter] Updated ${successParams.size}/${items.size} readme summaries")
         }
 
-        val failedCount = results.count { !it.success }
+        val failedCount = results.count { !it.success || it.summary == null }
         if (failedCount > 0) {
-            log.warn("[ReadmeSummaryWriter] $failedCount/${items.size} summaries failed — will be retried in next run")
+            log.warn("[ReadmeSummaryWriter] $failedCount/${items.size} summaries failed (including success=true but summary=null) — will be retried in next run")
         }
     }
 

@@ -3,10 +3,12 @@ package com.techinsights.batch.github.readme.reader
 import com.techinsights.domain.dto.github.GithubRepositoryDto
 import com.techinsights.domain.repository.github.GithubRepositoryRepository
 import org.slf4j.LoggerFactory
+import org.springframework.batch.core.configuration.annotation.StepScope
 import org.springframework.batch.item.ItemReader
 import org.springframework.stereotype.Component
 
 @Component
+@StepScope
 class UnsummarizedRepoReader(
     private val repository: GithubRepositoryRepository,
     private val pageSize: Int = DEFAULT_PAGE_SIZE,
