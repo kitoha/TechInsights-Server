@@ -1,7 +1,7 @@
 package com.techinsights.domain.config.resilience
 
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.collections.shouldContain
 
 class ResilienceConfigTest : FunSpec({
 
@@ -10,28 +10,14 @@ class ResilienceConfigTest : FunSpec({
         circuitBreakerProperties = CircuitBreakerProperties()
     )
 
-    test("githubApi RateLimiter가 레지스트리에 등록된다") {
+    test("모든 RateLimiter가 레지스트리에 등록된다") {
         val registry = config.rateLimiterRegistry()
+        val registeredNames = registry.allRateLimiters.map { it.name }
 
-        registry.rateLimiter("githubApi").shouldNotBeNull()
-    }
-
-    test("geminiReadmeRpm RateLimiter가 레지스트리에 등록된다") {
-        val registry = config.rateLimiterRegistry()
-
-        registry.rateLimiter("geminiReadmeRpm").shouldNotBeNull()
-    }
-
-    test("geminiReadmeRpd RateLimiter가 레지스트리에 등록된다") {
-        val registry = config.rateLimiterRegistry()
-
-        registry.rateLimiter("geminiReadmeRpd").shouldNotBeNull()
-    }
-
-    test("기존 geminiBatchRpm, geminiBatchRpd RateLimiter가 유지된다") {
-        val registry = config.rateLimiterRegistry()
-
-        registry.rateLimiter("geminiBatchRpm").shouldNotBeNull()
-        registry.rateLimiter("geminiBatchRpd").shouldNotBeNull()
+        registeredNames shouldContain "githubApi"
+        registeredNames shouldContain "geminiReadmeRpm"
+        registeredNames shouldContain "geminiReadmeRpd"
+        registeredNames shouldContain "geminiBatchRpm"
+        registeredNames shouldContain "geminiBatchRpd"
     }
 })
