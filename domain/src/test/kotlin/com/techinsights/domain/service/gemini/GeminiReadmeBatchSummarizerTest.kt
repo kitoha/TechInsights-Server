@@ -106,6 +106,7 @@ class GeminiReadmeBatchSummarizerTest : FunSpec({
 
         verify(exactly = 1) { rpmLimiter.acquirePermission() }
         verify(exactly = 1) { rpdLimiter.acquirePermission() }
+        verify(exactly = 1) { circuitBreaker.executeCallable<Any>(any()) }
     }
 
     test("summarize()는 Circuit Breaker를 통해 Gemini API를 호출한다") {
