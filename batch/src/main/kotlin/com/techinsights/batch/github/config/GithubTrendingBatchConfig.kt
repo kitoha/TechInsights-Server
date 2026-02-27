@@ -40,10 +40,6 @@ class GithubTrendingBatchConfig(
         .start(step)
         .build()
 
-    /**
-     * 단일 스레드 Step — Reader 내부에서 supervisorScope로 병렬 fetch 후
-     * 버퍼에서 순차 소비하므로 @Synchronized / race condition 불필요.
-     */
     @Bean
     fun githubTrendingStep(): Step =
         StepBuilder(properties.stepName, jobRepository)

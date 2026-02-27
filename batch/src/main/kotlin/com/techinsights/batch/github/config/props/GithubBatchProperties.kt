@@ -11,10 +11,6 @@ data class GithubBatchProperties(
 ) {
     data class QueryConfig(val query: String)
 
-    /**
-     * 3개의 연도 구간으로 나눠 GitHub Search API 한계(최대 1000건/쿼리)를 우회.
-     * LocalDate.now().year 기반으로 매 호출 시 동적으로 생성된다.
-     */
     val queries: List<QueryConfig>
         get() {
             val year = LocalDate.now().year
