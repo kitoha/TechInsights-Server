@@ -24,15 +24,25 @@ class ResilienceConfig(
     val geminiBatchRpmConfig = createRateLimiterConfig(rateLimiterProperties.geminiBatchRpm)
     val geminiBatchRpdConfig = createRateLimiterConfig(rateLimiterProperties.geminiBatchRpd)
     val geminiEmbeddingConfig = createRateLimiterConfig(rateLimiterProperties.geminiEmbedding)
+    val githubConfig = createRateLimiterConfig(rateLimiterProperties.github)
+    val geminiReadmeRpmConfig = createRateLimiterConfig(rateLimiterProperties.geminiReadmeRpm)
+    val geminiReadmeRpdConfig = createRateLimiterConfig(rateLimiterProperties.geminiReadmeRpd)
     val ultraSafeConfig = createRateLimiterConfig(rateLimiterProperties.crawler.ultraSafe)
     val conservativeConfig = createRateLimiterConfig(rateLimiterProperties.crawler.conservative)
     val defaultConfig = createRateLimiterConfig(rateLimiterProperties.crawler.standard)
 
-    // 요약 관련 RateLimiter
+    // 게시글 요약 관련 RateLimiter
     registry.rateLimiter("geminiArticleSummarizer", geminiConfig)
     registry.rateLimiter("geminiBatchRpm", geminiBatchRpmConfig)
     registry.rateLimiter("geminiBatchRpd", geminiBatchRpdConfig)
     registry.rateLimiter("geminiEmbedding", geminiEmbeddingConfig)
+
+    // GitHub API RateLimiter
+    registry.rateLimiter("githubApi", githubConfig)
+
+    // README 요약 관련 RateLimiter
+    registry.rateLimiter("geminiReadmeRpm", geminiReadmeRpmConfig)
+    registry.rateLimiter("geminiReadmeRpd", geminiReadmeRpdConfig)
 
     // 크롤링 RateLimiter
     registry.addConfiguration("ultraSafe", ultraSafeConfig)
