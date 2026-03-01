@@ -21,8 +21,9 @@ batch:
   github-readme-summary:
     job-name: githubReadmeSummaryJob
     step-name: githubReadmeSummarizeStep
-    chunk-size: 150   # Gemini 요청 1회 당 처리할 레포 수.
-    page-size: 100    # DB에서 한 번에 읽어올 레포 수
+    chunk-size: 150        # Gemini 요청 1회 당 처리할 레포 수
+    page-size: 100         # DB에서 한 번에 읽어올 레포 수
+    max-items-per-run: 3000 # 1회 실행당 최대 처리 수 (RPD 20 × chunkSize 150)
 
 github:
   api:

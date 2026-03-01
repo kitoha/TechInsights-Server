@@ -23,6 +23,8 @@ class GithubTrendingFetchService(
                 .uri { uriBuilder ->
                     uriBuilder.path("/search/repositories")
                         .queryParam("q", query)
+                        .queryParam("sort", "stars")
+                        .queryParam("order", "desc")
                         .queryParam("per_page", props.perPage)
                         .queryParam("page", page)
                         .build()
