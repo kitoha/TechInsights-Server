@@ -60,6 +60,36 @@ class GithubReadmeFetchProcessorTest : FunSpec({
         result.shouldBeNull()
     }
 
+    test("description이 있으면 README가 없어도 ArticleInput을 반환한다") {
+        val error = Mono.error<String>(WebClientResponseException.create(404, "Not Found", org.springframework.http.HttpHeaders.EMPTY, ByteArray(0), null))
+        val result = buildProcessor(error).process(createDto("owner/no-readme-repo", description = "A great tool for developers"))
+
+        result.shouldNotBeNull()
+        result.content shouldBe "GitHub Description: A great tool for developers"
+    }
+
+    test("description과 README가 모두 있으면 combined content를 반환한다") {
+        val readmeContent = "# My Project\n\nThis is a test project."
+        val encoded = Base64.getEncoder().encodeToString(readmeContent.toByteArray())
+        val jsonResponse = """{"content":"$encoded","encoding":"base64"}"""
+
+        val result = buildProcessor(Mono.just(jsonResponse)).process(createDto("owner/repo", description = "Best project ever"))
+
+        result.shouldNotBeNull()
+        result.content shouldBe "GitHub Description: Best project ever\n\n$readmeContent"
+    }
+
+    test("description과 README 합산이 2000자를 초과하면 2000자로 잘린다") {
+        val longReadme = "B".repeat(3000)
+        val encoded = Base64.getEncoder().encodeToString(longReadme.toByteArray())
+        val jsonResponse = """{"content":"$encoded","encoding":"base64"}"""
+
+        val result = buildProcessor(Mono.just(jsonResponse)).process(createDto("owner/repo", description = "Short description"))
+
+        result.shouldNotBeNull()
+        result.content shouldHaveLength 2000
+    }
+
     test("기타 예외 발생 시 null을 반환한다") {
         val error = Mono.error<String>(RuntimeException("Network error"))
         val result = buildProcessor(error).process(createDto("owner/repo"))
@@ -87,11 +117,11 @@ class GithubReadmeFetchProcessorTest : FunSpec({
     }
 })
 
-private fun createDto(fullName: String) = GithubRepositoryDto(
+private fun createDto(fullName: String, description: String? = null) = GithubRepositoryDto(
     id = 1L,
     repoName = fullName.substringAfter("/"),
     fullName = fullName,
-    description = null,
+    description = description,
     htmlUrl = "https://github.com/$fullName",
     starCount = 1000L,
     forkCount = 100L,

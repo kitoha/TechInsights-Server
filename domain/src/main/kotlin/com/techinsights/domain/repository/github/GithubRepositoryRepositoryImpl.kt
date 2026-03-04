@@ -23,17 +23,17 @@ class GithubRepositoryRepositoryImpl(
     ): Page<GithubRepositoryDto> {
         val repo = QGithubRepository.githubRepository
 
-        val orderSpecifier: OrderSpecifier<*> = when (sortType) {
-            GithubSortType.STARS -> repo.starCount.desc()
-            GithubSortType.LATEST -> repo.pushedAt.desc()
-            GithubSortType.TRENDING -> repo.weeklyStarDelta.desc()
+        val orderSpecifiers: Array<OrderSpecifier<*>> = when (sortType) {
+            GithubSortType.STARS    -> arrayOf(repo.starCount.desc(), repo.id.desc())
+            GithubSortType.LATEST   -> arrayOf(repo.pushedAt.desc(), repo.id.desc())
+            GithubSortType.TRENDING -> arrayOf(repo.weeklyStarDelta.desc(), repo.starCount.desc(), repo.id.desc())
         }
 
         val languageCondition = language?.let { repo.primaryLanguage.eq(it) }
 
         val results = queryFactory.selectFrom(repo)
             .where(languageCondition)
-            .orderBy(orderSpecifier)
+            .orderBy(*orderSpecifiers)
             .offset(pageable.offset)
             .limit(pageable.pageSize.toLong())
             .fetch()

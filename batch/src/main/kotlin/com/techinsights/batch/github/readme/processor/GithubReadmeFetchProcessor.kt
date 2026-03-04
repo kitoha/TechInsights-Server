@@ -19,6 +19,30 @@ class GithubReadmeFetchProcessor(
     private val mapper = ObjectMapper()
 
     override fun process(item: GithubRepositoryDto): ArticleInput? {
+        val cleanedReadme = fetchAndCleanReadme(item)
+
+        val contentParts = buildList {
+            item.description?.takeIf { it.isNotBlank() }?.let {
+                add("GitHub Description: $it")
+            }
+            cleanedReadme?.takeIf { it.isNotBlank() }?.let {
+                add(it)
+            }
+        }
+
+        if (contentParts.isEmpty()) {
+            log.debug("[ReadmeFetch] No meaningful content for ${item.fullName}, skipping")
+            return null
+        }
+
+        return ArticleInput(
+            id = item.fullName,
+            title = item.repoName,
+            content = contentParts.joinToString("\n\n").take(README_MAX_CHARS),
+        )
+    }
+
+    private fun fetchAndCleanReadme(item: GithubRepositoryDto): String? {
         return try {
             val jsonBody = webClient.get()
                 .uri("/repos/${item.fullName}/readme")
@@ -33,23 +57,12 @@ class GithubReadmeFetchProcessor(
             val tree = mapper.readTree(jsonBody)
             val encodedContent = tree.path("content").asText("")
 
-            if (encodedContent.isEmpty()) {
-                log.debug("[ReadmeFetch] Empty README content for ${item.fullName}, skipping")
-                return null
-            }
+            if (encodedContent.isEmpty()) return null
 
             val decodedContent = decodeBase64(encodedContent)
+            if (decodedContent.isBlank()) return null
 
-            if (decodedContent.isBlank()) {
-                log.debug("[ReadmeFetch] Empty README for ${item.fullName}, skipping")
-                return null
-            }
-
-            ArticleInput(
-                id = item.fullName,
-                title = item.repoName,
-                content = decodedContent.take(README_MAX_CHARS),
-            )
+            cleanReadmeContent(decodedContent).takeIf { it.isNotBlank() }
         } catch (e: WebClientResponseException.NotFound) {
             log.debug("[ReadmeFetch] No README for ${item.fullName}")
             null
@@ -65,8 +78,22 @@ class GithubReadmeFetchProcessor(
         return String(decoded, Charsets.UTF_8)
     }
 
+    private fun cleanReadmeContent(raw: String): String {
+        return raw
+            .replace(MARKDOWN_BADGE_REGEX, "")
+            .replace(MARKDOWN_IMAGE_REGEX, "")
+            .replace(HTML_TAG_REGEX, " ")
+            .replace(MULTI_NEWLINE_REGEX, "\n\n")
+            .trim()
+            .take(README_MAX_CHARS)
+    }
+
     companion object {
         private val log = LoggerFactory.getLogger(GithubReadmeFetchProcessor::class.java)
         private const val README_MAX_CHARS = 2000
+        private val MARKDOWN_BADGE_REGEX = Regex("""\[!\[[^\]]*]\([^)]*\)]\([^)]*\)""")
+        private val MARKDOWN_IMAGE_REGEX = Regex("""!\[[^\]]*]\([^)]*\)""")
+        private val HTML_TAG_REGEX = Regex("""<[^>]+>""")
+        private val MULTI_NEWLINE_REGEX = Regex("""\n{3,}""")
     }
 }

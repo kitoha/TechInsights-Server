@@ -39,9 +39,17 @@ class GithubReadmeBatchSummaryWriter(
             log.info("[ReadmeSummaryWriter] Updated ${successParams.size}/${items.size} readme summaries")
         }
 
-        val failedCount = results.count { !it.success || it.summary == null }
-        if (failedCount > 0) {
-            log.warn("[ReadmeSummaryWriter] $failedCount/${items.size} summaries failed (including success=true but summary=null) — will be retried in next run")
+        val failedParams = results
+            .filter { !it.success || it.summary == null }
+            .map { result ->
+                MapSqlParameterSource()
+                    .addValue("fullName", result.id)
+            }
+            .toTypedArray()
+
+        if (failedParams.isNotEmpty()) {
+            jdbcTemplate.batchUpdate(MARK_FAILED_SQL, failedParams)
+            log.warn("[ReadmeSummaryWriter] ${failedParams.size}/${items.size} summaries failed, marked readme_summarized_at to prevent infinite retry")
         }
     }
 
@@ -53,6 +61,13 @@ class GithubReadmeBatchSummaryWriter(
             SET readme_summary = :summary,
                 readme_summarized_at = NOW()
             WHERE full_name = :fullName
+        """
+
+        private const val MARK_FAILED_SQL = """
+            UPDATE github_repositories
+            SET readme_summarized_at = NOW()
+            WHERE full_name = :fullName
+              AND readme_summarized_at IS NULL
         """
     }
 }
