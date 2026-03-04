@@ -19,4 +19,15 @@ interface GithubRepositoryRepository {
         afterStarCount: Long?,
         afterId: Long?,
     ): List<GithubRepositoryDto>
+
+    fun findUnembedded(
+        pageSize: Int,
+        afterStarCount: Long?,
+        afterId: Long?,
+    ): List<GithubRepositoryDto>
+
+    fun findSimilarRepositories(
+        targetVector: String,
+        limit: Long,
+    ): List<GithubRepositoryWithDistance>
 }

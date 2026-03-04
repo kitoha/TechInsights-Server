@@ -78,4 +78,35 @@ class GithubRepositoryRepositoryImpl(
             .fetch()
             .map { GithubRepositoryDto.fromEntity(it) }
     }
+
+    override fun findUnembedded(
+        pageSize: Int,
+        afterStarCount: Long?,
+        afterId: Long?,
+    ): List<GithubRepositoryDto> {
+        val repo = QGithubRepository.githubRepository
+
+        val cursorCondition = if (afterStarCount != null && afterId != null) {
+            repo.starCount.lt(afterStarCount)
+                .or(repo.starCount.eq(afterStarCount).and(repo.id.lt(afterId)))
+        } else null
+
+        return queryFactory.selectFrom(repo)
+            .where(
+                repo.readmeSummarizedAt.isNotNull,   // 요약이 완료된 것만
+                repo.readmeSummary.isNotNull,         // 실제 summary가 있는 것만 (실패 마킹 제외)
+                repo.readmeEmbeddedAt.isNull,         // 아직 임베딩 안 된 것
+                cursorCondition,
+            )
+            .orderBy(repo.starCount.desc(), repo.id.desc())
+            .limit(pageSize.toLong())
+            .fetch()
+            .map { GithubRepositoryDto.fromEntity(it) }
+    }
+
+    override fun findSimilarRepositories(
+        targetVector: String,
+        limit: Long,
+    ): List<GithubRepositoryWithDistance> =
+        githubRepositoryJpaRepository.findSimilarRepositories(targetVector, limit)
 }

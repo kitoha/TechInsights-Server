@@ -30,17 +30,16 @@ class GithubReadmeBatchSummaryWriterTest : FunSpec({
         val item1 = ArticleInput("owner/repo1", "repo1", "content1")
         val item2 = ArticleInput("owner/repo2", "repo2", "content2")
 
-        val results = flowOf(
+        every { summarizer.summarize(any()) } returns flowOf(
             SummaryResultWithId(id = "owner/repo1", success = true, summary = "요약 1"),
             SummaryResultWithId(id = "owner/repo2", success = false, error = "요약 실패"),
         )
-        every { summarizer.summarize(any()) } returns results
 
         val writer = GithubReadmeBatchSummaryWriter(summarizer, jdbcTemplate)
         writer.write(Chunk(listOf(item1, item2)))
 
         val capturedParams = mutableListOf<MapSqlParameterSource>()
-        verify {
+        verify(exactly = 2) {
             jdbcTemplate.batchUpdate(
                 any<String>(),
                 withArg<Array<MapSqlParameterSource>> { params ->
@@ -49,12 +48,13 @@ class GithubReadmeBatchSummaryWriterTest : FunSpec({
             )
         }
 
-        capturedParams.size shouldBe 1
-        capturedParams[0].getValue("fullName") shouldBe "owner/repo1"
-        capturedParams[0].getValue("summary") shouldBe "요약 1"
+        val successParams = capturedParams.filter { it.hasValue("summary") }
+        successParams.size shouldBe 1
+        successParams[0].getValue("fullName") shouldBe "owner/repo1"
+        successParams[0].getValue("summary") shouldBe "요약 1"
     }
 
-    test("모든 요약이 실패하면 DB를 업데이트하지 않는다") {
+    test("모든 요약이 실패하면 실패 마킹만 한다") {
         val item = ArticleInput("owner/repo", "repo", "content")
 
         every { summarizer.summarize(any()) } returns flowOf(
@@ -64,7 +64,19 @@ class GithubReadmeBatchSummaryWriterTest : FunSpec({
         val writer = GithubReadmeBatchSummaryWriter(summarizer, jdbcTemplate)
         writer.write(Chunk(listOf(item)))
 
-        verify(exactly = 0) { jdbcTemplate.batchUpdate(any<String>(), any<Array<MapSqlParameterSource>>()) }
+        // success UPDATE는 호출되지 않고, MARK_FAILED만 1번 호출
+        val capturedParams = mutableListOf<MapSqlParameterSource>()
+        verify(exactly = 1) {
+            jdbcTemplate.batchUpdate(
+                any<String>(),
+                withArg<Array<MapSqlParameterSource>> { params ->
+                    capturedParams.addAll(params.toList())
+                }
+            )
+        }
+        capturedParams.size shouldBe 1
+        capturedParams[0].getValue("fullName") shouldBe "owner/repo"
+        capturedParams[0].hasValue("summary") shouldBe false
     }
 
     test("summarizer에 청크의 모든 아이템을 전달한다") {

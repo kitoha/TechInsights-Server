@@ -39,7 +39,7 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
 
             every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
             every { query.where(isNull<BooleanExpression>()) } returns query
-            every { query.orderBy(any()) } returns query
+            every { query.orderBy(any(), any()) } returns query
             every { query.offset(0L) } returns query
             every { query.limit(20L) } returns query
             every { query.fetch() } returns listOf(entity1, entity2)
@@ -62,7 +62,7 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
 
             every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
             every { query.where(any<BooleanExpression>()) } returns query
-            every { query.orderBy(any()) } returns query
+            every { query.orderBy(any(), any()) } returns query
             every { query.offset(0L) } returns query
             every { query.limit(20L) } returns query
             every { query.fetch() } returns listOf(entity1)
@@ -86,7 +86,7 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
 
             every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
             every { query.where(isNull<BooleanExpression>()) } returns query
-            every { query.orderBy(any()) } returns query
+            every { query.orderBy(any(), any()) } returns query
             every { query.offset(0L) } returns query
             every { query.limit(10L) } returns query
             every { query.fetch() } returns listOf(entity1)
@@ -99,7 +99,7 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             val result = repository.findRepositories(pageable, GithubSortType.LATEST, null)
 
             result.content shouldHaveSize 1
-            verify(exactly = 1) { query.orderBy(any()) }
+            verify(exactly = 1) { query.orderBy(any(), any()) }
         }
 
         test("TRENDING 정렬로 조회하면 orderBy가 호출된다") {
@@ -109,7 +109,7 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
 
             every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
             every { query.where(isNull<BooleanExpression>()) } returns query
-            every { query.orderBy(any()) } returns query
+            every { query.orderBy(any(), any(), any()) } returns query
             every { query.offset(0L) } returns query
             every { query.limit(10L) } returns query
             every { query.fetch() } returns listOf(entity1)
@@ -122,7 +122,7 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             val result = repository.findRepositories(pageable, GithubSortType.TRENDING, null)
 
             result.content shouldHaveSize 1
-            verify(exactly = 1) { query.orderBy(any()) }
+            verify(exactly = 1) { query.orderBy(any(), any(), any()) }
         }
 
         test("결과가 없으면 totalElements=0인 빈 Page를 반환한다") {
@@ -132,7 +132,7 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
 
             every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
             every { query.where(isNull<BooleanExpression>()) } returns query
-            every { query.orderBy(any()) } returns query
+            every { query.orderBy(any(), any()) } returns query
             every { query.offset(0L) } returns query
             every { query.limit(20L) } returns query
             every { query.fetch() } returns emptyList()
@@ -155,7 +155,7 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
 
             every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
             every { query.where(isNull<BooleanExpression>()) } returns query
-            every { query.orderBy(any()) } returns query
+            every { query.orderBy(any(), any()) } returns query
             every { query.offset(10L) } returns query
             every { query.limit(5L) } returns query
             every { query.fetch() } returns emptyList()
@@ -276,6 +276,100 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             val result = repository.findUnsummarized(pageSize = 10, afterStarCount = null, afterId = null)
 
             result[0].topics shouldBe listOf("kotlin", "spring", "batch")
+        }
+    }
+
+    context("findUnembedded") {
+
+        test("cursor 없이 호출하면 요약은 됐지만 아직 임베딩 안 된 레포를 반환한다") {
+            val query = mockk<JPAQuery<GithubRepository>>()
+
+            every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
+            every { query.where(any<BooleanExpression>(), any<BooleanExpression>(), any<BooleanExpression>(), isNull<BooleanExpression>()) } returns query
+            every { query.orderBy(any(), any()) } returns query
+            every { query.limit(10L) } returns query
+            every { query.fetch() } returns listOf(entity1, entity2)
+
+            val result = repository.findUnembedded(pageSize = 10, afterStarCount = null, afterId = null)
+
+            result shouldHaveSize 2
+        }
+
+        test("cursor를 지정하면 해당 cursor 이후 결과를 반환한다") {
+            val query = mockk<JPAQuery<GithubRepository>>()
+
+            every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
+            every { query.where(any<BooleanExpression>(), any<BooleanExpression>(), any<BooleanExpression>(), any<BooleanExpression>()) } returns query
+            every { query.orderBy(any(), any()) } returns query
+            every { query.limit(10L) } returns query
+            every { query.fetch() } returns listOf(entity2)
+
+            val result = repository.findUnembedded(pageSize = 10, afterStarCount = 2000L, afterId = 1L)
+
+            result shouldHaveSize 1
+            result[0].fullName shouldBe "owner/repo2"
+        }
+
+        test("결과가 없으면 빈 리스트를 반환한다") {
+            val query = mockk<JPAQuery<GithubRepository>>()
+
+            every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
+            every { query.where(any<BooleanExpression>(), any<BooleanExpression>(), any<BooleanExpression>(), isNull<BooleanExpression>()) } returns query
+            every { query.orderBy(any(), any()) } returns query
+            every { query.limit(10L) } returns query
+            every { query.fetch() } returns emptyList()
+
+            val result = repository.findUnembedded(pageSize = 10, afterStarCount = null, afterId = null)
+
+            result.shouldBeEmpty()
+        }
+
+        test("pageSize가 limit()에 정확히 전달된다") {
+            val query = mockk<JPAQuery<GithubRepository>>()
+
+            every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
+            every { query.where(any<BooleanExpression>(), any<BooleanExpression>(), any<BooleanExpression>(), isNull<BooleanExpression>()) } returns query
+            every { query.orderBy(any(), any()) } returns query
+            every { query.limit(7L) } returns query
+            every { query.fetch() } returns emptyList()
+
+            repository.findUnembedded(pageSize = 7, afterStarCount = null, afterId = null)
+
+            verify { query.limit(7L) }
+        }
+    }
+
+    context("findSimilarRepositories") {
+
+        test("targetVector와 limit을 JpaRepository로 위임하여 결과를 반환한다") {
+            val projection = mockk<GithubRepositoryWithDistance> {
+                every { fullName } returns "owner/repo1"
+                every { repoName } returns "repo1"
+                every { description } returns "desc"
+                every { readmeSummary } returns "summary"
+                every { primaryLanguage } returns "Kotlin"
+                every { starCount } returns 1000L
+                every { ownerName } returns "owner"
+                every { ownerAvatarUrl } returns null
+                every { topics } returns "kotlin,test"
+                every { htmlUrl } returns "https://github.com/owner/repo1"
+                every { distance } returns 0.15
+            }
+            every { jpaRepository.findSimilarRepositories("[0.1,0.2]", 5L) } returns listOf(projection)
+
+            val result = repository.findSimilarRepositories("[0.1,0.2]", 5L)
+
+            result shouldHaveSize 1
+            result[0].fullName shouldBe "owner/repo1"
+            result[0].distance shouldBe 0.15
+        }
+
+        test("결과가 없으면 빈 리스트를 반환한다") {
+            every { jpaRepository.findSimilarRepositories(any(), any()) } returns emptyList()
+
+            val result = repository.findSimilarRepositories("[0.1,0.2]", 5L)
+
+            result.shouldBeEmpty()
         }
     }
 })
