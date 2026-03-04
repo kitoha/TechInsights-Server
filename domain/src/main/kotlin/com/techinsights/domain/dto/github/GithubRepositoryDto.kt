@@ -20,6 +20,7 @@ data class GithubRepositoryDto(
     val weeklyStarDelta: Long,
     val readmeSummary: String?,
     val readmeSummarizedAt: LocalDateTime? = null,
+    val readmeEmbeddedAt: LocalDateTime? = null,
 ) {
     companion object {
         fun fromEntity(entity: GithubRepository): GithubRepositoryDto {
@@ -44,6 +45,7 @@ data class GithubRepositoryDto(
                 weeklyStarDelta = entity.weeklyStarDelta,
                 readmeSummary = entity.readmeSummary,
                 readmeSummarizedAt = entity.readmeSummarizedAt,
+                readmeEmbeddedAt = entity.readmeEmbeddedAt,
             )
         }
     }

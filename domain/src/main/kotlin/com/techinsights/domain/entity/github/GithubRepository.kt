@@ -5,6 +5,9 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import org.hibernate.annotations.Array
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 import java.time.LocalDateTime
 
 @Entity
@@ -63,4 +66,12 @@ class GithubRepository(
 
     @Column(name = "readme_summarized_at")
     var readmeSummarizedAt: LocalDateTime? = null,
+
+    @JdbcTypeCode(SqlTypes.VECTOR)
+    @Array(length = 3072)
+    @Column(name = "readme_embedding_vector")
+    var readmeEmbeddingVector: FloatArray? = null,
+
+    @Column(name = "readme_embedded_at")
+    var readmeEmbeddedAt: LocalDateTime? = null,
 ) : BaseEntity()
