@@ -21,7 +21,7 @@ class EmbeddingServiceImpl(
 
       val embedContentConfig = buildEmbedConfig()
       val response = geminiClient.models.embedContent(modelName, combinedInput, embedContentConfig)
-      
+
       extractEmbeddingVector(response)
     }
   }
@@ -40,12 +40,27 @@ class EmbeddingServiceImpl(
     modelType: GeminiModelType
   ): List<EmbeddingService.EmbeddingResult> {
     if (requests.isEmpty()) return emptyList()
-    
+
     val modelName = modelType.get()
     val embedContentConfig = buildEmbedConfig()
 
     return requests.map { request ->
       generateSingleEmbeddingWithRateLimit(request, modelName, embedContentConfig)
+    }
+  }
+
+  override fun batchEmbedTexts(
+    promptStrings: List<String>,
+    modelType: GeminiModelType
+  ): List<List<Float>> {
+    if (promptStrings.isEmpty()) return emptyList()
+
+    return rateLimiter.executeSupplier {
+      val modelName = modelType.get()
+      val config = buildEmbedConfig()
+      val response = geminiClient.models.embedContent(modelName, promptStrings, config)
+      val embeddings = response.embeddings().orElse(emptyList())
+      embeddings.map { it.values().orElse(emptyList()) }
     }
   }
 
@@ -59,7 +74,7 @@ class EmbeddingServiceImpl(
         val combinedInput = request.toPromptString()
         val response = geminiClient.models.embedContent(modelName, combinedInput, config)
         val vector = extractEmbeddingVector(response)
-        
+
         if (vector.isNotEmpty()) {
           EmbeddingService.EmbeddingResult(
             request = request,

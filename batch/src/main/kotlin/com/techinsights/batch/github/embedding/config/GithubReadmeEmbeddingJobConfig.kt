@@ -2,7 +2,7 @@ package com.techinsights.batch.github.embedding.config
 
 import com.techinsights.batch.common.listener.LoggingJobExecutionListener
 import com.techinsights.batch.github.embedding.config.props.GithubEmbeddingBatchProperties
-import com.techinsights.batch.github.embedding.dto.GithubEmbeddingResultDto
+import com.techinsights.batch.github.embedding.dto.GithubEmbeddingRequestDto
 import com.techinsights.batch.github.embedding.processor.GithubReadmeEmbeddingProcessor
 import com.techinsights.batch.github.embedding.reader.UnembeddedRepoReader
 import com.techinsights.batch.github.embedding.writer.GithubReadmeEmbeddingWriter
@@ -42,7 +42,7 @@ class GithubReadmeEmbeddingJobConfig(
     @Bean("githubReadmeEmbeddingStep")
     fun githubReadmeEmbeddingStep(): Step =
         StepBuilder(properties.stepName, jobRepository)
-            .chunk<GithubRepositoryDto, GithubEmbeddingResultDto>(properties.chunkSize, transactionManager)
+            .chunk<GithubRepositoryDto, GithubEmbeddingRequestDto>(properties.chunkSize, transactionManager)
             .reader(unembeddedRepoReader)
             .processor(githubReadmeEmbeddingProcessor)
             .writer(githubReadmeEmbeddingWriter)

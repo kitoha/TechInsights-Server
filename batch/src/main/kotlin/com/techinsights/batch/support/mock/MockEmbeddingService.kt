@@ -69,4 +69,14 @@ class MockEmbeddingService : EmbeddingService {
 
         return results
     }
+
+    override fun batchEmbedTexts(
+        promptStrings: List<String>,
+        modelType: GeminiModelType
+    ): List<List<Float>> {
+        Thread.sleep(API_RESPONSE_TIME_MS + (promptStrings.size * 10))
+        return promptStrings.map {
+            List(EMBEDDING_DIMENSION) { index -> (index.toFloat() / EMBEDDING_DIMENSION) }
+        }
+    }
 }
