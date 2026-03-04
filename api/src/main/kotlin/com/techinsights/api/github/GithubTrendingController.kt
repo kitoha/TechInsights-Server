@@ -2,9 +2,12 @@ package com.techinsights.api.github
 
 import com.techinsights.api.post.PageResponse
 import com.techinsights.domain.enums.GithubSortType
+import com.techinsights.domain.service.github.GithubSemanticSearchService
 import com.techinsights.domain.service.github.GithubTrendingService
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
+import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Size
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.springframework.beans.factory.annotation.Qualifier
@@ -18,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController
 @Validated
 class GithubTrendingController(
     private val githubTrendingService: GithubTrendingService,
+    private val githubSemanticSearchService: GithubSemanticSearchService,
     @param:Qualifier("ioDispatcher") private val ioDispatcher: CoroutineDispatcher,
 ) {
 
@@ -39,5 +43,29 @@ class GithubTrendingController(
                 totalPages = result.totalPages,
             )
         )
+    }
+
+    @GetMapping("/api/v1/github/search")
+    suspend fun searchRepos(
+        @RequestParam @NotBlank(message = "query must not be blank") @Size(max = MAX_QUERY_LENGTH) query: String,
+        @RequestParam(defaultValue = "10") @Min(1) @Max(20) size: Int,
+    ): ResponseEntity<GithubSemanticSearchResponse> = withContext(ioDispatcher) {
+        val trimmedQuery = query.trim()
+        val startTime = System.currentTimeMillis()
+        val results = githubSemanticSearchService.search(trimmedQuery, size)
+        val processingTimeMs = System.currentTimeMillis() - startTime
+
+        ResponseEntity.ok(
+            GithubSemanticSearchResponse(
+                query = trimmedQuery,
+                results = results,
+                totalReturned = results.size,
+                processingTimeMs = processingTimeMs,
+            )
+        )
+    }
+
+    companion object {
+        private const val MAX_QUERY_LENGTH = 500
     }
 }

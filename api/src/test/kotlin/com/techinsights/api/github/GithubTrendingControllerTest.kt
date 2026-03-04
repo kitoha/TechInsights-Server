@@ -2,6 +2,7 @@ package com.techinsights.api.github
 
 import com.techinsights.domain.dto.github.GithubRepositoryDto
 import com.techinsights.domain.enums.GithubSortType
+import com.techinsights.domain.service.github.GithubSemanticSearchService
 import com.techinsights.domain.service.github.GithubTrendingService
 import io.kotest.core.spec.style.FunSpec
 import io.mockk.clearAllMocks
@@ -21,6 +22,7 @@ class GithubTrendingControllerTest : FunSpec() {
 
     private lateinit var mockMvc: MockMvc
     private val githubTrendingService = mockk<GithubTrendingService>()
+    private val githubSemanticSearchService = mockk<GithubSemanticSearchService>(relaxed = true)
     private val dispatcher = Dispatchers.IO
 
     init {
@@ -28,8 +30,9 @@ class GithubTrendingControllerTest : FunSpec() {
             clearAllMocks()
 
             val controller = GithubTrendingController(
-                githubTrendingService,
-                dispatcher,
+                githubTrendingService = githubTrendingService,
+                githubSemanticSearchService = githubSemanticSearchService,
+                ioDispatcher = dispatcher,
             )
             mockMvc = MockMvcBuilders.standaloneSetup(controller).build()
 
