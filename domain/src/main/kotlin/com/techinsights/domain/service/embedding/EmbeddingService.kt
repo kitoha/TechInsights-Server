@@ -9,7 +9,9 @@ interface EmbeddingService {
     fun generateEmbeddingBatch(requests: List<EmbeddingRequest>, modelType: GeminiModelType): List<EmbeddingResult>
 
     fun generateQuestionEmbedding(question: String): List<Float>
-    
+
+    fun batchEmbedTexts(promptStrings: List<String>, modelType: GeminiModelType): List<List<Float>>
+
     data class EmbeddingResult(
         val request: EmbeddingRequest,
         val vector: List<Float>,
