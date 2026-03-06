@@ -17,13 +17,10 @@ class PostLikeSaveHelper(
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun saveIfAbsent(postLike: PostLike): Boolean {
         return try {
-            postLikeRepository.save(postLike)
+            postLikeRepository.saveAndFlush(postLike)
             true
         } catch (e: DataIntegrityViolationException) {
-            log.info(
-                "Concurrent like detected (idempotent): postId={}, userId={}, ip={}",
-                postLike.postId, postLike.userId, postLike.ipAddress
-            )
+            log.info("Concurrent like detected (idempotent): postId={}", postLike.postId)
             false
         }
     }

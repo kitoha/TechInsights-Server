@@ -25,12 +25,12 @@ class PostLikeSaveHelperTest : FunSpec({
             userId = 100L,
             ipAddress = "127.0.0.1"
         )
-        every { postLikeRepository.save(postLike) } returns postLike
+        every { postLikeRepository.saveAndFlush(postLike) } returns postLike
 
         val result = postLikeSaveHelper.saveIfAbsent(postLike)
 
         result shouldBe true
-        verify(exactly = 1) { postLikeRepository.save(postLike) }
+        verify(exactly = 1) { postLikeRepository.saveAndFlush(postLike) }
     }
 
     test("saveIfAbsent - DataIntegrityViolationException 발생 시 false 반환 (동시 요청 중복)") {
@@ -40,12 +40,12 @@ class PostLikeSaveHelperTest : FunSpec({
             userId = 100L,
             ipAddress = "127.0.0.1"
         )
-        every { postLikeRepository.save(postLike) } throws DataIntegrityViolationException("Duplicate key")
+        every { postLikeRepository.saveAndFlush(postLike) } throws DataIntegrityViolationException("Duplicate key")
 
         val result = postLikeSaveHelper.saveIfAbsent(postLike)
 
         result shouldBe false
-        verify(exactly = 1) { postLikeRepository.save(postLike) }
+        verify(exactly = 1) { postLikeRepository.saveAndFlush(postLike) }
     }
 
     test("saveIfAbsent - 익명 유저 (userId null) 저장 성공 시 true 반환") {
@@ -55,12 +55,12 @@ class PostLikeSaveHelperTest : FunSpec({
             userId = null,
             ipAddress = "192.168.0.1"
         )
-        every { postLikeRepository.save(postLike) } returns postLike
+        every { postLikeRepository.saveAndFlush(postLike) } returns postLike
 
         val result = postLikeSaveHelper.saveIfAbsent(postLike)
 
         result shouldBe true
-        verify(exactly = 1) { postLikeRepository.save(postLike) }
+        verify(exactly = 1) { postLikeRepository.saveAndFlush(postLike) }
     }
 
     test("saveIfAbsent - 익명 유저 DataIntegrityViolationException 발생 시 false 반환") {
@@ -70,7 +70,7 @@ class PostLikeSaveHelperTest : FunSpec({
             userId = null,
             ipAddress = "192.168.0.1"
         )
-        every { postLikeRepository.save(postLike) } throws DataIntegrityViolationException("Duplicate key")
+        every { postLikeRepository.saveAndFlush(postLike) } throws DataIntegrityViolationException("Duplicate key")
 
         val result = postLikeSaveHelper.saveIfAbsent(postLike)
 
