@@ -7,18 +7,15 @@ import com.techinsights.domain.repository.post.PostLikeRepository
 import com.techinsights.domain.repository.post.PostRepository
 import com.techinsights.domain.utils.Tsid
 import com.techinsights.domain.utils.decode
-import org.slf4j.LoggerFactory
-import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
 class PostLikeService(
     private val postLikeRepository: PostLikeRepository,
-    private val postRepository: PostRepository
+    private val postRepository: PostRepository,
+    private val postLikeSaveHelper: PostLikeSaveHelper,
 ) {
-    private val log = LoggerFactory.getLogger(PostLikeService::class.java)
-
     @Transactional
     fun toggleLike(postId: String, requester: Requester): Boolean {
         val postIdLong = postId.decode()
@@ -26,9 +23,9 @@ class PostLikeService(
         if (!postRepository.existsById(postIdLong)) {
             throw PostNotFoundException("Post not found: $postId")
         }
-        
+
         val existingLike = findExistingLike(postIdLong, requester)
-        
+
         return if (existingLike != null) {
             handleUnlike(postIdLong, requester)
             false
@@ -49,7 +46,7 @@ class PostLikeService(
             is Requester.Authenticated -> postLikeRepository.deleteByPostIdAndUserId(postId, requester.userId)
             is Requester.Anonymous -> postLikeRepository.deleteAnonymousByPostIdAndIpAddress(postId, requester.ip)
         }
-        
+
         if (deleted > 0L) {
             postRepository.decrementLikeCount(postId)
         }
@@ -63,21 +60,10 @@ class PostLikeService(
             ipAddress = requester.ip
         )
 
-        val saved = saveLikeIfAbsent(newLike)
+        val saved = postLikeSaveHelper.saveIfAbsent(newLike)
         if (saved) {
             postRepository.incrementLikeCount(postId)
         }
         return saved
-    }
-
-    private fun saveLikeIfAbsent(postLike: PostLike): Boolean {
-        return try {
-            postLikeRepository.save(postLike)
-            true
-        } catch (e: DataIntegrityViolationException) {
-            log.info("Concurrent like detected (idempotent): postId={}, userId={}, ip={}", 
-                postLike.postId, postLike.userId, postLike.ipAddress)
-            false
-        }
     }
 }
