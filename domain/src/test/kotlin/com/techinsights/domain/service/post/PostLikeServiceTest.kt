@@ -9,19 +9,19 @@ import com.techinsights.domain.utils.Tsid
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import org.springframework.dao.DataIntegrityViolationException
-
 class PostLikeServiceTest : FunSpec({
 
     val postLikeRepository = mockk<PostLikeRepository>()
     val postRepository = mockk<PostRepository>()
-    val postLikeService = PostLikeService(postLikeRepository, postRepository)
+    val postLikeSaveHelper = mockk<PostLikeSaveHelper>()
+    val postLikeService = PostLikeService(postLikeRepository, postRepository, postLikeSaveHelper)
 
     beforeTest {
-        io.mockk.clearAllMocks()
+        clearAllMocks()
     }
 
     test("toggleLike - Post Not Found") {
@@ -45,13 +45,13 @@ class PostLikeServiceTest : FunSpec({
 
         every { postRepository.existsById(any()) } returns true
         every { postLikeRepository.findByPostIdAndUserId(any(), userId) } returns null
-        every { postLikeRepository.save(any()) } returns mockk()
+        every { postLikeSaveHelper.saveIfAbsent(any()) } returns true
         every { postRepository.incrementLikeCount(any()) } returns Unit
 
         val result = postLikeService.toggleLike(postId, requester)
 
         result shouldBe true
-        verify(exactly = 1) { postLikeRepository.save(any()) }
+        verify(exactly = 1) { postLikeSaveHelper.saveIfAbsent(any()) }
         verify(exactly = 1) { postRepository.incrementLikeCount(any()) }
     }
 
@@ -84,13 +84,13 @@ class PostLikeServiceTest : FunSpec({
 
         every { postRepository.existsById(any()) } returns true
         every { postLikeRepository.findAnonymousByPostIdAndIpAddress(postId, ipAddress) } returns null
-        every { postLikeRepository.save(any()) } returns mockk()
+        every { postLikeSaveHelper.saveIfAbsent(any()) } returns true
         every { postRepository.incrementLikeCount(postId) } returns Unit
 
         val result = postLikeService.toggleLike(postIdStr, requester)
 
         result shouldBe true
-        verify(exactly = 1) { postLikeRepository.save(any()) }
+        verify(exactly = 1) { postLikeSaveHelper.saveIfAbsent(any()) }
         verify(exactly = 1) { postRepository.incrementLikeCount(postId) }
     }
 
@@ -124,14 +124,13 @@ class PostLikeServiceTest : FunSpec({
         every { postRepository.existsById(any()) } returns true
         every { postLikeRepository.findByPostIdAndUserId(postId, 101L) } returns null
         every { postLikeRepository.findByPostIdAndUserId(postId, 102L) } returns null
-        every { postLikeRepository.save(any()) } returns mockk()
+        every { postLikeSaveHelper.saveIfAbsent(any()) } returns true
         every { postRepository.incrementLikeCount(postId) } returns Unit
 
         postLikeService.toggleLike(postIdStr, userA) shouldBe true
-
         postLikeService.toggleLike(postIdStr, userB) shouldBe true
 
-        verify(exactly = 2) { postLikeRepository.save(any()) }
+        verify(exactly = 2) { postLikeSaveHelper.saveIfAbsent(any()) }
         verify(exactly = 2) { postRepository.incrementLikeCount(postId) }
     }
 
@@ -143,13 +142,13 @@ class PostLikeServiceTest : FunSpec({
         val requester = Requester.Authenticated(userId, ipAddress)
 
         every { postRepository.existsById(any()) } returns true
-        every { postLikeRepository.findByPostIdAndUserId(postId, userId) } returnsMany listOf(null, mockk())
-        every { postLikeRepository.save(any()) } throws DataIntegrityViolationException("Duplicate key")
+        every { postLikeRepository.findByPostIdAndUserId(postId, userId) } returns null
+        every { postLikeSaveHelper.saveIfAbsent(any()) } returns false  // REQUIRES_NEW 내부에서 중복 감지, false 반환
 
         val result = postLikeService.toggleLike(postIdStr, requester)
 
-        result shouldBe false // saveLikeIfAbsent returns false
-        verify(exactly = 0) { postRepository.incrementLikeCount(any()) }
+        result shouldBe false
+        verify(exactly = 0) { postRepository.incrementLikeCount(any()) }  // outer TX 오염 없이 카운트 스킵
     }
 
     test("toggleLike - Unlike Race Condition - Already Deleted") {
@@ -162,8 +161,8 @@ class PostLikeServiceTest : FunSpec({
 
         every { postRepository.existsById(any()) } returns true
         every { postLikeRepository.findByPostIdAndUserId(postId, userId) } returns existingLike
-        every { postLikeRepository.deleteByPostIdAndUserId(postId, userId) } returns 0L // Already deleted by someone else
-        
+        every { postLikeRepository.deleteByPostIdAndUserId(postId, userId) } returns 0L
+
         val result = postLikeService.toggleLike(postIdStr, requester)
 
         result shouldBe false

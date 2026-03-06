@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable
 
 interface PostLikeRepository {
     fun save(postLike: PostLike): PostLike
+    fun saveAndFlush(postLike: PostLike): PostLike
     fun findByPostIdAndUserId(postId: Long, userId: Long): PostLike?
     fun findByPostIdAndIpAddress(postId: Long, ipAddress: String): PostLike?
     fun findAnonymousByPostIdAndIpAddress(postId: Long, ipAddress: String): PostLike?

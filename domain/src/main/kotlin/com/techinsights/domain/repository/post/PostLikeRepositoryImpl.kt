@@ -13,6 +13,10 @@ class PostLikeRepositoryImpl(
         return postLikeJpaRepository.save(postLike)
     }
 
+    override fun saveAndFlush(postLike: PostLike): PostLike {
+        return postLikeJpaRepository.saveAndFlush(postLike)
+    }
+
     override fun findByPostIdAndUserId(postId: Long, userId: Long): PostLike? {
         return postLikeJpaRepository.findByPostIdAndUserId(postId, userId)
     }
