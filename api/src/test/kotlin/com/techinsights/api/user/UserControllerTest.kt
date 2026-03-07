@@ -6,6 +6,8 @@ import com.techinsights.domain.enums.UserRole
 import com.techinsights.domain.exception.user.DuplicateNicknameException
 import com.techinsights.domain.exception.user.InvalidNicknameException
 import com.techinsights.domain.exception.user.UserNotFoundException
+import com.techinsights.domain.service.github.GithubBookmarkService
+import com.techinsights.domain.service.post.PostBookmarkService
 import com.techinsights.domain.service.user.UserService
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -18,7 +20,9 @@ import org.springframework.http.HttpStatus
 
 class UserControllerTest : FunSpec({
     val userService = mockk<UserService>()
-    val controller = UserController(userService)
+    val postBookmarkService = mockk<PostBookmarkService>()
+    val githubBookmarkService = mockk<GithubBookmarkService>()
+    val controller = UserController(userService, postBookmarkService, githubBookmarkService)
 
     val testUser = UserProfileDto(
         id = 1L,
