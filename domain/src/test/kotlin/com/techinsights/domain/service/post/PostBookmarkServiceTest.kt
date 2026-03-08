@@ -1,6 +1,7 @@
 package com.techinsights.domain.service.post
 
 import com.techinsights.domain.dto.auth.Requester
+import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.entity.post.PostBookmark
 import com.techinsights.domain.exception.PostNotFoundException
 import com.techinsights.domain.exception.UnauthorizedException
@@ -14,6 +15,8 @@ import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
 
 class PostBookmarkServiceTest : FunSpec({
 
@@ -78,5 +81,16 @@ class PostBookmarkServiceTest : FunSpec({
         result shouldBe false
         verify(exactly = 1) { postBookmarkRepository.deleteByPostIdAndUserId(postId, 1L) }
         verify(exactly = 0) { postBookmarkSaveHelper.saveIfAbsent(any()) }
+    }
+
+    test("getMyBookmarks - findBookmarkedPosts에 위임하고 결과 반환") {
+        val pageable = PageRequest.of(0, 20)
+        val mockPage = PageImpl<PostDto>(emptyList(), pageable, 0)
+        every { postBookmarkRepository.findBookmarkedPosts(1L, pageable) } returns mockPage
+
+        val result = service.getMyBookmarks(1L, pageable)
+
+        result shouldBe mockPage
+        verify(exactly = 1) { postBookmarkRepository.findBookmarkedPosts(1L, pageable) }
     }
 })

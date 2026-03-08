@@ -6,6 +6,8 @@ import com.techinsights.domain.enums.UserRole
 import com.techinsights.domain.exception.user.DuplicateNicknameException
 import com.techinsights.domain.exception.user.InvalidNicknameException
 import com.techinsights.domain.exception.user.UserNotFoundException
+import com.techinsights.domain.dto.github.GithubRepositoryDto
+import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.service.github.GithubBookmarkService
 import com.techinsights.domain.service.post.PostBookmarkService
 import com.techinsights.domain.service.user.UserService
@@ -15,6 +17,8 @@ import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpStatus
 
 
@@ -204,6 +208,52 @@ class UserControllerTest : FunSpec({
             response.body?.nickname shouldBe "testuser"
 
             verify(exactly = 1) { userService.updateNicknameProfile(1L, "testuser") }
+        }
+    }
+
+    context("GET /api/v1/users/me/bookmarks/posts - 내 북마크 기술블로그 목록 조회") {
+
+        test("성공 - 빈 목록 반환") {
+            // given
+            val userDetails = CustomUserDetails(userId = 1L, email = "test@example.com", role = UserRole.USER)
+            val pageable = PageRequest.of(0, 20)
+            val emptyPage = PageImpl<PostDto>(emptyList(), pageable, 0)
+            every { postBookmarkService.getMyBookmarks(1L, any()) } returns emptyPage
+
+            // when
+            val response = controller.getMyBookmarkedPosts(userDetails, 0, 20)
+
+            // then
+            response.statusCode shouldBe HttpStatus.OK
+            response.body?.content?.size shouldBe 0
+            response.body?.totalElements shouldBe 0L
+            response.body?.page shouldBe 0
+            response.body?.size shouldBe 20
+
+            verify(exactly = 1) { postBookmarkService.getMyBookmarks(1L, any()) }
+        }
+    }
+
+    context("GET /api/v1/users/me/bookmarks/github - 내 북마크 GitHub 레포 목록 조회") {
+
+        test("성공 - 빈 목록 반환") {
+            // given
+            val userDetails = CustomUserDetails(userId = 1L, email = "test@example.com", role = UserRole.USER)
+            val pageable = PageRequest.of(0, 20)
+            val emptyPage = PageImpl<GithubRepositoryDto>(emptyList(), pageable, 0)
+            every { githubBookmarkService.getMyBookmarks(1L, any()) } returns emptyPage
+
+            // when
+            val response = controller.getMyBookmarkedRepos(userDetails, 0, 20)
+
+            // then
+            response.statusCode shouldBe HttpStatus.OK
+            response.body?.content?.size shouldBe 0
+            response.body?.totalElements shouldBe 0L
+            response.body?.page shouldBe 0
+            response.body?.size shouldBe 20
+
+            verify(exactly = 1) { githubBookmarkService.getMyBookmarks(1L, any()) }
         }
     }
 })

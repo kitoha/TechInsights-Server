@@ -15,6 +15,8 @@ import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
 
 class GithubBookmarkServiceTest : FunSpec({
 
@@ -78,5 +80,16 @@ class GithubBookmarkServiceTest : FunSpec({
         result shouldBe false
         verify(exactly = 1) { githubBookmarkRepository.deleteByRepoIdAndUserId(repoId, 1L) }
         verify(exactly = 0) { githubBookmarkSaveHelper.saveIfAbsent(any()) }
+    }
+
+    test("getMyBookmarks - findBookmarkedRepos에 위임하고 결과 반환") {
+        val pageable = PageRequest.of(0, 20)
+        val mockPage = PageImpl<GithubRepositoryDto>(emptyList(), pageable, 0)
+        every { githubBookmarkRepository.findBookmarkedRepos(1L, pageable) } returns mockPage
+
+        val result = service.getMyBookmarks(1L, pageable)
+
+        result shouldBe mockPage
+        verify(exactly = 1) { githubBookmarkRepository.findBookmarkedRepos(1L, pageable) }
     }
 })
