@@ -25,7 +25,8 @@ class GithubBookmarkServiceTest : FunSpec({
     val githubBookmarkSaveHelper = mockk<GithubBookmarkSaveHelper>()
     val service = GithubBookmarkService(githubBookmarkRepository, githubRepositoryRepository, githubBookmarkSaveHelper)
 
-    val repoId = 200L
+    val repoId = Tsid.encode(200L)
+    val repoIdLong = 200L
     val authenticatedUser = Requester.Authenticated(userId = 1L, ip = "127.0.0.1")
     val anonymousUser = Requester.Anonymous(anonymousId = "anon-abc", ip = "127.0.0.1")
 
@@ -39,7 +40,7 @@ class GithubBookmarkServiceTest : FunSpec({
     }
 
     test("toggleBookmark - 존재하지 않는 레포지토리면 GithubRepositoryNotFoundException 발생") {
-        every { githubRepositoryRepository.findById(repoId) } returns null
+        every { githubRepositoryRepository.findById(repoIdLong) } returns null
 
         shouldThrow<GithubRepositoryNotFoundException> {
             service.toggleBookmark(repoId, authenticatedUser)
@@ -47,8 +48,8 @@ class GithubBookmarkServiceTest : FunSpec({
     }
 
     test("toggleBookmark - 북마크 없을 때 saveIfAbsent 호출하고 true 반환") {
-        every { githubRepositoryRepository.findById(repoId) } returns mockk<GithubRepositoryDto>(relaxed = true)
-        every { githubBookmarkRepository.findByRepoIdAndUserId(repoId, 1L) } returns null
+        every { githubRepositoryRepository.findById(repoIdLong) } returns mockk<GithubRepositoryDto>(relaxed = true)
+        every { githubBookmarkRepository.findByRepoIdAndUserId(repoIdLong, 1L) } returns null
         every { githubBookmarkSaveHelper.saveIfAbsent(any()) } returns true
 
         val result = service.toggleBookmark(repoId, authenticatedUser)
@@ -59,8 +60,8 @@ class GithubBookmarkServiceTest : FunSpec({
     }
 
     test("toggleBookmark - race condition: saveIfAbsent false 반환 시 false 반환") {
-        every { githubRepositoryRepository.findById(repoId) } returns mockk<GithubRepositoryDto>(relaxed = true)
-        every { githubBookmarkRepository.findByRepoIdAndUserId(repoId, 1L) } returns null
+        every { githubRepositoryRepository.findById(repoIdLong) } returns mockk<GithubRepositoryDto>(relaxed = true)
+        every { githubBookmarkRepository.findByRepoIdAndUserId(repoIdLong, 1L) } returns null
         every { githubBookmarkSaveHelper.saveIfAbsent(any()) } returns false
 
         val result = service.toggleBookmark(repoId, authenticatedUser)
@@ -70,15 +71,15 @@ class GithubBookmarkServiceTest : FunSpec({
     }
 
     test("toggleBookmark - 이미 북마크된 경우 delete 호출하고 false 반환") {
-        val existing = GithubBookmark(id = Tsid.generateLong(), repoId = repoId, userId = 1L)
-        every { githubRepositoryRepository.findById(repoId) } returns mockk<GithubRepositoryDto>(relaxed = true)
-        every { githubBookmarkRepository.findByRepoIdAndUserId(repoId, 1L) } returns existing
-        every { githubBookmarkRepository.deleteByRepoIdAndUserId(repoId, 1L) } returns 1L
+        val existing = GithubBookmark(id = Tsid.generateLong(), repoId = repoIdLong, userId = 1L)
+        every { githubRepositoryRepository.findById(repoIdLong) } returns mockk<GithubRepositoryDto>(relaxed = true)
+        every { githubBookmarkRepository.findByRepoIdAndUserId(repoIdLong, 1L) } returns existing
+        every { githubBookmarkRepository.deleteByRepoIdAndUserId(repoIdLong, 1L) } returns 1L
 
         val result = service.toggleBookmark(repoId, authenticatedUser)
 
         result shouldBe false
-        verify(exactly = 1) { githubBookmarkRepository.deleteByRepoIdAndUserId(repoId, 1L) }
+        verify(exactly = 1) { githubBookmarkRepository.deleteByRepoIdAndUserId(repoIdLong, 1L) }
         verify(exactly = 0) { githubBookmarkSaveHelper.saveIfAbsent(any()) }
     }
 

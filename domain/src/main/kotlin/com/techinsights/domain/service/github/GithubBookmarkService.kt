@@ -8,6 +8,7 @@ import com.techinsights.domain.exception.UnauthorizedException
 import com.techinsights.domain.repository.github.GithubBookmarkRepository
 import com.techinsights.domain.repository.github.GithubRepositoryRepository
 import com.techinsights.domain.utils.Tsid
+import com.techinsights.domain.utils.decode
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
@@ -20,20 +21,22 @@ class GithubBookmarkService(
     private val githubBookmarkSaveHelper: GithubBookmarkSaveHelper,
 ) {
     @Transactional
-    fun toggleBookmark(repoId: Long, requester: Requester): Boolean {
+    fun toggleBookmark(repoId: String, requester: Requester): Boolean {
         val userId = when (requester) {
             is Requester.Authenticated -> requester.userId
             is Requester.Anonymous -> throw UnauthorizedException()
         }
 
-        githubRepositoryRepository.findById(repoId)
+        val repoIdLong = repoId.decode()
+
+        githubRepositoryRepository.findById(repoIdLong)
             ?: throw GithubRepositoryNotFoundException("GithubRepository not found: $repoId")
 
-        return if (githubBookmarkRepository.findByRepoIdAndUserId(repoId, userId) != null) {
-            githubBookmarkRepository.deleteByRepoIdAndUserId(repoId, userId)
+        return if (githubBookmarkRepository.findByRepoIdAndUserId(repoIdLong, userId) != null) {
+            githubBookmarkRepository.deleteByRepoIdAndUserId(repoIdLong, userId)
             false
         } else {
-            githubBookmarkSaveHelper.saveIfAbsent(GithubBookmark(Tsid.generateLong(), repoId, userId))
+            githubBookmarkSaveHelper.saveIfAbsent(GithubBookmark(Tsid.generateLong(), repoIdLong, userId))
         }
     }
 

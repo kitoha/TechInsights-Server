@@ -15,7 +15,7 @@ class GithubBookmarkController(
 ) {
     @PostMapping("/{repoId}/bookmark")
     fun toggleBookmark(
-        @PathVariable repoId: Long,
+        @PathVariable repoId: String,
         requester: Requester,
     ): ResponseEntity<BookmarkResponse> {
         val bookmarked = githubBookmarkService.toggleBookmark(repoId, requester)

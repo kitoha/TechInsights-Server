@@ -8,6 +8,7 @@ import com.techinsights.domain.dto.auth.Requester
 import com.techinsights.domain.enums.UserRole
 import com.techinsights.domain.exception.UnauthorizedException
 import com.techinsights.domain.service.github.GithubBookmarkService
+import com.techinsights.domain.utils.Tsid
 import io.kotest.core.spec.style.FunSpec
 import io.mockk.clearAllMocks
 import io.mockk.every
@@ -45,7 +46,7 @@ class GithubBookmarkControllerTest : FunSpec() {
         }
 
         test("POST /api/v1/github/{repoId}/bookmark - 인증된 사용자 - 북마크 추가 (bookmarked: true)") {
-            val repoId = 100L
+            val repoId = Tsid.encode(100L)
             val userDetails = CustomUserDetails(userId = 1L, email = "test@example.com", role = UserRole.USER)
             val auth = UsernamePasswordAuthenticationToken(userDetails, null, userDetails.authorities)
             SecurityContextHolder.getContext().authentication = auth
@@ -63,7 +64,7 @@ class GithubBookmarkControllerTest : FunSpec() {
         }
 
         test("POST /api/v1/github/{repoId}/bookmark - 인증된 사용자 - 북마크 취소 (bookmarked: false)") {
-            val repoId = 100L
+            val repoId = Tsid.encode(100L)
             val userDetails = CustomUserDetails(userId = 1L, email = "test@example.com", role = UserRole.USER)
             val auth = UsernamePasswordAuthenticationToken(userDetails, null, userDetails.authorities)
             SecurityContextHolder.getContext().authentication = auth
@@ -81,7 +82,7 @@ class GithubBookmarkControllerTest : FunSpec() {
         }
 
         test("POST /api/v1/github/{repoId}/bookmark - 익명 사용자 요청 시 401 반환") {
-            val repoId = 100L
+            val repoId = Tsid.encode(100L)
             // SecurityContext 비움 → RequesterResolver가 Requester.Anonymous 반환
             every { githubBookmarkService.toggleBookmark(repoId, any<Requester.Anonymous>()) } throws UnauthorizedException()
 
