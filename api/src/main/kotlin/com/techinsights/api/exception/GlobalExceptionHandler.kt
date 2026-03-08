@@ -2,6 +2,7 @@ package com.techinsights.api.exception
 
 import com.techinsights.domain.exception.CompanyNotFoundException
 import com.techinsights.domain.exception.PostNotFoundException
+import com.techinsights.domain.exception.UnauthorizedException
 import com.techinsights.api.auth.AuthException
 import com.techinsights.domain.exception.user.UserException
 import com.techinsights.domain.enums.exception.UserErrorCode
@@ -39,6 +40,24 @@ class GlobalExceptionHandler {
                 ErrorResponse(
                     errorCode = e.errorCode.code,
                     message = e.message ?: "사용자 관련 오류가 발생했습니다.",
+                    path = extractPath(request)
+                )
+            )
+    }
+
+    @ExceptionHandler(UnauthorizedException::class)
+    fun handleUnauthorizedException(
+        e: UnauthorizedException,
+        request: WebRequest
+    ): ResponseEntity<ErrorResponse> {
+        logger.warn { "Unauthorized access: ${e.message}" }
+
+        return ResponseEntity
+            .status(HttpStatus.UNAUTHORIZED)
+            .body(
+                ErrorResponse(
+                    errorCode = "UNAUTHORIZED",
+                    message = e.message ?: "인증이 필요합니다.",
                     path = extractPath(request)
                 )
             )
