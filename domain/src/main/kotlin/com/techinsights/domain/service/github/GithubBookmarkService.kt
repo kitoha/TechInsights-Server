@@ -43,4 +43,8 @@ class GithubBookmarkService(
     @Transactional(readOnly = true)
     fun getMyBookmarks(userId: Long, pageable: Pageable): Page<GithubRepositoryDto> =
         githubBookmarkRepository.findBookmarkedRepos(userId, pageable)
+
+    @Transactional(readOnly = true)
+    fun countMyBookmarks(userId: Long): Long =
+        githubBookmarkRepository.countByUserId(userId)
 }

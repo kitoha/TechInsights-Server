@@ -93,4 +93,13 @@ class GithubBookmarkServiceTest : FunSpec({
         result shouldBe mockPage
         verify(exactly = 1) { githubBookmarkRepository.findBookmarkedRepos(1L, pageable) }
     }
+
+    test("countMyBookmarks - countByUserId에 위임하고 결과 반환") {
+        every { githubBookmarkRepository.countByUserId(1L) } returns 12L
+
+        val result = service.countMyBookmarks(1L)
+
+        result shouldBe 12L
+        verify(exactly = 1) { githubBookmarkRepository.countByUserId(1L) }
+    }
 })
