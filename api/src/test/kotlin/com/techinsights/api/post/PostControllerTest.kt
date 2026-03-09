@@ -42,8 +42,8 @@ class PostControllerTest : FunSpec() {
       val posts = listOf(createMockPostDto("1"), createMockPostDto("2"))
       val page = org.springframework.data.domain.PageImpl(posts)
 
-      coEvery { 
-        postService.getPosts(0, 10, any(), any(), null) 
+      every {
+        postService.getPosts(0, 10, any(), any(), null)
       } returns page
 
       // when & then
@@ -53,8 +53,8 @@ class PostControllerTest : FunSpec() {
         status { isOk() }
       }
 
-      coVerify(exactly = 1) { 
-        postService.getPosts(0, 10, any(), any(), null) 
+      verify(exactly = 1) {
+        postService.getPosts(0, 10, any(), any(), null)
       }
     }
 
@@ -63,8 +63,8 @@ class PostControllerTest : FunSpec() {
       val posts = listOf(createMockPostDto("1"))
       val page = org.springframework.data.domain.PageImpl(posts)
 
-      coEvery { 
-        postService.getPosts(2, 20, any(), any(), null) 
+      every {
+        postService.getPosts(2, 20, any(), any(), null)
       } returns page
 
       // when & then
@@ -76,8 +76,8 @@ class PostControllerTest : FunSpec() {
         status { isOk() }
       }
 
-      coVerify(exactly = 1) { 
-        postService.getPosts(2, 20, any(), any(), null) 
+      verify(exactly = 1) {
+        postService.getPosts(2, 20, any(), any(), null)
       }
     }
 
@@ -86,8 +86,8 @@ class PostControllerTest : FunSpec() {
       val posts = listOf(createMockPostDto("1"))
       val page = org.springframework.data.domain.PageImpl(posts)
 
-      coEvery { 
-        postService.getPosts(0, 10, any(), com.techinsights.domain.enums.Category.AI, null) 
+      every {
+        postService.getPosts(0, 10, any(), com.techinsights.domain.enums.Category.AI, null)
       } returns page
 
       // when & then
@@ -98,8 +98,8 @@ class PostControllerTest : FunSpec() {
         status { isOk() }
       }
 
-      coVerify(exactly = 1) { 
-        postService.getPosts(0, 10, any(), com.techinsights.domain.enums.Category.AI, null) 
+      verify(exactly = 1) {
+        postService.getPosts(0, 10, any(), com.techinsights.domain.enums.Category.AI, null)
       }
     }
 
@@ -109,8 +109,8 @@ class PostControllerTest : FunSpec() {
       val posts = listOf(createMockPostDto("1"))
       val page = org.springframework.data.domain.PageImpl(posts)
 
-      coEvery { 
-        postService.getPosts(0, 10, any(), any(), companyId) 
+      every {
+        postService.getPosts(0, 10, any(), any(), companyId)
       } returns page
 
       // when & then
@@ -121,8 +121,8 @@ class PostControllerTest : FunSpec() {
         status { isOk() }
       }
 
-      coVerify(exactly = 1) { 
-        postService.getPosts(0, 10, any(), any(), companyId) 
+      verify(exactly = 1) {
+        postService.getPosts(0, 10, any(), any(), companyId)
       }
     }
 
@@ -131,8 +131,8 @@ class PostControllerTest : FunSpec() {
       val posts = listOf(createMockPostDto("1"))
       val page = org.springframework.data.domain.PageImpl(posts)
 
-      coEvery { 
-        postService.getPosts(0, 10, com.techinsights.domain.enums.PostSortType.POPULAR, any(), null) 
+      every {
+        postService.getPosts(0, 10, com.techinsights.domain.enums.PostSortType.POPULAR, any(), null)
       } returns page
 
       // when & then
@@ -143,8 +143,8 @@ class PostControllerTest : FunSpec() {
         status { isOk() }
       }
 
-      coVerify(exactly = 1) { 
-        postService.getPosts(0, 10, com.techinsights.domain.enums.PostSortType.POPULAR, any(), null) 
+      verify(exactly = 1) {
+        postService.getPosts(0, 10, com.techinsights.domain.enums.PostSortType.POPULAR, any(), null)
       }
     }
 
@@ -153,7 +153,7 @@ class PostControllerTest : FunSpec() {
       val postId = "post123"
       val postDto = createMockPostDto(postId)
 
-      coEvery { postService.getPostById(postId) } returns postDto
+      every { postService.getPostById(postId) } returns postDto
 
       // when & then
       mockMvc.get("/api/v1/posts/$postId") {
@@ -162,7 +162,7 @@ class PostControllerTest : FunSpec() {
         status { isOk() }
       }
 
-      coVerify(exactly = 1) { postService.getPostById(postId) }
+      verify(exactly = 1) { postService.getPostById(postId) }
     }
 
     test("POST /api/v1/posts/{postId}/view - 조회수 증가 성공") {

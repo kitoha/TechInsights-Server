@@ -1,19 +1,32 @@
 package com.techinsights.api.user
 
 import com.techinsights.api.auth.CustomUserDetails
+import com.techinsights.api.github.GithubRepositoryResponse
+import com.techinsights.api.post.PageResponse
+import com.techinsights.api.post.PostResponse
+import com.techinsights.domain.service.github.GithubBookmarkService
+import com.techinsights.domain.service.post.PostBookmarkService
 import com.techinsights.domain.service.user.UserService
+import jakarta.validation.constraints.Max
+import jakarta.validation.constraints.Min
+import org.springframework.data.domain.PageRequest
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
+@Validated
 @RestController
 @RequestMapping("/api/v1/users")
 class UserController(
-    private val userService: UserService
+    private val userService: UserService,
+    private val postBookmarkService: PostBookmarkService,
+    private val githubBookmarkService: GithubBookmarkService,
 ) {
 
     /**
@@ -49,5 +62,57 @@ class UserController(
         )
 
         return ResponseEntity.ok(UserResponse.from(updatedUser))
+    }
+
+    /**
+     * 내가 즐겨찾기한 기술블로그 목록 조회
+     *
+     * @param userDetails 인증된 사용자 정보
+     * @param page 페이지 번호 (0부터 시작)
+     * @param size 페이지 크기 (최대 100)
+     * @return 즐겨찾기한 기술블로그 목록
+     */
+    @GetMapping("/me/bookmarks/posts")
+    fun getMyBookmarkedPosts(
+        @AuthenticationPrincipal userDetails: CustomUserDetails,
+        @RequestParam(defaultValue = "0") @Min(0) page: Int,
+        @RequestParam(defaultValue = "20") @Min(1) @Max(100) size: Int,
+    ): ResponseEntity<PageResponse<PostResponse>> {
+        val result = postBookmarkService.getMyBookmarks(userDetails.userId, PageRequest.of(page, size))
+        return ResponseEntity.ok(
+            PageResponse(
+                content = result.content.map { PostResponse.fromPostDto(it) },
+                page = result.number,
+                size = result.size,
+                totalElements = result.totalElements,
+                totalPages = result.totalPages,
+            )
+        )
+    }
+
+    /**
+     * 내가 즐겨찾기한 오픈소스 목록 조회
+     *
+     * @param userDetails 인증된 사용자 정보
+     * @param page 페이지 번호 (0부터 시작)
+     * @param size 페이지 크기 (최대 100)
+     * @return 즐겨찾기한 오픈소스 목록
+     */
+    @GetMapping("/me/bookmarks/github")
+    fun getMyBookmarkedRepos(
+        @AuthenticationPrincipal userDetails: CustomUserDetails,
+        @RequestParam(defaultValue = "0") @Min(0) page: Int,
+        @RequestParam(defaultValue = "20") @Min(1) @Max(100) size: Int,
+    ): ResponseEntity<PageResponse<GithubRepositoryResponse>> {
+        val result = githubBookmarkService.getMyBookmarks(userDetails.userId, PageRequest.of(page, size))
+        return ResponseEntity.ok(
+            PageResponse(
+                content = result.content.map { GithubRepositoryResponse.fromDto(it) },
+                page = result.number,
+                size = result.size,
+                totalElements = result.totalElements,
+                totalPages = result.totalPages,
+            )
+        )
     }
 }

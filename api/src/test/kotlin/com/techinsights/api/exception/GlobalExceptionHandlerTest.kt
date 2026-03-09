@@ -5,6 +5,7 @@ import com.techinsights.api.auth.InvalidTokenException
 import com.techinsights.api.auth.TokenTamperedException
 import com.techinsights.api.auth.UnauthorizedException
 import com.techinsights.domain.exception.CompanyNotFoundException
+import com.techinsights.domain.exception.UnauthorizedException as DomainUnauthorizedException
 import com.techinsights.domain.exception.user.DuplicateNicknameException
 import com.techinsights.domain.exception.user.InvalidNicknameException
 import com.techinsights.domain.exception.user.UserNotFoundException
@@ -125,6 +126,34 @@ class GlobalExceptionHandlerTest : FunSpec({
         response.statusCode shouldBe HttpStatus.UNAUTHORIZED
         response.body?.errorCode shouldBe "UNAUTHORIZED"
         response.body?.message shouldBe "인증이 필요한 서비스입니다."
+    }
+
+    test("handleUnauthorizedException - domain.UnauthorizedException 기본 메시지로 401 반환") {
+        // given
+        val exception = DomainUnauthorizedException()
+
+        // when
+        val response = handler.handleUnauthorizedException(exception, mockRequest)
+
+        // then
+        response.statusCode shouldBe HttpStatus.UNAUTHORIZED
+        response.body?.errorCode shouldBe "UNAUTHORIZED"
+        response.body?.message shouldBe "인증이 필요합니다."
+        response.body?.path shouldBe "/api/test"
+    }
+
+    test("handleUnauthorizedException - domain.UnauthorizedException 커스텀 메시지로 401 반환") {
+        // given
+        val exception = DomainUnauthorizedException("로그인이 필요한 서비스입니다.")
+
+        // when
+        val response = handler.handleUnauthorizedException(exception, mockRequest)
+
+        // then
+        response.statusCode shouldBe HttpStatus.UNAUTHORIZED
+        response.body?.errorCode shouldBe "UNAUTHORIZED"
+        response.body?.message shouldBe "로그인이 필요한 서비스입니다."
+        response.body?.path shouldBe "/api/test"
     }
 
     test("handlePostNotFound should return 404 with POST_NOT_FOUND error code") {

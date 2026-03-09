@@ -1,10 +1,11 @@
 package com.techinsights.api.github
 
 import com.techinsights.domain.dto.github.GithubRepositoryDto
+import com.techinsights.domain.utils.encode
 import java.time.LocalDateTime
 
 data class GithubRepositoryResponse(
-    val id: Long,
+    val id: String,
     val repoName: String,
     val fullName: String,
     val description: String?,
@@ -23,7 +24,7 @@ data class GithubRepositoryResponse(
 ) {
     companion object {
         fun fromDto(dto: GithubRepositoryDto): GithubRepositoryResponse = GithubRepositoryResponse(
-            id = dto.id,
+            id = dto.id.encode(),
             repoName = dto.repoName,
             fullName = dto.fullName,
             description = dto.description,

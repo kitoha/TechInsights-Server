@@ -35,6 +35,8 @@ class SecurityConfig(
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
             .authorizeHttpRequests { auth ->
                 auth
+                    .requestMatchers(HttpMethod.POST, "/api/v1/posts/*/bookmark").authenticated()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/github/*/bookmark").authenticated()
                     .requestMatchers("/api/v1/posts/**").permitAll()
                     .requestMatchers("/api/v1/companies/**").permitAll()
                     .requestMatchers("/api/v1/companiesSummaries").permitAll()
