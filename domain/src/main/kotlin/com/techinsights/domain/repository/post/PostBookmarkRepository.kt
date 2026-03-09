@@ -10,4 +10,6 @@ interface PostBookmarkRepository {
     fun findByPostIdAndUserId(postId: Long, userId: Long): PostBookmark?
     fun deleteByPostIdAndUserId(postId: Long, userId: Long): Long
     fun findBookmarkedPosts(userId: Long, pageable: Pageable): Page<PostDto>
+
+    fun countByUserId(userId: Long): Long
 }

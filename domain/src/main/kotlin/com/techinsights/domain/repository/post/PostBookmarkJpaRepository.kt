@@ -8,4 +8,6 @@ interface PostBookmarkJpaRepository : JpaRepository<PostBookmark, Long> {
     fun findByPostIdAndUserId(postId: Long, userId: Long): PostBookmark?
 
     fun deleteByPostIdAndUserId(postId: Long, userId: Long): Long
+
+    fun countByUserId(userId: Long): Long
 }

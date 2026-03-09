@@ -51,4 +51,7 @@ class PostBookmarkRepositoryImpl(
 
         return PageImpl(results, pageable, total)
     }
+
+    override fun countByUserId(userId: Long): Long =
+        postBookmarkJpaRepository.countByUserId(userId)
 }
