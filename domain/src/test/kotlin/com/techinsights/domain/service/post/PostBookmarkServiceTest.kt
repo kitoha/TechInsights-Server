@@ -93,4 +93,13 @@ class PostBookmarkServiceTest : FunSpec({
         result shouldBe mockPage
         verify(exactly = 1) { postBookmarkRepository.findBookmarkedPosts(1L, pageable) }
     }
+
+    test("countMyBookmarks - countByUserId에 위임하고 결과 반환") {
+        every { postBookmarkRepository.countByUserId(1L) } returns 7L
+
+        val result = service.countMyBookmarks(1L)
+
+        result shouldBe 7L
+        verify(exactly = 1) { postBookmarkRepository.countByUserId(1L) }
+    }
 })

@@ -43,4 +43,8 @@ class PostBookmarkService(
     @Transactional(readOnly = true)
     fun getMyBookmarks(userId: Long, pageable: Pageable): Page<PostDto> =
         postBookmarkRepository.findBookmarkedPosts(userId, pageable)
+
+    @Transactional(readOnly = true)
+    fun countMyBookmarks(userId: Long): Long =
+        postBookmarkRepository.countByUserId(userId)
 }
