@@ -5,6 +5,7 @@ import com.techinsights.api.auth.CustomUserDetails
 import com.techinsights.api.auth.RequesterResolver
 import com.techinsights.api.exception.GlobalExceptionHandler
 import com.techinsights.domain.dto.auth.Requester
+import com.techinsights.domain.dto.github.GithubRepositoryDto
 import com.techinsights.domain.enums.UserRole
 import com.techinsights.domain.exception.UnauthorizedException
 import com.techinsights.domain.service.github.GithubBookmarkService
@@ -14,12 +15,16 @@ import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
 import org.springframework.http.MediaType
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
+import java.time.LocalDateTime
 
 class GithubBookmarkControllerTest : FunSpec() {
 
@@ -94,6 +99,45 @@ class GithubBookmarkControllerTest : FunSpec() {
             }
 
             verify(exactly = 1) { githubBookmarkService.toggleBookmark(repoId, any<Requester.Anonymous>()) }
+        }
+
+        test("GET /api/v1/github/me/bookmarks - 인증된 사용자 - 북마크 목록 반환") {
+            val userId = 1L
+            val userDetails = CustomUserDetails(userId = userId, email = "test@example.com", role = UserRole.USER)
+            SecurityContextHolder.getContext().authentication =
+                UsernamePasswordAuthenticationToken(userDetails, null, userDetails.authorities)
+
+            val repoId = 200L
+            val repoDto = GithubRepositoryDto(
+                id = repoId, repoName = "repo", fullName = "owner/repo",
+                description = "desc", htmlUrl = "https://github.com/owner/repo",
+                starCount = 100, forkCount = 10, primaryLanguage = "Kotlin",
+                ownerName = "owner", ownerAvatarUrl = null, topics = emptyList(),
+                pushedAt = LocalDateTime.now(), fetchedAt = LocalDateTime.now(),
+                weeklyStarDelta = 5, readmeSummary = null,
+            )
+            val page = PageImpl(listOf(repoDto), PageRequest.of(0, 20), 1)
+
+            every { githubBookmarkService.getMyBookmarks(userId, any()) } returns page
+
+            mockMvc.get("/api/v1/github/me/bookmarks") {
+                accept = MediaType.APPLICATION_JSON
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.content[0].id") { value(Tsid.encode(repoId)) }
+                jsonPath("$.totalElements") { value(1) }
+            }
+
+            verify(exactly = 1) { githubBookmarkService.getMyBookmarks(userId, any()) }
+        }
+
+        test("GET /api/v1/github/me/bookmarks - 익명 사용자 - 401 반환") {
+            mockMvc.get("/api/v1/github/me/bookmarks") {
+                accept = MediaType.APPLICATION_JSON
+            }.andExpect {
+                status { isUnauthorized() }
+                jsonPath("$.errorCode") { value("UNAUTHORIZED") }
+            }
         }
     }
 }

@@ -5,6 +5,9 @@ import com.techinsights.api.auth.CustomUserDetails
 import com.techinsights.api.auth.RequesterResolver
 import com.techinsights.api.exception.GlobalExceptionHandler
 import com.techinsights.domain.dto.auth.Requester
+import com.techinsights.domain.dto.company.CompanyDto
+import com.techinsights.domain.dto.post.PostDto
+import com.techinsights.domain.enums.Category
 import com.techinsights.domain.enums.UserRole
 import com.techinsights.domain.exception.UnauthorizedException
 import com.techinsights.domain.service.post.PostBookmarkService
@@ -14,12 +17,16 @@ import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
 import org.springframework.http.MediaType
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
+import java.time.LocalDateTime
 
 class PostBookmarkControllerTest : FunSpec() {
 
@@ -94,6 +101,46 @@ class PostBookmarkControllerTest : FunSpec() {
             }
 
             verify(exactly = 1) { postBookmarkService.toggleBookmark(postId, any<Requester.Anonymous>()) }
+        }
+
+        test("GET /api/v1/posts/me/bookmarks - 인증된 사용자 - 북마크 목록 반환") {
+            val userId = 1L
+            val userDetails = CustomUserDetails(userId = userId, email = "test@example.com", role = UserRole.USER)
+            SecurityContextHolder.getContext().authentication =
+                UsernamePasswordAuthenticationToken(userDetails, null, userDetails.authorities)
+
+            val postId = Tsid.generate()
+            val postDto = PostDto(
+                id = postId, title = "title", preview = null, url = "url",
+                content = "content", publishedAt = LocalDateTime.now(),
+                company = CompanyDto(
+                    id = Tsid.generate(), name = "company",
+                    blogUrl = "https://blog.example.com", logoImageName = "logo.png"
+                ),
+                categories = setOf(Category.All),
+            )
+            val page = PageImpl(listOf(postDto), PageRequest.of(0, 10), 1)
+
+            every { postBookmarkService.getMyBookmarks(userId, any()) } returns page
+
+            mockMvc.get("/api/v1/posts/me/bookmarks") {
+                accept = MediaType.APPLICATION_JSON
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.content[0].id") { value(postId) }
+                jsonPath("$.totalElements") { value(1) }
+            }
+
+            verify(exactly = 1) { postBookmarkService.getMyBookmarks(userId, any()) }
+        }
+
+        test("GET /api/v1/posts/me/bookmarks - 익명 사용자 - 401 반환") {
+            mockMvc.get("/api/v1/posts/me/bookmarks") {
+                accept = MediaType.APPLICATION_JSON
+            }.andExpect {
+                status { isUnauthorized() }
+                jsonPath("$.errorCode") { value("UNAUTHORIZED") }
+            }
         }
     }
 }
