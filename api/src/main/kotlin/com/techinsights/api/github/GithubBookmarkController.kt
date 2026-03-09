@@ -49,5 +49,15 @@ class GithubBookmarkController(
         )
     }
 
+    @GetMapping("/me/bookmarks/count")
+    fun countMyBookmarks(requester: Requester): ResponseEntity<CountResponse> {
+        val userId = when (requester) {
+            is Requester.Authenticated -> requester.userId
+            is Requester.Anonymous -> throw UnauthorizedException()
+        }
+        return ResponseEntity.ok(CountResponse(githubBookmarkService.countMyBookmarks(userId)))
+    }
+
     data class BookmarkResponse(val bookmarked: Boolean)
+    data class CountResponse(val count: Long)
 }

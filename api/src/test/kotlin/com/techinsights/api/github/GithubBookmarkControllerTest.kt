@@ -139,5 +139,32 @@ class GithubBookmarkControllerTest : FunSpec() {
                 jsonPath("$.errorCode") { value("UNAUTHORIZED") }
             }
         }
+
+        test("GET /api/v1/github/me/bookmarks/count - 인증된 사용자 - 카운트 반환") {
+            val userId = 1L
+            val userDetails = CustomUserDetails(userId = userId, email = "test@example.com", role = UserRole.USER)
+            SecurityContextHolder.getContext().authentication =
+                UsernamePasswordAuthenticationToken(userDetails, null, userDetails.authorities)
+
+            every { githubBookmarkService.countMyBookmarks(userId) } returns 12L
+
+            mockMvc.get("/api/v1/github/me/bookmarks/count") {
+                accept = MediaType.APPLICATION_JSON
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.count") { value(12) }
+            }
+
+            verify(exactly = 1) { githubBookmarkService.countMyBookmarks(userId) }
+        }
+
+        test("GET /api/v1/github/me/bookmarks/count - 익명 사용자 - 401 반환") {
+            mockMvc.get("/api/v1/github/me/bookmarks/count") {
+                accept = MediaType.APPLICATION_JSON
+            }.andExpect {
+                status { isUnauthorized() }
+                jsonPath("$.errorCode") { value("UNAUTHORIZED") }
+            }
+        }
     }
 }
