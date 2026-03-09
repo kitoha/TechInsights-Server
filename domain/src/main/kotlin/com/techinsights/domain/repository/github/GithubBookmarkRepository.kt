@@ -10,4 +10,5 @@ interface GithubBookmarkRepository {
     fun findByRepoIdAndUserId(repoId: Long, userId: Long): GithubBookmark?
     fun deleteByRepoIdAndUserId(repoId: Long, userId: Long): Long
     fun findBookmarkedRepos(userId: Long, pageable: Pageable): Page<GithubRepositoryDto>
+    fun countByUserId(userId: Long): Long
 }

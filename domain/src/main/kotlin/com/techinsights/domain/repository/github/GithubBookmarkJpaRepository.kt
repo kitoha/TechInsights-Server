@@ -8,4 +8,6 @@ interface GithubBookmarkJpaRepository : JpaRepository<GithubBookmark, Long> {
     fun findByRepoIdAndUserId(repoId: Long, userId: Long): GithubBookmark?
 
     fun deleteByRepoIdAndUserId(repoId: Long, userId: Long): Long
+
+    fun countByUserId(userId: Long): Long
 }

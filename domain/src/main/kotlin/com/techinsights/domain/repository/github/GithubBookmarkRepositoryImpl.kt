@@ -48,4 +48,7 @@ class GithubBookmarkRepositoryImpl(
 
         return PageImpl(results, pageable, total)
     }
+
+    override fun countByUserId(userId: Long): Long =
+        githubBookmarkJpaRepository.countByUserId(userId)
 }
