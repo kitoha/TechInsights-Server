@@ -142,5 +142,32 @@ class PostBookmarkControllerTest : FunSpec() {
                 jsonPath("$.errorCode") { value("UNAUTHORIZED") }
             }
         }
+
+        test("GET /api/v1/posts/me/bookmarks/count - 인증된 사용자 - 카운트 반환") {
+            val userId = 1L
+            val userDetails = CustomUserDetails(userId = userId, email = "test@example.com", role = UserRole.USER)
+            SecurityContextHolder.getContext().authentication =
+                UsernamePasswordAuthenticationToken(userDetails, null, userDetails.authorities)
+
+            every { postBookmarkService.countMyBookmarks(userId) } returns 7L
+
+            mockMvc.get("/api/v1/posts/me/bookmarks/count") {
+                accept = MediaType.APPLICATION_JSON
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.count") { value(7) }
+            }
+
+            verify(exactly = 1) { postBookmarkService.countMyBookmarks(userId) }
+        }
+
+        test("GET /api/v1/posts/me/bookmarks/count - 익명 사용자 - 401 반환") {
+            mockMvc.get("/api/v1/posts/me/bookmarks/count") {
+                accept = MediaType.APPLICATION_JSON
+            }.andExpect {
+                status { isUnauthorized() }
+                jsonPath("$.errorCode") { value("UNAUTHORIZED") }
+            }
+        }
     }
 }
