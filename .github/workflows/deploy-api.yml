@@ -26,10 +26,10 @@ jobs:
       contents: read
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744  # v3
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9  # v4
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -41,31 +41,34 @@ jobs:
         run: ./gradlew test
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Set image tags
         id: image
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IMAGE_TAG_INPUT: ${{ github.event.inputs.image_tag }}
+          DOCKERHUB_REPO: ${{ env.DOCKERHUB_REPO }}
         run: |
           SPECIFIC_TAG=""
-          if [ "${{ github.event_name }}" = "push" ]; then
+          if [ "$EVENT_NAME" = "push" ]; then
             SPECIFIC_TAG=$(date -u +'%Y%m%d%H%M')
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            SPECIFIC_TAG="${{ github.event.inputs.image_tag }}"
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            SPECIFIC_TAG="$IMAGE_TAG_INPUT"
           fi
-          
           {
             echo 'tags<<EOF'
-            echo "${{ env.DOCKERHUB_REPO }}:latest"
-            echo "${{ env.DOCKERHUB_REPO }}:${SPECIFIC_TAG}"
+            echo "$DOCKERHUB_REPO:latest"
+            echo "$DOCKERHUB_REPO:${SPECIFIC_TAG}"
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
           echo "specific_tag=${SPECIFIC_TAG}" >> $GITHUB_OUTPUT
 
       - name: Build and push image to Docker Hub
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25  # v5
         with:
           context: .
           file: ./api/Dockerfile
@@ -73,7 +76,7 @@ jobs:
           tags: ${{ steps.image.outputs.tags }}
 
       - name: Configure AWS credentials using OIDC
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a  # v4
         with:
           role-to-assume: ${{ secrets.AWS_IAM_ROLE_FOR_OIDC }}
           aws-region: ${{ env.AWS_REGION }}
@@ -98,13 +101,17 @@ jobs:
           zip -r deploy.zip . -x ".git/*" ".github/*" ".idea/*" "build/*" ".gradle/*"
 
       - name: Upload artifact to S3
+        env:
+          SPECIFIC_TAG: ${{ steps.image.outputs.specific_tag }}
         run: |
-          aws s3 cp deploy.zip s3://${{ env.S3_BUCKET_NAME }}/techinsights-api/${{ steps.image.outputs.specific_tag }}/deploy.zip
+          aws s3 cp deploy.zip s3://$S3_BUCKET_NAME/techinsights-api/$SPECIFIC_TAG/deploy.zip
 
       - name: Start CodeDeploy deployment
+        env:
+          SPECIFIC_TAG: ${{ steps.image.outputs.specific_tag }}
         run: |
           aws deploy create-deployment \
-            --application-name ${{ env.CODEDEPLOY_APP_NAME }} \
-            --deployment-group-name ${{ env.CODEDEPLOY_DEPLOYMENT_GROUP }} \
-            --s3-location bucket=${{ env.S3_BUCKET_NAME }},key=techinsights-api/${{ steps.image.outputs.specific_tag }}/deploy.zip,bundleType=zip \
-            --description "Deployment for image tag ${{ steps.image.outputs.specific_tag }}"
+            --application-name "$CODEDEPLOY_APP_NAME" \
+            --deployment-group-name "$CODEDEPLOY_DEPLOYMENT_GROUP" \
+            --s3-location bucket=$S3_BUCKET_NAME,key=techinsights-api/$SPECIFIC_TAG/deploy.zip,bundleType=zip \
+            --description "Deployment for image tag $SPECIFIC_TAG"

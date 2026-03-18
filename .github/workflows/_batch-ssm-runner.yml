@@ -1,0 +1,137 @@
+on:
+  workflow_call:
+    inputs:
+      job_name:
+        required: true
+        type: string
+      extra_params:
+        required: false
+        type: string
+        default: ''
+    secrets:
+      AWS_IAM_ROLE_FOR_OIDC:
+        required: true
+      EC2_INSTANCE_ID:
+        required: true
+      RDS_ENDPOINT:
+        required: true
+      SLACK_WEBHOOK_URL:
+        required: true
+
+env:
+  AWS_REGION: ap-northeast-2
+
+jobs:
+  run-batch:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a  # v4
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_FOR_OIDC }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install SSM Session Manager Plugin
+        run: |
+          curl -sO https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb
+          sudo dpkg -i session-manager-plugin.deb
+
+      - name: Open SSM tunnel to RDS
+        env:
+          EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
+          RDS_ENDPOINT: ${{ secrets.RDS_ENDPOINT }}
+        run: |
+          aws ssm start-session \
+            --target "$EC2_INSTANCE_ID" \
+            --document-name AWS-StartPortForwardingSessionToRemoteHost \
+            --parameters "{\"host\":[\"$RDS_ENDPOINT\"],\"portNumber\":[\"5432\"],\"localPortNumber\":[\"5432\"]}" &
+          echo "SSM_PID=$!" >> $GITHUB_ENV
+          for i in $(seq 1 15); do
+            if nc -z localhost 5432; then
+              echo "Tunnel is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Tunnel failed to open"
+          exit 1
+
+      - uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9  # v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Build batch JAR
+        run: chmod +x gradlew && ./gradlew :batch:build -x test --no-daemon
+
+      - name: Run batch job
+        env:
+          SPRING_PROFILES_ACTIVE: prod
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/techinsights_db
+          AWS_REGION: ${{ env.AWS_REGION }}
+          JOB_NAME: ${{ inputs.job_name }}
+          EXTRA_PARAMS: ${{ inputs.extra_params }}
+        run: |
+          java -Xms128m -Xmx512m -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC -XX:+ExitOnOutOfMemoryError \
+            -jar batch/build/libs/batch-0.0.1-SNAPSHOT.jar \
+            --spring.batch.job.name="$JOB_NAME" ${EXTRA_PARAMS} run.id=${{ github.run_id }}
+
+      - name: Notify Slack success
+        if: success()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          JOB_NAME: ${{ inputs.job_name }}
+          EXTRA_PARAMS: ${{ inputs.extra_params }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          jq --null-input \
+            --arg job "$JOB_NAME" \
+            --arg params "${EXTRA_PARAMS:-없음}" \
+            --arg url "$RUN_URL" \
+            '{
+              text: ("✅ *" + $job + "* 완료"),
+              attachments: [{
+                color: "good",
+                fields: [
+                  {title: "Params", value: $params, short: false},
+                  {title: "Log", value: $url, short: false}
+                ]
+              }]
+            }' | curl -X POST "$SLACK_WEBHOOK_URL" \
+              -H 'Content-Type: application/json' \
+              -d @-
+
+      - name: Notify Slack failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          JOB_NAME: ${{ inputs.job_name }}
+          EXTRA_PARAMS: ${{ inputs.extra_params }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          jq --null-input \
+            --arg job "$JOB_NAME" \
+            --arg params "${EXTRA_PARAMS:-없음}" \
+            --arg url "$RUN_URL" \
+            '{
+              text: ("❌ *" + $job + "* 실패"),
+              attachments: [{
+                color: "danger",
+                fields: [
+                  {title: "Params", value: $params, short: false},
+                  {title: "Log", value: $url, short: false}
+                ]
+              }]
+            }' | curl -X POST "$SLACK_WEBHOOK_URL" \
+              -H 'Content-Type: application/json' \
+              -d @-
+
+      - name: Close SSM tunnel
+        if: always()
+        run: kill $SSM_PID 2>/dev/null || true

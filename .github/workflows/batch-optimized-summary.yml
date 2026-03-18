@@ -1,0 +1,21 @@
+name: Batch - optimizedSummaryJob
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 처리할 최대 포스트 수
+        required: true
+        type: string
+
+jobs:
+  optimized-summary:
+    uses: ./.github/workflows/_batch-ssm-runner.yml
+    with:
+      job_name: optimizedSummaryJob
+      extra_params: limit=${{ inputs.limit }}
+    secrets:
+      AWS_IAM_ROLE_FOR_OIDC: ${{ secrets.AWS_IAM_ROLE_FOR_OIDC }}
+      EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
+      RDS_ENDPOINT: ${{ secrets.RDS_ENDPOINT }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
