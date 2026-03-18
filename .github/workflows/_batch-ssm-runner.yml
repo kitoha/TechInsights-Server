@@ -90,18 +90,22 @@ jobs:
           EXTRA_PARAMS: ${{ inputs.extra_params }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          curl -X POST "$SLACK_WEBHOOK_URL" \
-            -H 'Content-Type: application/json' \
-            -d "{
-              \"text\": \"✅ *${JOB_NAME}* 완료\",
-              \"attachments\": [{
-                \"color\": \"good\",
-                \"fields\": [
-                  {\"title\": \"Params\", \"value\": \"${EXTRA_PARAMS:-없음}\", \"short\": false},
-                  {\"title\": \"Log\", \"value\": \"$RUN_URL\", \"short\": false}
+          jq --null-input \
+            --arg job "$JOB_NAME" \
+            --arg params "${EXTRA_PARAMS:-없음}" \
+            --arg url "$RUN_URL" \
+            '{
+              text: ("✅ *" + $job + "* 완료"),
+              attachments: [{
+                color: "good",
+                fields: [
+                  {title: "Params", value: $params, short: false},
+                  {title: "Log", value: $url, short: false}
                 ]
               }]
-            }"
+            }' | curl -X POST "$SLACK_WEBHOOK_URL" \
+              -H 'Content-Type: application/json' \
+              -d @-
 
       - name: Notify Slack failure
         if: failure()
@@ -111,18 +115,22 @@ jobs:
           EXTRA_PARAMS: ${{ inputs.extra_params }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          curl -X POST "$SLACK_WEBHOOK_URL" \
-            -H 'Content-Type: application/json' \
-            -d "{
-              \"text\": \"❌ *${JOB_NAME}* 실패\",
-              \"attachments\": [{
-                \"color\": \"danger\",
-                \"fields\": [
-                  {\"title\": \"Params\", \"value\": \"${EXTRA_PARAMS:-없음}\", \"short\": false},
-                  {\"title\": \"Log\", \"value\": \"$RUN_URL\", \"short\": false}
+          jq --null-input \
+            --arg job "$JOB_NAME" \
+            --arg params "${EXTRA_PARAMS:-없음}" \
+            --arg url "$RUN_URL" \
+            '{
+              text: ("❌ *" + $job + "* 실패"),
+              attachments: [{
+                color: "danger",
+                fields: [
+                  {title: "Params", value: $params, short: false},
+                  {title: "Log", value: $url, short: false}
                 ]
               }]
-            }"
+            }' | curl -X POST "$SLACK_WEBHOOK_URL" \
+              -H 'Content-Type: application/json' \
+              -d @-
 
       - name: Close SSM tunnel
         if: always()
