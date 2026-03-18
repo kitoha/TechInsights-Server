@@ -1,0 +1,11 @@
+name: Batch - crawlPostJob
+
+on:
+  workflow_dispatch:
+
+jobs:
+  crawl-post:
+    uses: ./.github/workflows/_batch-ssm-runner.yml
+    with:
+      job_name: crawlPostJob
+    secrets: inherit

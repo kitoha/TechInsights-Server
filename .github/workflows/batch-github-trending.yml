@@ -1,0 +1,11 @@
+name: Batch - githubTrendingJob
+
+on:
+  workflow_dispatch:
+
+jobs:
+  github-trending:
+    uses: ./.github/workflows/_batch-ssm-runner.yml
+    with:
+      job_name: githubTrendingJob
+    secrets: inherit

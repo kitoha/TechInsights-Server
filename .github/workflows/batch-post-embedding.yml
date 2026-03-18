@@ -1,0 +1,23 @@
+name: Batch - postVectorEmbeddingJob
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 처리할 최대 포스트 수
+        required: false
+        type: string
+        default: '1000'
+      embedding_batch_size:
+        description: 임베딩 배치 크기
+        required: false
+        type: string
+        default: '50'
+
+jobs:
+  post-embedding:
+    uses: ./.github/workflows/_batch-ssm-runner.yml
+    with:
+      job_name: postVectorEmbeddingJob
+      extra_params: limit=${{ inputs.limit }} embeddingBatchSize=${{ inputs.embedding_batch_size }}
+    secrets: inherit

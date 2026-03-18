@@ -1,0 +1,18 @@
+name: Batch - githubReadmeEmbeddingJob
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_items_per_run:
+        description: 1회 실행당 최대 처리 레포 수
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  github-readme-embedding:
+    uses: ./.github/workflows/_batch-ssm-runner.yml
+    with:
+      job_name: githubReadmeEmbeddingJob
+      extra_params: ${{ inputs.max_items_per_run != '' && format('maxItemsPerRun={0}', inputs.max_items_per_run) || '' }}
+    secrets: inherit
