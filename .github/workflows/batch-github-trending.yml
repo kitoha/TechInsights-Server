@@ -5,6 +5,9 @@ on:
 
 jobs:
   github-trending:
+    permissions:
+      id-token: write
+      contents: read
     uses: ./.github/workflows/_batch-ssm-runner.yml
     with:
       job_name: githubTrendingJob

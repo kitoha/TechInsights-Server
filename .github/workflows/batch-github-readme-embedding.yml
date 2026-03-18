@@ -11,6 +11,9 @@ on:
 
 jobs:
   github-readme-embedding:
+    permissions:
+      id-token: write
+      contents: read
     uses: ./.github/workflows/_batch-ssm-runner.yml
     with:
       job_name: githubReadmeEmbeddingJob

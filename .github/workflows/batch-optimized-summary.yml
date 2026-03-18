@@ -10,6 +10,9 @@ on:
 
 jobs:
   optimized-summary:
+    permissions:
+      id-token: write
+      contents: read
     uses: ./.github/workflows/_batch-ssm-runner.yml
     with:
       job_name: optimizedSummaryJob
