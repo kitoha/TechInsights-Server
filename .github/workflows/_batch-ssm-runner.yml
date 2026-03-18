@@ -78,7 +78,7 @@ jobs:
         timeout-minutes: 110
         env:
           SPRING_PROFILES_ACTIVE: prod
-          DB_URL: jdbc:postgresql://localhost:5432/techinsights_db
+          DB_URL: jdbc:postgresql://localhost:5432/prod_db
           AWS_REGION: ${{ env.AWS_REGION }}
           JOB_NAME: ${{ inputs.job_name }}
           EXTRA_PARAMS: ${{ inputs.extra_params }}
