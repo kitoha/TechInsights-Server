@@ -48,18 +48,21 @@ jobs:
 
       - name: Set image tags
         id: image
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IMAGE_TAG_INPUT: ${{ github.event.inputs.image_tag }}
+          DOCKERHUB_REPO: ${{ env.DOCKERHUB_REPO }}
         run: |
           SPECIFIC_TAG=""
-          if [ "${{ github.event_name }}" = "push" ]; then
+          if [ "$EVENT_NAME" = "push" ]; then
             SPECIFIC_TAG=$(date -u +'%Y%m%d%H%M')
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            SPECIFIC_TAG="${{ github.event.inputs.image_tag }}"
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            SPECIFIC_TAG="$IMAGE_TAG_INPUT"
           fi
-          
           {
             echo 'tags<<EOF'
-            echo "${{ env.DOCKERHUB_REPO }}:latest"
-            echo "${{ env.DOCKERHUB_REPO }}:${SPECIFIC_TAG}"
+            echo "$DOCKERHUB_REPO:latest"
+            echo "$DOCKERHUB_REPO:${SPECIFIC_TAG}"
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
           echo "specific_tag=${SPECIFIC_TAG}" >> $GITHUB_OUTPUT
@@ -98,13 +101,17 @@ jobs:
           zip -r deploy.zip . -x ".git/*" ".github/*" ".idea/*" "build/*" ".gradle/*"
 
       - name: Upload artifact to S3
+        env:
+          SPECIFIC_TAG: ${{ steps.image.outputs.specific_tag }}
         run: |
-          aws s3 cp deploy.zip s3://${{ env.S3_BUCKET_NAME }}/techinsights-api/${{ steps.image.outputs.specific_tag }}/deploy.zip
+          aws s3 cp deploy.zip s3://$S3_BUCKET_NAME/techinsights-api/$SPECIFIC_TAG/deploy.zip
 
       - name: Start CodeDeploy deployment
+        env:
+          SPECIFIC_TAG: ${{ steps.image.outputs.specific_tag }}
         run: |
           aws deploy create-deployment \
-            --application-name ${{ env.CODEDEPLOY_APP_NAME }} \
-            --deployment-group-name ${{ env.CODEDEPLOY_DEPLOYMENT_GROUP }} \
-            --s3-location bucket=${{ env.S3_BUCKET_NAME }},key=techinsights-api/${{ steps.image.outputs.specific_tag }}/deploy.zip,bundleType=zip \
-            --description "Deployment for image tag ${{ steps.image.outputs.specific_tag }}"
+            --application-name "$CODEDEPLOY_APP_NAME" \
+            --deployment-group-name "$CODEDEPLOY_DEPLOYMENT_GROUP" \
+            --s3-location bucket=$S3_BUCKET_NAME,key=techinsights-api/$SPECIFIC_TAG/deploy.zip,bundleType=zip \
+            --description "Deployment for image tag $SPECIFIC_TAG"

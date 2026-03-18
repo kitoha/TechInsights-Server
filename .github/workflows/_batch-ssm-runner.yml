@@ -42,11 +42,14 @@ jobs:
           sudo dpkg -i session-manager-plugin.deb
 
       - name: Open SSM tunnel to RDS
+        env:
+          EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
+          RDS_ENDPOINT: ${{ secrets.RDS_ENDPOINT }}
         run: |
           aws ssm start-session \
-            --target ${{ secrets.EC2_INSTANCE_ID }} \
+            --target "$EC2_INSTANCE_ID" \
             --document-name AWS-StartPortForwardingSessionToRemoteHost \
-            --parameters '{"host":["${{ secrets.RDS_ENDPOINT }}"],"portNumber":["5432"],"localPortNumber":["5432"]}' &
+            --parameters "{\"host\":[\"$RDS_ENDPOINT\"],\"portNumber\":[\"5432\"],\"localPortNumber\":[\"5432\"]}" &
           echo "SSM_PID=$!" >> $GITHUB_ENV
           for i in $(seq 1 15); do
             if nc -z localhost 5432; then
@@ -72,63 +75,54 @@ jobs:
           SPRING_PROFILES_ACTIVE: prod
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/techinsights_db
           AWS_REGION: ${{ env.AWS_REGION }}
+          JOB_NAME: ${{ inputs.job_name }}
+          EXTRA_PARAMS: ${{ inputs.extra_params }}
         run: |
-          EXTRA_PARAMS="${{ inputs.extra_params }}"
           java -Xms128m -Xmx512m -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC -XX:+ExitOnOutOfMemoryError \
             -jar batch/build/libs/batch-0.0.1-SNAPSHOT.jar \
-            --spring.batch.job.name=${{ inputs.job_name }} ${EXTRA_PARAMS} run.id=${{ github.run_id }}
+            --spring.batch.job.name="$JOB_NAME" ${EXTRA_PARAMS} run.id=${{ github.run_id }}
 
       - name: Notify Slack success
         if: success()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          JOB_NAME: ${{ inputs.job_name }}
+          EXTRA_PARAMS: ${{ inputs.extra_params }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+          curl -X POST "$SLACK_WEBHOOK_URL" \
             -H 'Content-Type: application/json' \
-            -d '{
-              "text": "✅ *${{ inputs.job_name }}* 완료",
-              "attachments": [
-                {
-                  "color": "good",
-                  "fields": [
-                    {
-                      "title": "Params",
-                      "value": "${{ inputs.extra_params != '' && inputs.extra_params || '없음' }}",
-                      "short": false
-                    },
-                    {
-                      "title": "Log",
-                      "value": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-                      "short": false
-                    }
-                  ]
-                }
-              ]
-            }'
+            -d "{
+              \"text\": \"✅ *${JOB_NAME}* 완료\",
+              \"attachments\": [{
+                \"color\": \"good\",
+                \"fields\": [
+                  {\"title\": \"Params\", \"value\": \"${EXTRA_PARAMS:-없음}\", \"short\": false},
+                  {\"title\": \"Log\", \"value\": \"$RUN_URL\", \"short\": false}
+                ]
+              }]
+            }"
 
       - name: Notify Slack failure
         if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          JOB_NAME: ${{ inputs.job_name }}
+          EXTRA_PARAMS: ${{ inputs.extra_params }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+          curl -X POST "$SLACK_WEBHOOK_URL" \
             -H 'Content-Type: application/json' \
-            -d '{
-              "text": "❌ *${{ inputs.job_name }}* 실패",
-              "attachments": [
-                {
-                  "color": "danger",
-                  "fields": [
-                    {
-                      "title": "Params",
-                      "value": "${{ inputs.extra_params != '' && inputs.extra_params || '없음' }}",
-                      "short": false
-                    },
-                    {
-                      "title": "Log",
-                      "value": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-                      "short": false
-                    }
-                  ]
-                }
-              ]
-            }'
+            -d "{
+              \"text\": \"❌ *${JOB_NAME}* 실패\",
+              \"attachments\": [{
+                \"color\": \"danger\",
+                \"fields\": [
+                  {\"title\": \"Params\", \"value\": \"${EXTRA_PARAMS:-없음}\", \"short\": false},
+                  {\"title\": \"Log\", \"value\": \"$RUN_URL\", \"short\": false}
+                ]
+              }]
+            }"
 
       - name: Close SSM tunnel
         if: always()
