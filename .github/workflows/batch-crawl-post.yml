@@ -3,11 +3,16 @@ name: Batch - crawlPostJob
 on:
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   crawl-post:
-    permissions:
-      id-token: write
-      contents: read
     uses: ./.github/workflows/_batch-ssm-runner.yml
     with:
       job_name: crawlPostJob

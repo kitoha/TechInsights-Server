@@ -9,11 +9,16 @@ on:
         type: string
         default: ''
 
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   github-readme-embedding:
-    permissions:
-      id-token: write
-      contents: read
     uses: ./.github/workflows/_batch-ssm-runner.yml
     with:
       job_name: githubReadmeEmbeddingJob
