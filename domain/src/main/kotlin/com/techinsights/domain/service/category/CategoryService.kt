@@ -10,7 +10,9 @@ class CategoryService(
 ) {
 
   fun getCategoryStatistics(): List<CategorySummaryDto> {
-    return postRepository.getCategoryStatistics()
+    val allSummary = postRepository.getAllPostSummary()
+    val categorySummaries = postRepository.getCategoryStatistics()
+    return listOf(allSummary) + categorySummaries
   }
 
 }

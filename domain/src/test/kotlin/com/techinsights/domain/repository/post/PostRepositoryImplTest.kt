@@ -1,5 +1,6 @@
 package com.techinsights.domain.repository.post
 
+import com.querydsl.core.Tuple
 import com.querydsl.core.types.Expression
 import com.querydsl.core.types.dsl.BooleanExpression
 import com.querydsl.jpa.impl.JPAQuery
@@ -702,5 +703,26 @@ class PostRepositoryImplTest : FunSpec({
     shouldThrow<PostNotFoundException> {
       repository.decrementLikeCount(postId)
     }
+  }
+
+  test("전체 게시글 통계를 중복 없이 조회한다") {
+    val query = mockk<JPAQuery<Tuple>>()
+    val tuple = mockk<Tuple>(relaxed = true)
+    val post = QPost.post
+
+    every { queryFactory.select(any(), any(), any()) } returns query
+    every { query.from(post) } returns query
+    every { query.where(any<BooleanExpression>()) } returns query
+    every { query.fetchOne() } returns tuple
+    every { tuple.get(0, Long::class.java) } returns 100L
+    every { tuple.get(1, Long::class.java) } returns 500L
+    every { tuple.get(2, LocalDateTime::class.java) } returns LocalDateTime.of(2024, 3, 1, 0, 0)
+
+    val result = repository.getAllPostSummary()
+
+    result.category shouldBe Category.All
+    result.postCount shouldBe 100L
+    result.totalViewCount shouldBe 500L
+    result.latestPostDate shouldBe LocalDateTime.of(2024, 3, 1, 0, 0)
   }
 })

@@ -19,6 +19,7 @@ interface PostRepository {
   fun findOldestSummarized(limit: Long, lastPublishedAt: LocalDateTime? = null, lastId: Long? = null): List<PostDto>
   fun findTopViewedPosts(limit: Long): List<PostDto>
   fun getCategoryStatistics(): List<CategorySummaryDto>
+  fun getAllPostSummary(): CategorySummaryDto
   fun getAllPosts(pageable: Pageable, companyId: String?): Page<PostDto>
   fun getPostsByCategory(pageable: Pageable, category: Category, companyId: String?): Page<PostDto>
   fun updateEmbeddingStatusBulk(postIds: List<String>): Long
