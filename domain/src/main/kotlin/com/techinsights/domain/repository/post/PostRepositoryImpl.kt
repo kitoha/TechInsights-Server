@@ -1,6 +1,7 @@
 package com.techinsights.domain.repository.post
 
 import com.querydsl.core.types.Projections
+import java.time.LocalDateTime
 import com.querydsl.jpa.impl.JPAQueryFactory
 import com.techinsights.domain.dto.category.CategorySummaryDto
 import com.techinsights.domain.dto.post.PostDto
@@ -188,6 +189,27 @@ class PostRepositoryImpl(
       )
       .groupBy(postCategory.category)
       .fetch()
+  }
+
+  override fun getAllPostSummary(): CategorySummaryDto {
+    val post = QPost.post
+
+    val countExpr = post.id.count()
+    val viewSumExpr = post.viewCount.sum().coalesce(0L)
+    val latestDateExpr = post.publishedAt.max()
+
+    val result = queryFactory
+      .select(countExpr, viewSumExpr, latestDateExpr)
+      .from(post)
+      .where(post.isSummary.isTrue)
+      .fetchOne()
+
+    return CategorySummaryDto(
+      category = Category.All,
+      postCount = result?.get(0, Long::class.java) ?: 0L,
+      totalViewCount = result?.get(1, Long::class.java) ?: 0L,
+      latestPostDate = result?.get(2, LocalDateTime::class.java)
+    )
   }
 
   override fun getAllPosts(
