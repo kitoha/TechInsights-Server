@@ -38,7 +38,9 @@ class GeminiReadmeBatchSummarizerTest : FunSpec({
         every { rateLimiterRegistry.rateLimiter("geminiReadmeRpm") } returns rpmLimiter
         every { rateLimiterRegistry.rateLimiter("geminiReadmeRpd") } returns rpdLimiter
         every { circuitBreakerRegistry.circuitBreaker("geminiBatch") } returns circuitBreaker
-        every { geminiProperties.maxOutputTokens } returns 8192
+        every { geminiProperties.maxTokensPerRequest } returns 100_000
+        every { geminiProperties.inputTokensPerItem } returns 500
+        every { geminiProperties.outputTokensPerItem } returns 200
         every { promptBuilder.buildPrompt(any()) } returns "test prompt"
         every { promptBuilder.buildSchema() } returns """{"type":"object"}"""
     }
@@ -162,6 +164,24 @@ class GeminiReadmeBatchSummarizerTest : FunSpec({
 
         results[0].success.shouldBeFalse()
         results[0].error.shouldNotBeEmpty()
+    }
+
+    test("calculateOutputTokens — 150개 배치에서 잔여 예산이 항목 목표보다 작으면 잔여 예산을 사용한다") {
+        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry)
+
+        summarizer.calculateOutputTokens(150) shouldBe 25_000
+    }
+
+    test("calculateOutputTokens — 소수 배치에서 항목 목표가 잔여 예산보다 작으면 항목 목표를 사용한다") {
+        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry)
+
+        summarizer.calculateOutputTokens(10) shouldBe 2_000
+    }
+
+    test("calculateOutputTokens — 입력 추정이 예산 초과 시 최소값 1024를 반환한다") {
+        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry)
+
+        summarizer.calculateOutputTokens(300) shouldBe 1_024
     }
 })
 

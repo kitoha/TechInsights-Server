@@ -73,7 +73,7 @@ class GeminiReadmeBatchSummarizer(
     private fun callGeminiApi(items: List<ArticleInput>): Flow<SummaryResultWithId> = channelFlow {
         val modelName = GeminiModelType.GEMINI_2_5_FLASH.get()
         val prompt = promptBuilder.buildPrompt(items)
-        val config = buildGeminiConfig()
+        val config = buildGeminiConfig(items.size)
 
         acquireRateLimiterPermission()
 
@@ -119,14 +119,30 @@ class GeminiReadmeBatchSummarizer(
         }
     }.buffer(Channel.UNLIMITED)
 
-    private fun buildGeminiConfig(): GenerateContentConfig {
+    internal fun calculateOutputTokens(batchSize: Int): Int {
+        val estimatedInputTokens = batchSize * geminiProperties.inputTokensPerItem
+        val remainingBudget = geminiProperties.maxTokensPerRequest - estimatedInputTokens
+        if (remainingBudget <= 0) {
+            log.warn(
+                "[GeminiReadme] 입력 토큰 추정치($estimatedInputTokens)가 " +
+                    "maxTokensPerRequest(${geminiProperties.maxTokensPerRequest})를 초과. batchSize=$batchSize"
+            )
+        }
+        return minOf(remainingBudget, batchSize * geminiProperties.outputTokensPerItem)
+            .coerceAtLeast(1024)
+    }
+
+    private fun buildGeminiConfig(batchSize: Int): GenerateContentConfig {
+        val dynamicMaxOutput = calculateOutputTokens(batchSize)
+        log.info("[GeminiReadme] batchSize=$batchSize dynamicMaxOutput=$dynamicMaxOutput")
+
         val schema = promptBuilder.buildSchema()
         val schemaNode = mapper.readTree(schema)
 
         return GenerateContentConfig.builder()
             .responseJsonSchema(schemaNode)
             .responseMimeType("application/json")
-            .maxOutputTokens(geminiProperties.maxOutputTokens)
+            .maxOutputTokens(dynamicMaxOutput)
             .build()
     }
 
