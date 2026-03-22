@@ -4,11 +4,13 @@ import com.querydsl.core.types.OrderSpecifier
 import com.querydsl.jpa.impl.JPAQueryFactory
 import com.techinsights.domain.dto.github.GithubRepositoryDto
 import com.techinsights.domain.entity.github.QGithubRepository
+import com.techinsights.domain.enums.ErrorType
 import com.techinsights.domain.enums.GithubSortType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Repository
+import java.time.LocalDateTime
 
 @Repository
 class GithubRepositoryRepositoryImpl(
@@ -60,6 +62,8 @@ class GithubRepositoryRepositoryImpl(
         pageSize: Int,
         afterStarCount: Long?,
         afterId: Long?,
+        retryAfter: LocalDateTime?,
+        retryableErrorTypes: Set<ErrorType>,
     ): List<GithubRepositoryDto> {
         val repo = QGithubRepository.githubRepository
 
@@ -68,11 +72,17 @@ class GithubRepositoryRepositoryImpl(
                 .or(repo.starCount.eq(afterStarCount).and(repo.id.lt(afterId)))
         } else null
 
+        val neverAttempted = repo.readmeSummarizedAt.isNull
+
+        val retryCondition = if (retryAfter != null && retryableErrorTypes.isNotEmpty()) {
+            repo.readmeSummaryErrorType.stringValue().`in`(retryableErrorTypes.map { it.name })
+                .and(repo.readmeSummarizedAt.lt(retryAfter))
+        } else null
+
+        val mainCondition = retryCondition?.let { neverAttempted.or(it) } ?: neverAttempted
+
         return queryFactory.selectFrom(repo)
-            .where(
-                repo.readmeSummarizedAt.isNull,
-                cursorCondition,
-            )
+            .where(mainCondition, cursorCondition)
             .orderBy(repo.starCount.desc(), repo.id.desc())
             .limit(pageSize.toLong())
             .fetch()
