@@ -123,9 +123,14 @@ class GeminiReadmeBatchSummarizer(
         val estimatedInputTokens = batchSize * geminiProperties.inputTokensPerItem
         val remainingBudget = geminiProperties.maxTokensPerRequest - estimatedInputTokens
         if (remainingBudget <= 0) {
-            log.warn(
+            val maxBeforeInputOverflow = geminiProperties.maxTokensPerRequest / geminiProperties.inputTokensPerItem
+            val maxForAdequateOutput = geminiProperties.maxTokensPerRequest / (geminiProperties.inputTokensPerItem + geminiProperties.outputTokensPerItem)
+            log.error(
                 "[GeminiReadme] 입력 토큰 추정치($estimatedInputTokens)가 " +
-                    "maxTokensPerRequest(${geminiProperties.maxTokensPerRequest})를 초과. batchSize=$batchSize"
+                    "maxTokensPerRequest(${geminiProperties.maxTokensPerRequest})를 초과. " +
+                    "batchSize=$batchSize. " +
+                    "입력 overflow 없는 최대 chunk-size=$maxBeforeInputOverflow, " +
+                    "출력 품질 보장 권장 chunk-size=$maxForAdequateOutput (application.yml 확인)"
             )
         }
         return minOf(remainingBudget, batchSize * geminiProperties.outputTokensPerItem)
