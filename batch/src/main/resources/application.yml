@@ -21,9 +21,11 @@ batch:
   github-readme-summary:
     job-name: githubReadmeSummaryJob
     step-name: githubReadmeSummarizeStep
-    chunk-size: 150        # Gemini 요청 1회 당 처리할 레포 수
-    page-size: 100         # DB에서 한 번에 읽어올 레포 수
-    max-items-per-run: 3000 # 1회 실행당 최대 처리 수 (RPD 20 × chunkSize 150)
+    chunk-size: 150
+    page-size: 100
+    max-items-per-run: 3000
+    retry-enabled: true
+    retry-after-days: 7
   github-embedding:
     job-name: githubReadmeEmbeddingJob
     step-name: githubReadmeEmbeddingStep
@@ -149,4 +151,8 @@ circuit-breaker:
 
 gemini:
   api-key: ${GEMINI_API_KEY}
-  max-output-tokens: 16384
+  max-output-tokens: 65536          # 단건 아티클 요약 (GeminiArticleSummarizer)
+  # README 배치 동적 토큰 계산 설정
+  max-tokens-per-request: 100000    # 배치 요청당 총 토큰 예산 (TPM 250K ÷ 2 RPM = 125K, 안전 마진 100K)
+  input-tokens-per-item: 500        # 항목당 입력 토큰 추정 (README 2000자 ≈ 500 토큰)
+  output-tokens-per-item: 200       # 항목당 출력 목표 (한국어 요약 2문장 + JSON)

@@ -5,6 +5,7 @@ import com.querydsl.jpa.impl.JPAQuery
 import com.querydsl.jpa.impl.JPAQueryFactory
 import com.techinsights.domain.entity.github.GithubRepository
 import com.techinsights.domain.entity.github.QGithubRepository
+import com.techinsights.domain.enums.ErrorType
 import com.techinsights.domain.enums.GithubSortType
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -276,6 +277,46 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             val result = repository.findUnsummarized(pageSize = 10, afterStarCount = null, afterId = null)
 
             result[0].topics shouldBe listOf("kotlin", "spring", "batch")
+        }
+
+        test("retryAfter와 retryableErrorTypes 설정 시 결과를 반환한다") {
+            val query = mockk<JPAQuery<GithubRepository>>()
+
+            every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
+            every { query.where(any<BooleanExpression>(), isNull<BooleanExpression>()) } returns query
+            every { query.orderBy(any(), any()) } returns query
+            every { query.limit(10L) } returns query
+            every { query.fetch() } returns listOf(entity1)
+
+            val result = repository.findUnsummarized(
+                pageSize = 10,
+                afterStarCount = null,
+                afterId = null,
+                retryAfter = LocalDateTime.now().minusDays(7),
+                retryableErrorTypes = setOf(ErrorType.LENGTH_LIMIT, ErrorType.API_ERROR),
+            )
+
+            result shouldHaveSize 1
+        }
+
+        test("retryableErrorTypes가 빈 Set이면 retryAfter가 있어도 neverAttempted 조건만 사용한다") {
+            val query = mockk<JPAQuery<GithubRepository>>()
+
+            every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
+            every { query.where(any<BooleanExpression>(), isNull<BooleanExpression>()) } returns query
+            every { query.orderBy(any(), any()) } returns query
+            every { query.limit(10L) } returns query
+            every { query.fetch() } returns listOf(entity1)
+
+            val result = repository.findUnsummarized(
+                pageSize = 10,
+                afterStarCount = null,
+                afterId = null,
+                retryAfter = LocalDateTime.now().minusDays(7),
+                retryableErrorTypes = emptySet(),
+            )
+
+            result shouldHaveSize 1
         }
     }
 

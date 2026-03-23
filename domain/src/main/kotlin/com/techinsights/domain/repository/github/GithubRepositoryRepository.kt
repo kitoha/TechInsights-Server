@@ -1,9 +1,11 @@
 package com.techinsights.domain.repository.github
 
 import com.techinsights.domain.dto.github.GithubRepositoryDto
+import com.techinsights.domain.enums.ErrorType
 import com.techinsights.domain.enums.GithubSortType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import java.time.LocalDateTime
 
 interface GithubRepositoryRepository {
     fun findRepositories(
@@ -18,6 +20,8 @@ interface GithubRepositoryRepository {
         pageSize: Int,
         afterStarCount: Long?,
         afterId: Long?,
+        retryAfter: LocalDateTime? = null,
+        retryableErrorTypes: Set<ErrorType> = emptySet(),
     ): List<GithubRepositoryDto>
 
     fun findUnembedded(

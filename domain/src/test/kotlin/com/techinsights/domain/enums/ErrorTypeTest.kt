@@ -48,4 +48,28 @@ class ErrorTypeTest : FunSpec({
     errorTypes[6] shouldBe ErrorType.SAFETY_BLOCKED
     errorTypes[7] shouldBe ErrorType.LENGTH_LIMIT
   }
+
+  test("인프라 오류는 재시도 가능하다") {
+    ErrorType.API_ERROR.isRetryable shouldBe true
+    ErrorType.TIMEOUT.isRetryable shouldBe true
+    ErrorType.RATE_LIMIT.isRetryable shouldBe true
+    ErrorType.UNKNOWN.isRetryable shouldBe true
+    ErrorType.LENGTH_LIMIT.isRetryable shouldBe true
+  }
+
+  test("콘텐츠/정책 오류는 재시도 불가하다") {
+    ErrorType.CONTENT_ERROR.isRetryable shouldBe false
+    ErrorType.SAFETY_BLOCKED.isRetryable shouldBe false
+    ErrorType.VALIDATION_ERROR.isRetryable shouldBe false
+  }
+
+  test("RETRYABLE_TYPES는 재시도 가능한 5개 타입만 포함한다") {
+    ErrorType.RETRYABLE_TYPES shouldBe setOf(
+      ErrorType.LENGTH_LIMIT,
+      ErrorType.API_ERROR,
+      ErrorType.TIMEOUT,
+      ErrorType.UNKNOWN,
+      ErrorType.RATE_LIMIT,
+    )
+  }
 })

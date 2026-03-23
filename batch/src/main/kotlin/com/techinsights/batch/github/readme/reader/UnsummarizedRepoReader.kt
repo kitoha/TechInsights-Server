@@ -2,12 +2,14 @@ package com.techinsights.batch.github.readme.reader
 
 import com.techinsights.batch.github.readme.config.props.GithubReadmeBatchProperties
 import com.techinsights.domain.dto.github.GithubRepositoryDto
+import com.techinsights.domain.enums.ErrorType
 import com.techinsights.domain.repository.github.GithubRepositoryRepository
 import org.slf4j.LoggerFactory
 import org.springframework.batch.core.configuration.annotation.StepScope
 import org.springframework.batch.item.ItemReader
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
+import java.time.LocalDateTime
 
 @Component
 @StepScope
@@ -37,7 +39,17 @@ class UnsummarizedRepoReader(
     }
 
     private fun loadNextPage() {
-        val page = repository.findUnsummarized(properties.pageSize, lastStarCount, lastId)
+        val retryAfter = if (properties.retryEnabled) {
+            LocalDateTime.now().minusDays(properties.retryAfterDays)
+        } else null
+
+        val page = repository.findUnsummarized(
+            pageSize = properties.pageSize,
+            afterStarCount = lastStarCount,
+            afterId = lastId,
+            retryAfter = retryAfter,
+            retryableErrorTypes = if (properties.retryEnabled) ErrorType.RETRYABLE_TYPES else emptySet(),
+        )
         if (page.isEmpty()) {
             exhausted = true
             return

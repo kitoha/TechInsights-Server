@@ -2,6 +2,7 @@ package com.techinsights.batch.github.readme.writer
 
 import com.techinsights.domain.dto.gemini.ArticleInput
 import com.techinsights.domain.dto.gemini.SummaryResultWithId
+import com.techinsights.domain.enums.ErrorType
 import com.techinsights.domain.service.gemini.GithubReadmeBatchSummarizer
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -96,5 +97,65 @@ class GithubReadmeBatchSummaryWriterTest : FunSpec({
         writer.write(Chunk(items))
 
         verify { summarizer.summarize(items) }
+    }
+
+    test("실패 결과의 errorType이 DB 파라미터에 저장된다") {
+        val item = ArticleInput("owner/repo", "repo", "content")
+
+        every { summarizer.summarize(any()) } returns flowOf(
+            SummaryResultWithId(id = "owner/repo", success = false, error = "API error", errorType = ErrorType.API_ERROR)
+        )
+
+        val writer = GithubReadmeBatchSummaryWriter(summarizer, jdbcTemplate)
+        writer.write(Chunk(listOf(item)))
+
+        val capturedParams = mutableListOf<MapSqlParameterSource>()
+        verify(exactly = 1) {
+            jdbcTemplate.batchUpdate(
+                any<String>(),
+                withArg<Array<MapSqlParameterSource>> { params -> capturedParams.addAll(params.toList()) }
+            )
+        }
+        capturedParams[0].getValue("errorType") shouldBe "API_ERROR"
+    }
+
+    test("errorType이 null인 실패는 UNKNOWN으로 저장된다") {
+        val item = ArticleInput("owner/repo", "repo", "content")
+
+        every { summarizer.summarize(any()) } returns flowOf(
+            SummaryResultWithId(id = "owner/repo", success = false, error = "unknown error", errorType = null)
+        )
+
+        val writer = GithubReadmeBatchSummaryWriter(summarizer, jdbcTemplate)
+        writer.write(Chunk(listOf(item)))
+
+        val capturedParams = mutableListOf<MapSqlParameterSource>()
+        verify(exactly = 1) {
+            jdbcTemplate.batchUpdate(
+                any<String>(),
+                withArg<Array<MapSqlParameterSource>> { params -> capturedParams.addAll(params.toList()) }
+            )
+        }
+        capturedParams[0].getValue("errorType") shouldBe "UNKNOWN"
+    }
+
+    test("성공 시 readme_summary_error_type을 NULL로 초기화하는 SQL을 사용한다") {
+        val item = ArticleInput("owner/repo", "repo", "content")
+
+        every { summarizer.summarize(any()) } returns flowOf(
+            SummaryResultWithId(id = "owner/repo", success = true, summary = "요약")
+        )
+
+        val writer = GithubReadmeBatchSummaryWriter(summarizer, jdbcTemplate)
+        writer.write(Chunk(listOf(item)))
+
+        val capturedSqls = mutableListOf<String>()
+        verify(exactly = 1) {
+            jdbcTemplate.batchUpdate(
+                withArg<String> { sql -> capturedSqls.add(sql) },
+                any<Array<MapSqlParameterSource>>()
+            )
+        }
+        capturedSqls[0].contains("readme_summary_error_type") shouldBe true
     }
 })

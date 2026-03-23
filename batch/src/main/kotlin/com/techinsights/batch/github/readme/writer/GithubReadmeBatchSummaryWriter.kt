@@ -1,6 +1,7 @@
 package com.techinsights.batch.github.readme.writer
 
 import com.techinsights.domain.dto.gemini.ArticleInput
+import com.techinsights.domain.enums.ErrorType
 import com.techinsights.domain.service.gemini.GithubReadmeBatchSummarizer
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
@@ -39,17 +40,19 @@ class GithubReadmeBatchSummaryWriter(
             log.info("[ReadmeSummaryWriter] Updated ${successParams.size}/${items.size} readme summaries")
         }
 
-        val failedParams = results
-            .filter { !it.success || it.summary == null }
+        val failedResults = results.filter { !it.success || it.summary == null }
+        val failedParams = failedResults
             .map { result ->
                 MapSqlParameterSource()
                     .addValue("fullName", result.id)
+                    .addValue("errorType", (result.errorType ?: ErrorType.UNKNOWN).name)
             }
             .toTypedArray()
 
         if (failedParams.isNotEmpty()) {
             jdbcTemplate.batchUpdate(MARK_FAILED_SQL, failedParams)
-            log.warn("[ReadmeSummaryWriter] ${failedParams.size}/${items.size} summaries failed, marked readme_summarized_at to prevent infinite retry")
+            val errorDist = failedResults.groupBy { it.errorType?.name ?: "UNKNOWN" }.mapValues { it.value.size }
+            log.warn("[ReadmeSummaryWriter] ${failedParams.size}/${items.size} summaries failed. errorTypes=$errorDist")
         }
     }
 
@@ -59,15 +62,16 @@ class GithubReadmeBatchSummaryWriter(
         private const val UPDATE_SQL = """
             UPDATE github_repositories
             SET readme_summary = :summary,
-                readme_summarized_at = NOW()
+                readme_summarized_at = NOW(),
+                readme_summary_error_type = NULL
             WHERE full_name = :fullName
         """
 
         private const val MARK_FAILED_SQL = """
             UPDATE github_repositories
-            SET readme_summarized_at = NOW()
+            SET readme_summarized_at = NOW(),
+                readme_summary_error_type = :errorType
             WHERE full_name = :fullName
-              AND readme_summarized_at IS NULL
         """
     }
 }
