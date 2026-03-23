@@ -26,4 +26,5 @@ interface PostRepository {
   fun incrementSummaryFailureCount(postId: String)
   fun incrementLikeCount(postId: Long)
   fun decrementLikeCount(postId: Long)
+  fun getLikeCount(postId: Long): Long
 }
