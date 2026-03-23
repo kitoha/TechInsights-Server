@@ -168,4 +168,85 @@ class PostLikeServiceTest : FunSpec({
         result shouldBe false
         verify(exactly = 0) { postRepository.decrementLikeCount(any()) }
     }
+
+    test("getLikeStatus - Post Not Found") {
+        val postId = Tsid.generate()
+        val requester = Requester.Authenticated(100L, "127.0.0.1")
+
+        every { postRepository.existsById(any()) } returns false
+
+        shouldThrow<PostNotFoundException> {
+            postLikeService.getLikeStatus(postId, requester)
+        }
+    }
+
+    test("getLikeStatus - Authenticated User - Liked") {
+        val postIdStr = Tsid.generate()
+        val postId = Tsid.decode(postIdStr)
+        val userId = 100L
+        val ipAddress = "127.0.0.1"
+        val requester = Requester.Authenticated(userId, ipAddress)
+        val existingLike = mockk<PostLike>()
+
+        every { postRepository.existsById(any()) } returns true
+        every { postRepository.getLikeCount(postId) } returns 5L
+        every { postLikeRepository.findByPostIdAndUserId(postId, userId) } returns existingLike
+
+        val result = postLikeService.getLikeStatus(postIdStr, requester)
+
+        result.count shouldBe 5L
+        result.liked shouldBe true
+    }
+
+    test("getLikeStatus - Authenticated User - Not Liked") {
+        val postIdStr = Tsid.generate()
+        val postId = Tsid.decode(postIdStr)
+        val userId = 100L
+        val ipAddress = "127.0.0.1"
+        val requester = Requester.Authenticated(userId, ipAddress)
+
+        every { postRepository.existsById(any()) } returns true
+        every { postRepository.getLikeCount(postId) } returns 5L
+        every { postLikeRepository.findByPostIdAndUserId(postId, userId) } returns null
+
+        val result = postLikeService.getLikeStatus(postIdStr, requester)
+
+        result.count shouldBe 5L
+        result.liked shouldBe false
+    }
+
+    test("getLikeStatus - Anonymous User - Liked") {
+        val postIdStr = Tsid.generate()
+        val postId = Tsid.decode(postIdStr)
+        val anonymousId = java.util.UUID.randomUUID().toString()
+        val ipAddress = "127.0.0.1"
+        val requester = Requester.Anonymous(anonymousId, ipAddress)
+        val existingLike = mockk<PostLike>()
+
+        every { postRepository.existsById(any()) } returns true
+        every { postRepository.getLikeCount(postId) } returns 5L
+        every { postLikeRepository.findAnonymousByPostIdAndIpAddress(postId, ipAddress) } returns existingLike
+
+        val result = postLikeService.getLikeStatus(postIdStr, requester)
+
+        result.count shouldBe 5L
+        result.liked shouldBe true
+    }
+
+    test("getLikeStatus - Anonymous User - Not Liked") {
+        val postIdStr = Tsid.generate()
+        val postId = Tsid.decode(postIdStr)
+        val anonymousId = java.util.UUID.randomUUID().toString()
+        val ipAddress = "127.0.0.1"
+        val requester = Requester.Anonymous(anonymousId, ipAddress)
+
+        every { postRepository.existsById(any()) } returns true
+        every { postRepository.getLikeCount(postId) } returns 5L
+        every { postLikeRepository.findAnonymousByPostIdAndIpAddress(postId, ipAddress) } returns null
+
+        val result = postLikeService.getLikeStatus(postIdStr, requester)
+
+        result.count shouldBe 5L
+        result.liked shouldBe false
+    }
 })
