@@ -2,9 +2,11 @@ package com.techinsights.batch.github.writer
 
 import com.techinsights.batch.github.dto.GithubRepoUpsertData
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.string.shouldContain
 import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import org.springframework.batch.item.Chunk
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource
@@ -42,6 +44,17 @@ class GithubRepoWriterTest : FunSpec({
         verify(exactly = 1) {
             jdbcTemplate.batchUpdate(any<String>(), any<Array<MapSqlParameterSource>>())
         }
+    }
+
+    test("UPSERT SQL에 daily_star_delta 계산 로직이 포함된다") {
+        val sqlSlot = slot<String>()
+        every { jdbcTemplate.batchUpdate(capture(sqlSlot), any<Array<MapSqlParameterSource>>()) } returns intArrayOf(1)
+
+        writer.write(Chunk(listOf(createUpsertData())))
+
+        sqlSlot.captured shouldContain "daily_star_delta"
+        sqlSlot.captured shouldContain "star_count_prev_day"
+        sqlSlot.captured shouldContain "INTERVAL '1 day'"
     }
 
     test("빈 chunk는 jdbcTemplate을 호출하지 않는다") {

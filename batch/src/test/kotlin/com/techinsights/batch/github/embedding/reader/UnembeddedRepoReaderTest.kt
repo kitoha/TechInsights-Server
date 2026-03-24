@@ -116,5 +116,6 @@ private fun createDto(
     pushedAt = LocalDateTime.now(),
     fetchedAt = LocalDateTime.now(),
     weeklyStarDelta = 0L,
+    dailyStarDelta = 0L,
     readmeSummary = "summary",
 )

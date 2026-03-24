@@ -26,7 +26,7 @@ class GithubReadmeEmbeddingProcessorTest : FunSpec({
         starCount = 1000L, forkCount = 10L, primaryLanguage = "Kotlin",
         ownerName = ownerName, ownerAvatarUrl = null, topics = topics,
         pushedAt = LocalDateTime.now(), fetchedAt = LocalDateTime.now(),
-        weeklyStarDelta = 0L, readmeSummary = readmeSummary,
+        weeklyStarDelta = 0L, dailyStarDelta = 0L, readmeSummary = readmeSummary,
     )
 
     test("description과 readmeSummary로 GithubEmbeddingRequestDto를 반환한다") {
