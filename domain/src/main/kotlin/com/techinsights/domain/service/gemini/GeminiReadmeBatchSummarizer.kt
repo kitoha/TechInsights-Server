@@ -133,7 +133,9 @@ class GeminiReadmeBatchSummarizer(
                     "출력 품질 보장 권장 chunk-size=$maxForAdequateOutput (application.yml 확인)"
             )
         }
-        return remainingBudget.coerceIn(1024, geminiProperties.maxOutputTokens)
+        val itemTarget = batchSize * geminiProperties.outputTokensPerItem
+        val upperBound = minOf(itemTarget, geminiProperties.maxOutputTokens).coerceAtLeast(1024)
+        return remainingBudget.coerceIn(1024, upperBound)
     }
 
     private fun buildGeminiConfig(batchSize: Int): GenerateContentConfig {

@@ -39,6 +39,7 @@ class GeminiReadmeBatchSummarizerTest : FunSpec({
         every { rateLimiterRegistry.rateLimiter("geminiReadmeRpd") } returns rpdLimiter
         every { circuitBreakerRegistry.circuitBreaker("geminiBatch") } returns circuitBreaker
         every { geminiProperties.maxTokensPerRequest } returns 100_000
+        every { geminiProperties.maxOutputTokens } returns 65_536
         every { geminiProperties.inputTokensPerItem } returns 500
         every { geminiProperties.outputTokensPerItem } returns 200
         every { promptBuilder.buildPrompt(any()) } returns "test prompt"
