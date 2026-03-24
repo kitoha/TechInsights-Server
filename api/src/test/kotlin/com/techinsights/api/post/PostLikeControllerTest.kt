@@ -8,7 +8,9 @@ import com.techinsights.domain.utils.Tsid
 import io.kotest.core.spec.style.FunSpec
 import io.mockk.*
 import org.springframework.http.MediaType
+import com.techinsights.domain.dto.post.LikeStatusResult
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 
@@ -73,6 +75,38 @@ class PostLikeControllerTest : FunSpec() {
             }
 
             verify(exactly = 1) { postLikeService.toggleLike(postId, any<Requester.Authenticated>()) }
+        }
+
+        test("GET /api/v1/posts/{postId}/like - Authenticated User - Liked") {
+            val postId = Tsid.generate()
+
+            every { postLikeService.getLikeStatus(postId, any<Requester.Authenticated>()) } returns LikeStatusResult(42L, true)
+
+            mockMvc.get("/api/v1/posts/$postId/like") {
+                accept = MediaType.APPLICATION_JSON
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.count") { value(42) }
+                jsonPath("$.liked") { value(true) }
+            }
+
+            verify(exactly = 1) { postLikeService.getLikeStatus(postId, any<Requester.Authenticated>()) }
+        }
+
+        test("GET /api/v1/posts/{postId}/like - Anonymous User - Not Liked") {
+            val postId = Tsid.generate()
+
+            every { postLikeService.getLikeStatus(postId, any<Requester.Anonymous>()) } returns LikeStatusResult(10L, false)
+
+            mockMvc.get("/api/v1/posts/$postId/like") {
+                accept = MediaType.APPLICATION_JSON
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.count") { value(10) }
+                jsonPath("$.liked") { value(false) }
+            }
+
+            verify(exactly = 1) { postLikeService.getLikeStatus(postId, any<Requester.Anonymous>()) }
         }
 
         test("POST /api/v1/posts/{postId}/like - Authenticated User - Unlike") {

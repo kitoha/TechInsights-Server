@@ -345,9 +345,18 @@ class PostRepositoryImpl(
       .set(post.likeCount, post.likeCount.subtract(1))
       .where(post.id.eq(postId).and(post.likeCount.gt(0)))
       .execute()
-      
+
     if (affected == 0L) {
       throw PostNotFoundException("Post with ID $postId not found or like count is already 0")
     }
+  }
+
+  override fun getLikeCount(postId: Long): Long {
+    val post = QPost.post
+    return queryFactory.select(post.likeCount)
+        .from(post)
+        .where(post.id.eq(postId))
+        .fetchOne()
+        ?: throw PostNotFoundException("Post with ID $postId not found")
   }
 }

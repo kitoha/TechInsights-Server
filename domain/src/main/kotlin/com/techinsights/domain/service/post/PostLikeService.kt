@@ -1,6 +1,7 @@
 package com.techinsights.domain.service.post
 
 import com.techinsights.domain.dto.auth.Requester
+import com.techinsights.domain.dto.post.LikeStatusResult
 import com.techinsights.domain.entity.post.PostLike
 import com.techinsights.domain.exception.PostNotFoundException
 import com.techinsights.domain.repository.post.PostLikeRepository
@@ -16,6 +17,17 @@ class PostLikeService(
     private val postRepository: PostRepository,
     private val postLikeSaveHelper: PostLikeSaveHelper,
 ) {
+    @Transactional(readOnly = true)
+    fun getLikeStatus(postId: String, requester: Requester): LikeStatusResult {
+        val postIdLong = postId.decode()
+        if (!postRepository.existsById(postIdLong)) {
+            throw PostNotFoundException("Post not found: $postId")
+        }
+        val count = postRepository.getLikeCount(postIdLong)
+        val liked = findExistingLike(postIdLong, requester) != null
+        return LikeStatusResult(count, liked)
+    }
+
     @Transactional
     fun toggleLike(postId: String, requester: Requester): Boolean {
         val postIdLong = postId.decode()
