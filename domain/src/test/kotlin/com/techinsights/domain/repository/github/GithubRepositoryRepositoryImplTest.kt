@@ -422,6 +422,7 @@ private fun buildEntity(
     starCount: Long = 1000L,
     language: String? = "Kotlin",
     weeklyDelta: Long = 0L,
+    dailyDelta: Long = 0L,
     topics: String? = "kotlin,test",
 ): GithubRepository = GithubRepository(
     id = id,
@@ -438,4 +439,5 @@ private fun buildEntity(
     pushedAt = LocalDateTime.of(2024, 6, 1, 0, 0),
     fetchedAt = LocalDateTime.of(2024, 6, 2, 0, 0),
     weeklyStarDelta = weeklyDelta,
+    dailyStarDelta = dailyDelta,
 )

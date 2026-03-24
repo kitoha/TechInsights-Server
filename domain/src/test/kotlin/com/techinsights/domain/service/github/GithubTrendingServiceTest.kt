@@ -36,6 +36,7 @@ class GithubTrendingServiceTest : FunSpec({
         pushedAt = LocalDateTime.now(),
         fetchedAt = LocalDateTime.now(),
         weeklyStarDelta = 200L,
+        dailyStarDelta = 30L,
         readmeSummary = null,
     )
 

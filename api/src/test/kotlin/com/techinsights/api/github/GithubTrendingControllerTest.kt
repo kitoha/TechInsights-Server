@@ -154,6 +154,7 @@ class GithubTrendingControllerTest : FunSpec() {
         pushedAt = LocalDateTime.of(2025, 1, 1, 0, 0),
         fetchedAt = LocalDateTime.of(2025, 2, 1, 0, 0),
         weeklyStarDelta = 50L * id,
+        dailyStarDelta = 10L * id,
         readmeSummary = readmeSummary,
     )
 }

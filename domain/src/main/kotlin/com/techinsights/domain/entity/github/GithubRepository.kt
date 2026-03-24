@@ -64,6 +64,15 @@ class GithubRepository(
     @Column(name = "star_count_prev_week_updated_at")
     var starCountPrevWeekUpdatedAt: LocalDateTime? = null,
 
+    @Column(name = "daily_star_delta", nullable = false)
+    var dailyStarDelta: Long = 0L,
+
+    @Column(name = "star_count_prev_day")
+    var starCountPrevDay: Long? = null,
+
+    @Column(name = "star_count_prev_day_updated_at")
+    var starCountPrevDayUpdatedAt: LocalDateTime? = null,
+
     @Column(name = "readme_summary", columnDefinition = "TEXT")
     var readmeSummary: String? = null,
 
