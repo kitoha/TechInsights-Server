@@ -155,4 +155,4 @@ gemini:
   # README 배치 동적 토큰 계산 설정
   max-tokens-per-request: 100000    # 배치 요청당 총 토큰 예산 (TPM 250K ÷ 2 RPM = 125K, 안전 마진 100K)
   input-tokens-per-item: 500        # 항목당 입력 토큰 추정 (README 2000자 ≈ 500 토큰)
-  output-tokens-per-item: 200       # 항목당 출력 목표 (한국어 요약 2문장 + JSON)
+  output-tokens-per-item: 300       # 항목당 출력 목표 (한국어 요약 2문장 + JSON, 200→300 여유 마진)

@@ -85,7 +85,7 @@ class GeminiReadmeBatchSummarizer(
             val jsonParser = StreamingJsonParser()
             for (res in responseStream) {
                 val candidates = res.candidates().orElse(null)
-                val finishReason = candidates?.firstOrNull()?.finishReason()
+                val finishReason = candidates?.firstOrNull()?.finishReason()?.orElse(null)
                 val currentErrorType = when (finishReason?.toString()?.uppercase()) {
                     "SAFETY" -> ErrorType.SAFETY_BLOCKED
                     "MAX_TOKENS" -> ErrorType.LENGTH_LIMIT
