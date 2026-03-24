@@ -101,6 +101,21 @@ class GithubTrendingServiceTest : FunSpec({
         verify(exactly = 1) { githubRepositoryRepository.findRepositories(pageable, GithubSortType.STARS, "Java") }
     }
 
+    test("DAILY_TRENDING 정렬로 레포지토리 목록 조회 시 dailyStarDelta 반환") {
+        val pageable = PageRequest.of(0, 20)
+        val page = PageImpl(listOf(sampleDto))
+
+        every {
+            githubRepositoryRepository.findRepositories(pageable, GithubSortType.DAILY_TRENDING, null)
+        } returns page
+
+        val result = service.getRepositories(0, 20, GithubSortType.DAILY_TRENDING, null)
+
+        result.content shouldHaveSize 1
+        result.content[0].dailyStarDelta shouldBe 30L
+        verify(exactly = 1) { githubRepositoryRepository.findRepositories(pageable, GithubSortType.DAILY_TRENDING, null) }
+    }
+
     test("레포지토리 단건 조회 - 성공") {
         every { githubRepositoryRepository.findById(1L) } returns sampleDto
 

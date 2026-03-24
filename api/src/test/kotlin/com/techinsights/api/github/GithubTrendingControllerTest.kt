@@ -133,6 +133,37 @@ class GithubTrendingControllerTest : FunSpec() {
 
             verify(exactly = 1) { githubTrendingService.getRepositories(0, 20, GithubSortType.STARS, null) }
         }
+
+        test("GET /api/v1/github/trending - sort=DAILY_TRENDING 파라미터가 서비스에 전달된다") {
+            // given
+            val page = PageImpl(listOf(createMockDto(1L)))
+            every { githubTrendingService.getRepositories(any(), any(), any(), any()) } returns page
+
+            // when & then
+            mockMvc.get("/api/v1/github/trending") {
+                param("sort", "DAILY_TRENDING")
+                accept = MediaType.APPLICATION_JSON
+            }.andExpect {
+                status { isOk() }
+            }
+
+            verify(exactly = 1) { githubTrendingService.getRepositories(0, 20, GithubSortType.DAILY_TRENDING, null) }
+        }
+
+        test("GET /api/v1/github/trending - dailyStarDelta가 포함된 DTO로 200 반환") {
+            // given
+            val page = PageImpl(listOf(createMockDto(1L)), PageRequest.of(0, 20), 1L)
+            every { githubTrendingService.getRepositories(any(), any(), any(), any()) } returns page
+
+            // when & then
+            mockMvc.get("/api/v1/github/trending") {
+                accept = MediaType.APPLICATION_JSON
+            }.andExpect {
+                status { isOk() }
+            }
+
+            verify(exactly = 1) { githubTrendingService.getRepositories(0, 20, GithubSortType.STARS, null) }
+        }
     }
 
     private fun createMockDto(
