@@ -21,7 +21,7 @@ batch:
   github-readme-summary:
     job-name: githubReadmeSummaryJob
     step-name: githubReadmeSummarizeStep
-    chunk-size: 150
+    chunk-size: 75
     page-size: 100
     max-items-per-run: 3000
     retry-enabled: true
