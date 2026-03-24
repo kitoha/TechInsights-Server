@@ -8,6 +8,8 @@ on:
         required: false
         type: string
         default: '1000'
+  schedule:
+    - cron: '0 7 * * *'
 
 permissions:
   id-token: write
@@ -22,7 +24,7 @@ jobs:
     uses: ./.github/workflows/_batch-ssm-runner.yml
     with:
       job_name: optimizedSummaryJob
-      extra_params: limit=${{ inputs.limit }}
+      extra_params: limit=${{ github.event_name == 'schedule' && '49' || inputs.limit }}
     secrets:
       AWS_IAM_ROLE_FOR_OIDC: ${{ secrets.AWS_IAM_ROLE_FOR_OIDC }}
       EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}

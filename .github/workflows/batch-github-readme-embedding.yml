@@ -8,6 +8,8 @@ on:
         required: false
         type: string
         default: ''
+  schedule:
+    - cron: '0 5 * * *'
 
 permissions:
   id-token: write

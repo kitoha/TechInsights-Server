@@ -8,6 +8,8 @@ on:
         required: false
         type: string
         default: ''
+  schedule:
+    - cron: '0 1 * * *'
 
 permissions:
   id-token: write
@@ -22,7 +24,7 @@ jobs:
     uses: ./.github/workflows/_batch-ssm-runner.yml
     with:
       job_name: githubReadmeSummaryJob
-      extra_params: ${{ inputs.max_items_per_run != '' && format('maxItemsPerRun={0}', inputs.max_items_per_run) || '' }}
+      extra_params: ${{ inputs.max_items_per_run != '' && format('maxItemsPerRun={0}', inputs.max_items_per_run) || (github.event_name == 'schedule' && 'maxItemsPerRun=525') || '' }}
     secrets:
       AWS_IAM_ROLE_FOR_OIDC: ${{ secrets.AWS_IAM_ROLE_FOR_OIDC }}
       EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
