@@ -26,9 +26,10 @@ class GithubRepositoryRepositoryImpl(
         val repo = QGithubRepository.githubRepository
 
         val orderSpecifiers: Array<OrderSpecifier<*>> = when (sortType) {
-            GithubSortType.STARS    -> arrayOf(repo.starCount.desc(), repo.id.desc())
-            GithubSortType.LATEST   -> arrayOf(repo.pushedAt.desc(), repo.id.desc())
-            GithubSortType.TRENDING -> arrayOf(repo.weeklyStarDelta.desc(), repo.starCount.desc(), repo.id.desc())
+            GithubSortType.STARS          -> arrayOf(repo.starCount.desc(), repo.id.desc())
+            GithubSortType.LATEST         -> arrayOf(repo.pushedAt.desc(), repo.id.desc())
+            GithubSortType.TRENDING       -> arrayOf(repo.weeklyStarDelta.desc(), repo.starCount.desc(), repo.id.desc())
+            GithubSortType.DAILY_TRENDING -> arrayOf(repo.dailyStarDelta.desc(), repo.starCount.desc(), repo.id.desc())
         }
 
         val languageCondition = language?.let { repo.primaryLanguage.eq(it) }

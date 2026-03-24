@@ -126,6 +126,34 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             verify(exactly = 1) { query.orderBy(any(), any(), any()) }
         }
 
+        test("DAILY_TRENDING 정렬로 조회하면 daily_star_delta DESC 순으로 반환된다") {
+            val pageable = PageRequest.of(0, 10)
+            val query = mockk<JPAQuery<GithubRepository>>()
+            val countQuery = mockk<JPAQuery<Long>>()
+
+            val highDailyEntity = buildEntity(id = 1L, fullName = "owner/repo1", dailyDelta = 100L)
+            val lowDailyEntity = buildEntity(id = 2L, fullName = "owner/repo2", dailyDelta = 10L)
+
+            every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
+            every { query.where(isNull<BooleanExpression>()) } returns query
+            every { query.orderBy(any(), any(), any()) } returns query
+            every { query.offset(0L) } returns query
+            every { query.limit(10L) } returns query
+            every { query.fetch() } returns listOf(highDailyEntity, lowDailyEntity)
+
+            every { queryFactory.select(QGithubRepository.githubRepository.id.count()) } returns countQuery
+            every { countQuery.from(QGithubRepository.githubRepository) } returns countQuery
+            every { countQuery.where(isNull<BooleanExpression>()) } returns countQuery
+            every { countQuery.fetchOne() } returns 2L
+
+            val result = repository.findRepositories(pageable, GithubSortType.DAILY_TRENDING, null)
+
+            result.content shouldHaveSize 2
+            result.content[0].dailyStarDelta shouldBe 100L
+            result.content[1].dailyStarDelta shouldBe 10L
+            verify(exactly = 1) { query.orderBy(any(), any(), any()) }
+        }
+
         test("결과가 없으면 totalElements=0인 빈 Page를 반환한다") {
             val pageable = PageRequest.of(0, 20)
             val query = mockk<JPAQuery<GithubRepository>>()
