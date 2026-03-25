@@ -57,6 +57,15 @@ class GithubRepoWriterTest : FunSpec({
         sqlSlot.captured shouldContain "INTERVAL '1 day'"
     }
 
+    test("UPSERT SQL ON CONFLICT DO UPDATE에 소프트 삭제 레포 갱신 방지 조건이 포함된다") {
+        val sqlSlot = slot<String>()
+        every { jdbcTemplate.batchUpdate(capture(sqlSlot), any<Array<MapSqlParameterSource>>()) } returns intArrayOf(1)
+
+        writer.write(Chunk(listOf(createUpsertData())))
+
+        sqlSlot.captured shouldContain "WHERE github_repositories.deleted_at IS NULL"
+    }
+
     test("빈 chunk는 jdbcTemplate을 호출하지 않는다") {
         val chunk = Chunk(emptyList<GithubRepoUpsertData>())
 

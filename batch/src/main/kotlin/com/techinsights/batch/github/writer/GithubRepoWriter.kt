@@ -92,6 +92,7 @@ class GithubRepoWriter(
                 ${starDeltaBlock("weekly_star_delta", "star_count_prev_week", "star_count_prev_week_updated_at", "7 days")}
                 ${starDeltaBlock("daily_star_delta", "star_count_prev_day", "star_count_prev_day_updated_at", "1 day")}
                 updated_at = NOW()
+            WHERE github_repositories.deleted_at IS NULL
         """.trimIndent()
     }
 }
