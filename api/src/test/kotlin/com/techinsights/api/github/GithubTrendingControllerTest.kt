@@ -9,21 +9,25 @@ import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import java.time.LocalDateTime
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class GithubTrendingControllerTest : FunSpec() {
 
     private lateinit var mockMvc: MockMvc
     private val githubTrendingService = mockk<GithubTrendingService>()
     private val githubSemanticSearchService = mockk<GithubSemanticSearchService>(relaxed = true)
-    private val dispatcher = Dispatchers.IO
+    private val dispatcher = UnconfinedTestDispatcher()
 
     init {
         beforeTest {
@@ -156,11 +160,14 @@ class GithubTrendingControllerTest : FunSpec() {
             coEvery { githubTrendingService.getRepositories(any(), any(), any(), any()) } returns page
 
             // when & then
-            mockMvc.get("/api/v1/github/trending") {
+            // withContext로 인해 Spring MVC가 async dispatch를 사용하므로 asyncDispatch 필요
+            val asyncResult = mockMvc.get("/api/v1/github/trending") {
                 accept = MediaType.APPLICATION_JSON
-            }.andExpect {
-                status { isOk() }
-            }
+            }.andReturn()
+
+            mockMvc.perform(asyncDispatch(asyncResult))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.content[0].dailyStarDelta").value(10))
 
             coVerify(exactly = 1) { githubTrendingService.getRepositories(0, 20, GithubSortType.STARS, null) }
         }
