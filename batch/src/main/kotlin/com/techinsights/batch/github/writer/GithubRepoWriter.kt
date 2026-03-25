@@ -57,7 +57,7 @@ class GithubRepoWriter(
             $prevCol = CASE
                 WHEN github_repositories.$updatedAtCol IS NULL
                     OR github_repositories.$updatedAtCol < NOW() - INTERVAL '$interval'
-                THEN github_repositories.star_count
+                THEN EXCLUDED.star_count
                 ELSE github_repositories.$prevCol
             END,
             $updatedAtCol = CASE
