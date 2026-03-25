@@ -114,7 +114,7 @@ class GithubBookmarkControllerTest : FunSpec() {
                 starCount = 100, forkCount = 10, primaryLanguage = "Kotlin",
                 ownerName = "owner", ownerAvatarUrl = null, topics = emptyList(),
                 pushedAt = LocalDateTime.now(), fetchedAt = LocalDateTime.now(),
-                weeklyStarDelta = 5, readmeSummary = null,
+                weeklyStarDelta = 5, dailyStarDelta = 1, readmeSummary = null,
             )
             val page = PageImpl(listOf(repoDto), PageRequest.of(0, 20), 1)
 

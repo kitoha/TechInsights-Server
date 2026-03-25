@@ -132,5 +132,6 @@ private fun createDto(fullName: String, description: String? = null) = GithubRep
     pushedAt = LocalDateTime.now(),
     fetchedAt = LocalDateTime.now(),
     weeklyStarDelta = 0L,
+    dailyStarDelta = 0L,
     readmeSummary = null,
 )
