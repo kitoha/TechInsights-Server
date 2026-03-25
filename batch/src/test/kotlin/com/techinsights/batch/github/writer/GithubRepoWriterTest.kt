@@ -54,7 +54,25 @@ class GithubRepoWriterTest : FunSpec({
 
         sqlSlot.captured shouldContain "daily_star_delta"
         sqlSlot.captured shouldContain "star_count_prev_day"
-        sqlSlot.captured shouldContain "INTERVAL '1 day'"
+    }
+
+    test("daily_star_delta 갱신 조건이 캘린더 일 기준(DATE_TRUNC)으로 비교된다") {
+        val sqlSlot = slot<String>()
+        every { jdbcTemplate.batchUpdate(capture(sqlSlot), any<Array<MapSqlParameterSource>>()) } returns intArrayOf(1)
+
+        writer.write(Chunk(listOf(createUpsertData())))
+
+        sqlSlot.captured shouldContain "DATE_TRUNC('day', NOW())"
+        sqlSlot.captured shouldContain "star_count_prev_day_updated_at < DATE_TRUNC('day', NOW())"
+    }
+
+    test("weekly_star_delta 갱신 조건은 기존 INTERVAL 방식을 유지한다") {
+        val sqlSlot = slot<String>()
+        every { jdbcTemplate.batchUpdate(capture(sqlSlot), any<Array<MapSqlParameterSource>>()) } returns intArrayOf(1)
+
+        writer.write(Chunk(listOf(createUpsertData())))
+
+        sqlSlot.captured shouldContain "INTERVAL '7 days'"
     }
 
     test("UPSERT SQL ON CONFLICT DO UPDATE에 소프트 삭제 레포 갱신 방지 조건이 포함된다") {

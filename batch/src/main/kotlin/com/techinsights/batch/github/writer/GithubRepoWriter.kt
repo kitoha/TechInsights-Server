@@ -45,24 +45,24 @@ class GithubRepoWriter(
             deltaCol: String,
             prevCol: String,
             updatedAtCol: String,
-            interval: String,
+            thresholdSql: String,
         ): String = """
             $deltaCol = CASE
                 WHEN github_repositories.$updatedAtCol IS NULL
-                    OR github_repositories.$updatedAtCol < NOW() - INTERVAL '$interval'
+                    OR github_repositories.$updatedAtCol < $thresholdSql
                 THEN EXCLUDED.star_count
                     - COALESCE(github_repositories.$prevCol, EXCLUDED.star_count)
                 ELSE github_repositories.$deltaCol
             END,
             $prevCol = CASE
                 WHEN github_repositories.$updatedAtCol IS NULL
-                    OR github_repositories.$updatedAtCol < NOW() - INTERVAL '$interval'
+                    OR github_repositories.$updatedAtCol < $thresholdSql
                 THEN EXCLUDED.star_count
                 ELSE github_repositories.$prevCol
             END,
             $updatedAtCol = CASE
                 WHEN github_repositories.$updatedAtCol IS NULL
-                    OR github_repositories.$updatedAtCol < NOW() - INTERVAL '$interval'
+                    OR github_repositories.$updatedAtCol < $thresholdSql
                 THEN NOW()
                 ELSE github_repositories.$updatedAtCol
             END,
@@ -89,8 +89,8 @@ class GithubRepoWriter(
                 topics           = EXCLUDED.topics,
                 pushed_at        = EXCLUDED.pushed_at,
                 fetched_at       = EXCLUDED.fetched_at,
-                ${starDeltaBlock("weekly_star_delta", "star_count_prev_week", "star_count_prev_week_updated_at", "7 days")}
-                ${starDeltaBlock("daily_star_delta", "star_count_prev_day", "star_count_prev_day_updated_at", "1 day")}
+                ${starDeltaBlock("weekly_star_delta", "star_count_prev_week", "star_count_prev_week_updated_at", "NOW() - INTERVAL '7 days'")}
+                ${starDeltaBlock("daily_star_delta", "star_count_prev_day", "star_count_prev_day_updated_at", "DATE_TRUNC('day', NOW())")}
                 updated_at = NOW()
             WHERE github_repositories.deleted_at IS NULL
         """.trimIndent()
