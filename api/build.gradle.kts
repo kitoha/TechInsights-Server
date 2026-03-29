@@ -42,6 +42,7 @@ dependencies {
     testImplementation(libs.bundles.kotest)
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.mockk)
+    testImplementation(libs.spring.security.test)
 }
 kotlin {
     jvmToolchain(21)
