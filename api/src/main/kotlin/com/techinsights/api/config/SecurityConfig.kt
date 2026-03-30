@@ -50,7 +50,8 @@ class SecurityConfig(
                     .requestMatchers("/api/v1/recommendations/**").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/github/**").permitAll()
                     .requestMatchers("/login/**", "/oauth2/**").permitAll()
-                    .requestMatchers("/actuator/health").permitAll()
+                    .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                    .requestMatchers("/actuator/**").authenticated()
                     .anyRequest().authenticated()
             }
             .oauth2Login { oauth2 ->
