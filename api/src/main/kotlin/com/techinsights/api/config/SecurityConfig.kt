@@ -38,6 +38,10 @@ class SecurityConfig(
                     .requestMatchers(HttpMethod.POST, "/api/v1/posts/*/bookmark").authenticated()
                     .requestMatchers(HttpMethod.POST, "/api/v1/github/*/bookmark").authenticated()
                     .requestMatchers("/api/v1/posts/**").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/companies/**").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.PUT, "/api/v1/companies/**").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/api/v1/companies/**").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/api/v1/companies/**").permitAll()
                     .requestMatchers("/api/v1/companies/**").permitAll()
                     .requestMatchers("/api/v1/companiesSummaries").permitAll()
                     .requestMatchers("/api/v1/categories/**").permitAll()
@@ -46,7 +50,8 @@ class SecurityConfig(
                     .requestMatchers("/api/v1/recommendations/**").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/github/**").permitAll()
                     .requestMatchers("/login/**", "/oauth2/**").permitAll()
-                    .requestMatchers("/actuator/health").permitAll()
+                    .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                    .requestMatchers("/actuator/**").authenticated()
                     .anyRequest().authenticated()
             }
             .oauth2Login { oauth2 ->

@@ -1,6 +1,7 @@
 package com.techinsights.batch.crawling.service
 
 import com.techinsights.batch.crawling.parser.BlogParserResolver
+import com.techinsights.batch.crawling.util.UrlValidator
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.batch.crawling.ratelimiter.DomainRateLimiterManager
@@ -13,10 +14,13 @@ import org.springframework.web.reactive.function.client.awaitBody
 class PostCrawlingServiceImpl (
   private val webClient: WebClient,
   private val parserResolver: BlogParserResolver,
-  private val rateLimiterManager: DomainRateLimiterManager
+  private val rateLimiterManager: DomainRateLimiterManager,
+  private val urlValidator: UrlValidator
 ): PostCrawlingService {
 
   override suspend fun processCrawledData(companyDto: CompanyDto): List<PostDto> {
+    require(urlValidator.isSafe(companyDto.blogUrl)) { "Blocked unsafe URL: ${companyDto.blogUrl}" }
+
     val rateLimiter = rateLimiterManager.getRateLimiter(companyDto.blogUrl)
 
     val rssContent = rateLimiter.executeSuspendFunction {
