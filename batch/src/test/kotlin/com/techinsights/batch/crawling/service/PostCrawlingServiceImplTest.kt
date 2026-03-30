@@ -2,6 +2,7 @@ package com.techinsights.batch.crawling.service
 
 import com.techinsights.batch.crawling.parser.BlogParser
 import com.techinsights.batch.crawling.parser.BlogParserResolver
+import com.techinsights.batch.crawling.util.UrlValidator
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.utils.Tsid
@@ -28,6 +29,7 @@ class PostCrawlingServiceImplTest : FunSpec({
   lateinit var webClient: WebClient
   lateinit var parserResolver: BlogParserResolver
   lateinit var rateLimiterManager: DomainRateLimiterManager
+  lateinit var urlValidator: UrlValidator
   lateinit var service: PostCrawlingServiceImpl
 
   lateinit var requestHeadersUriSpec: WebClient.RequestHeadersUriSpec<*>
@@ -38,7 +40,8 @@ class PostCrawlingServiceImplTest : FunSpec({
     webClient = mockk()
     parserResolver = mockk()
     rateLimiterManager = mockk()
-    service = PostCrawlingServiceImpl(webClient, parserResolver, rateLimiterManager)
+    urlValidator = mockk { every { isSafe(any()) } returns true }
+    service = PostCrawlingServiceImpl(webClient, parserResolver, rateLimiterManager, urlValidator)
 
     requestHeadersUriSpec = mockk()
     requestHeadersSpec = mockk()

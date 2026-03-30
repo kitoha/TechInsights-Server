@@ -3,6 +3,7 @@ package com.techinsights.batch.crawling.parser.content
 import com.techinsights.batch.crawling.parser.content.http.HttpHeaderProvider
 import com.techinsights.batch.crawling.parser.content.http.UserAgentPool
 import com.techinsights.batch.crawling.ratelimiter.DomainRateLimiterManager
+import com.techinsights.batch.crawling.util.UrlValidator
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.net.URI
@@ -13,10 +14,13 @@ class WebContentExtractor(
     private val rateLimiterManager: DomainRateLimiterManager,
     private val userAgentPool: UserAgentPool,
     private val httpHeaderProvider: HttpHeaderProvider,
+    private val urlValidator: UrlValidator = UrlValidator(),
     private val timeout: Int = 5000
 ) : ContentExtractor {
 
     override fun extract(url: String, fallbackContent: String): String {
+        if (!urlValidator.isSafe(url)) return fallbackContent
+
         return runCatching {
             val domain = extractDomain(url)
 
