@@ -200,6 +200,23 @@ class SearchControllerValidationIntegrationTest {
         verifyNoInteractions(semanticSearchService)
     }
 
+    @Test
+    fun `instantSearch should return 400 when query exceeds max length`() {
+        val tooLongQuery = "a".repeat(501)
+
+        val mvcResult = mockMvc.perform(
+            get("/api/v1/search/instant")
+                .param("query", tooLongQuery)
+                .accept(MediaType.APPLICATION_JSON)
+        ).andExpect(request().asyncStarted())
+            .andReturn()
+
+        mockMvc.perform(asyncDispatch(mvcResult))
+            .andExpect(status().isBadRequest)
+
+        verifyNoInteractions(searchService)
+    }
+
     @TestConfiguration
     class CoroutineTestConfig {
         @Bean("ioDispatcher")
