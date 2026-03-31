@@ -12,12 +12,13 @@ import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
 import org.springframework.security.core.context.SecurityContextHolder
 import io.jsonwebtoken.Claims
+import java.util.Base64
 
 class JwtAuthenticationFilterTest : FunSpec({
     val jwtPlugin = mockk<JwtPlugin>()
     val authProperties = AuthProperties(
         jwt = AuthProperties.Jwt(
-            secretKey = "this-is-a-very-secure-secret-key-for-testing-purposes-only",
+            secretKey = Base64.getEncoder().encodeToString("this-is-a-very-secure-secret-key!!".toByteArray()),
             accessTokenCookieName = "at"
         )
     )

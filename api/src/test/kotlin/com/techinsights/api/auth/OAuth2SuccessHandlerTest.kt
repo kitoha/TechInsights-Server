@@ -8,13 +8,14 @@ import io.mockk.*
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
 import java.time.Duration
+import java.util.Base64
 import io.kotest.matchers.collections.shouldNotBeEmpty
 
 class OAuth2SuccessHandlerTest : FunSpec({
     val tokenService = mockk<TokenService>()
     val authProperties = AuthProperties(
         jwt = AuthProperties.Jwt(
-            secretKey = "this-is-a-very-secure-secret-key-for-testing-purposes-only",
+            secretKey = Base64.getEncoder().encodeToString("this-is-a-very-secure-secret-key!!".toByteArray()),
             accessTokenExpiration = Duration.ofMinutes(15),
             refreshTokenExpiration = Duration.ofDays(30),
             cookieSecure = true

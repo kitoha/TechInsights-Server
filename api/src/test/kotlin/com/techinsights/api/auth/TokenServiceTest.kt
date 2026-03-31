@@ -13,6 +13,7 @@ import io.jsonwebtoken.Claims
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.Duration
+import java.util.Base64
 
 class TokenServiceTest : FunSpec({
     val jwtPlugin = mockk<JwtPlugin>()
@@ -20,7 +21,7 @@ class TokenServiceTest : FunSpec({
     val userService = mockk<UserService>()
     val authProperties = AuthProperties(
         jwt = AuthProperties.Jwt(
-            secretKey = "this-is-a-very-secure-secret-key-for-testing-purposes-only",
+            secretKey = Base64.getEncoder().encodeToString("this-is-a-very-secure-secret-key!!".toByteArray()),
             refreshTokenExpiration = Duration.ofDays(30)
         )
     )

@@ -6,11 +6,12 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldHaveLength
 import java.time.Duration
+import java.util.Base64
 
 class TokenHasherTest : FunSpec({
     val authProperties = AuthProperties(
         jwt = AuthProperties.Jwt(
-            secretKey = "this-is-a-very-secure-secret-key-for-testing-purposes-only",
+            secretKey = Base64.getEncoder().encodeToString("this-is-a-very-secure-secret-key!!".toByteArray()),
             refreshTokenExpiration = Duration.ofDays(30)
         )
     )
@@ -161,7 +162,7 @@ class TokenHasherTest : FunSpec({
         val token = "same-token"
         val otherAuthProperties = AuthProperties(
             jwt = AuthProperties.Jwt(
-                secretKey = "different-secret-key-for-testing",
+                secretKey = Base64.getEncoder().encodeToString("different-secret-key-for-testing!".toByteArray()),
                 refreshTokenExpiration = Duration.ofDays(30)
             )
         )
