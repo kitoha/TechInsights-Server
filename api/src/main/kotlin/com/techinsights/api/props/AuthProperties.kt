@@ -23,7 +23,12 @@ data class AuthProperties(
             require(secretKey.isNotBlank()) { "Secret key must not be empty" }
             require(secretKey.length >= 32) { "Secret key must be at least 32 characters" }
             require(isValidBase64(secretKey)) { "Secret key must be valid Base64" }
+            require(Base64.getDecoder().decode(secretKey).size >= 32) {
+                "Secret key decoded bytes must be at least 32 bytes (256 bits) for HMAC-SHA256"
+            }
         }
+
+        val secretKeyBytes: ByteArray = Base64.getDecoder().decode(secretKey)
 
         private fun isValidBase64(value: String): Boolean =
             runCatching { Base64.getDecoder().decode(value); true }.getOrDefault(false)

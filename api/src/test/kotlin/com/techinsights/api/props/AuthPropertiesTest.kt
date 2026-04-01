@@ -63,4 +63,20 @@ class AuthPropertiesTest {
         val jwt = AuthProperties.Jwt(secretKey = validBase64Key)
         assertThat(jwt.secretKey).isEqualTo(validBase64Key)
     }
+
+    @Test
+    fun `should fail when secret key decoded bytes are less than 32 bytes`() {
+        assertThatThrownBy {
+            AuthProperties.Jwt(secretKey = "a".repeat(32))
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("Secret key decoded bytes must be at least 32 bytes")
+    }
+
+    @Test
+    fun `should expose secretKeyBytes as decoded bytes`() {
+        val jwt = AuthProperties.Jwt(secretKey = validBase64Key)
+        assertThat(jwt.secretKeyBytes).isEqualTo(
+            Base64.getDecoder().decode(validBase64Key)
+        )
+    }
 }
