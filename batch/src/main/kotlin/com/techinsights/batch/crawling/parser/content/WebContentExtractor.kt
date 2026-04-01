@@ -14,7 +14,7 @@ class WebContentExtractor(
     private val rateLimiterManager: DomainRateLimiterManager,
     private val userAgentPool: UserAgentPool,
     private val httpHeaderProvider: HttpHeaderProvider,
-    private val urlValidator: UrlValidator = UrlValidator(),
+    private val urlValidator: UrlValidator,
     private val timeout: Int = 5000
 ) : ContentExtractor {
 

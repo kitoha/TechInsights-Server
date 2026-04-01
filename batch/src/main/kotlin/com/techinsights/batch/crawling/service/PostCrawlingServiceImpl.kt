@@ -1,5 +1,6 @@
 package com.techinsights.batch.crawling.service
 
+import com.techinsights.batch.crawling.exception.UnsafeUrlException
 import com.techinsights.batch.crawling.parser.BlogParserResolver
 import com.techinsights.batch.crawling.util.UrlValidator
 import com.techinsights.domain.dto.company.CompanyDto
@@ -19,7 +20,7 @@ class PostCrawlingServiceImpl (
 ): PostCrawlingService {
 
   override suspend fun processCrawledData(companyDto: CompanyDto): List<PostDto> {
-    require(urlValidator.isSafe(companyDto.blogUrl)) { "Blocked unsafe URL: ${companyDto.blogUrl}" }
+    if (!urlValidator.isSafe(companyDto.blogUrl)) throw UnsafeUrlException(companyDto.blogUrl)
 
     val rateLimiter = rateLimiterManager.getRateLimiter(companyDto.blogUrl)
 

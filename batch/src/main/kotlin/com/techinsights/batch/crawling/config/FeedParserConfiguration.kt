@@ -9,6 +9,7 @@ import com.techinsights.batch.crawling.parser.content.http.HttpHeaderProvider
 import com.techinsights.batch.crawling.parser.content.http.UserAgentPool
 import com.techinsights.batch.crawling.parser.date.CompositeDateParser
 import com.techinsights.batch.crawling.ratelimiter.DomainRateLimiterManager
+import com.techinsights.batch.crawling.util.UrlValidator
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
@@ -33,12 +34,14 @@ class FeedParserConfiguration {
     textExtractor: HtmlTextExtractor,
     rateLimiterManager: DomainRateLimiterManager,
     userAgentPool: UserAgentPool,
-    httpHeaderProvider: HttpHeaderProvider
+    httpHeaderProvider: HttpHeaderProvider,
+    urlValidator: UrlValidator
   ): ContentExtractor = WebContentExtractor(
     selectorRegistry,
     textExtractor,
     rateLimiterManager,
     userAgentPool,
-    httpHeaderProvider
+    httpHeaderProvider,
+    urlValidator
   )
 }
