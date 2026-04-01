@@ -8,11 +8,11 @@ class UrlValidatorTest : FunSpec({
     val validator = UrlValidator()
 
     context("안전한 URL") {
-        test("일반 https URL은 허용되어야 한다") {
-            validator.isSafe("https://techcrunch.com/feed") shouldBe true
+        test("공인 IP https URL은 허용되어야 한다") {
+            validator.isSafe("https://8.8.8.8/feed") shouldBe true
         }
-        test("일반 http URL은 허용되어야 한다") {
-            validator.isSafe("http://example.com/rss") shouldBe true
+        test("공인 IP http URL은 허용되어야 한다") {
+            validator.isSafe("http://1.1.1.1/rss") shouldBe true
         }
     }
 
@@ -37,6 +37,9 @@ class UrlValidatorTest : FunSpec({
         }
         test("IPv6 루프백 ::1은 차단되어야 한다") {
             validator.isSafe("http://[::1]/secret") shouldBe false
+        }
+        test("IPv6 ULA fc00::/7은 차단되어야 한다") {
+            validator.isSafe("http://[fc00::1]/secret") shouldBe false
         }
     }
 
