@@ -1,5 +1,6 @@
 package com.techinsights.batch.crawling.service
 
+import com.techinsights.batch.crawling.exception.UnsafeUrlException
 import com.techinsights.batch.crawling.parser.BlogParser
 import com.techinsights.batch.crawling.parser.BlogParserResolver
 import com.techinsights.batch.crawling.util.UrlValidator
@@ -50,6 +51,25 @@ class PostCrawlingServiceImplTest : FunSpec({
 
   afterEach {
     clearAllMocks()
+  }
+
+  test("안전하지 않은 URL은 UnsafeUrlException을 던지고 webClient와 parserResolver를 호출하지 않는다") {
+    val companyDto = CompanyDto(
+      id = Tsid.encode(1L),
+      name = "Test Company",
+      blogUrl = "http://192.168.1.1/feed",
+      logoImageName = "test.png",
+      rssSupported = false
+    )
+
+    every { urlValidator.isSafe(companyDto.blogUrl) } returns false
+
+    shouldThrow<UnsafeUrlException> {
+      service.processCrawledData(companyDto)
+    }
+
+    verify { webClient wasNot Called }
+    verify { parserResolver wasNot Called }
   }
 
   test("RSS Feed를 성공적으로 크롤링하고 파싱한다") {
