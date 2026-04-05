@@ -21,7 +21,8 @@ class OAuth2SuccessHandler(
         authentication: Authentication
     ) {
         val userDetails = authentication.principal as CustomUserDetails
-        val deviceId = request.getHeader("X-Device-Id") ?: request.getHeader("User-Agent")
+        val state = request.getParameter("state")
+        val deviceId = DeviceAwareOAuth2AuthorizationRequestResolver.extractDeviceId(state)
         
         val tokens = tokenService.issueTokens(
             userId = userDetails.userId,

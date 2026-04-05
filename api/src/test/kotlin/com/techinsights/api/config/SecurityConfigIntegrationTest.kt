@@ -4,6 +4,7 @@ import com.techinsights.api.auth.CustomOAuth2UserService
 import com.techinsights.api.auth.JwtAuthenticationFilter
 import com.techinsights.api.auth.OAuth2SuccessHandler
 import io.kotest.core.spec.style.FunSpec
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository
 import io.kotest.matchers.shouldBe
 import io.mockk.mockk
 import org.springframework.mock.web.MockHttpServletRequest
@@ -12,13 +13,15 @@ class SecurityConfigIntegrationTest : FunSpec({
     val customOAuth2UserService = mockk<CustomOAuth2UserService>(relaxed = true)
     val oAuth2SuccessHandler = mockk<OAuth2SuccessHandler>(relaxed = true)
     val jwtAuthenticationFilter = mockk<JwtAuthenticationFilter>(relaxed = true)
+    val clientRegistrationRepository = mockk<ClientRegistrationRepository>(relaxed = true)
     val corsProperties = CorsProperties(allowedOrigins = listOf("http://localhost:3000"))
 
     val securityConfig = SecurityConfig(
         customOAuth2UserService = customOAuth2UserService,
         oAuth2SuccessHandler = oAuth2SuccessHandler,
         jwtAuthenticationFilter = jwtAuthenticationFilter,
-        corsProperties = corsProperties
+        corsProperties = corsProperties,
+        clientRegistrationRepository = clientRegistrationRepository
     )
 
     test("CORS 설정이 올바르게 구성되어야 한다") {

@@ -1,6 +1,7 @@
 package com.techinsights.api.config
 
 import com.techinsights.api.auth.CustomOAuth2UserService
+import com.techinsights.api.auth.DeviceAwareOAuth2AuthorizationRequestResolver
 import com.techinsights.api.auth.OAuth2SuccessHandler
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -9,6 +10,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.http.HttpMethod
 import org.springframework.security.config.http.SessionCreationPolicy
 import com.techinsights.api.auth.JwtAuthenticationFilter
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.web.cors.CorsConfiguration
@@ -21,7 +23,8 @@ class SecurityConfig(
     private val customOAuth2UserService: CustomOAuth2UserService,
     private val oAuth2SuccessHandler: OAuth2SuccessHandler,
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
-    private val corsProperties: CorsProperties
+    private val corsProperties: CorsProperties,
+    private val clientRegistrationRepository: ClientRegistrationRepository
 ) {
 
     @Bean
@@ -57,6 +60,11 @@ class SecurityConfig(
             }
             .oauth2Login { oauth2 ->
                 oauth2
+                    .authorizationEndpoint { endpoint ->
+                        endpoint.authorizationRequestResolver(
+                            DeviceAwareOAuth2AuthorizationRequestResolver(clientRegistrationRepository)
+                        )
+                    }
                     .userInfoEndpoint { userInfo ->
                         userInfo.userService(customOAuth2UserService)
                     }
