@@ -1,8 +1,8 @@
 package com.techinsights.api.config
 
 import com.techinsights.api.auth.CustomOAuth2UserService
-import com.techinsights.api.auth.OAuth2SuccessHandler
 import com.techinsights.api.auth.JwtAuthenticationFilter
+import com.techinsights.api.auth.OAuth2SuccessHandler
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.mockk

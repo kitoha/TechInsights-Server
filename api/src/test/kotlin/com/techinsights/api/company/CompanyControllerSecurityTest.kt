@@ -1,7 +1,7 @@
 package com.techinsights.api.company
 
-import com.techinsights.api.auth.CustomUserDetails
 import com.techinsights.api.auth.CustomOAuth2UserService
+import com.techinsights.api.auth.CustomUserDetails
 import com.techinsights.api.auth.JwtAuthenticationFilter
 import com.techinsights.api.auth.OAuth2SuccessHandler
 import com.techinsights.api.config.CorsProperties
