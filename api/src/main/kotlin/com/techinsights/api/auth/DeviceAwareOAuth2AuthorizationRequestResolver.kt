@@ -39,12 +39,17 @@ class DeviceAwareOAuth2AuthorizationRequestResolver(
     }
 
     fun appendDeviceId(state: String, request: HttpServletRequest): String {
-        val deviceId = request.getParameter("deviceId")?.takeIf { it.isNotBlank() }
+        val deviceId = request.getParameter("deviceId")
+            ?.takeIf { it.isNotBlank() }
+            ?.takeIf { it.length <= 128 }
+            ?.takeIf { DEVICE_ID_PATTERN.matches(it) }
             ?: return state
         return "$state|$deviceId"
     }
 
     companion object {
+        private val DEVICE_ID_PATTERN = Regex("[a-zA-Z0-9\\-_]+")
+
         fun extractDeviceId(state: String?): String? {
             if (state == null || "|" !in state) return null
             return state.substringAfter("|").ifBlank { null }

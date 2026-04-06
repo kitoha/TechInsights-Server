@@ -49,4 +49,50 @@ class DeviceAwareOAuth2AuthorizationRequestResolverTest : FunSpec({
         val deviceId = DeviceAwareOAuth2AuthorizationRequestResolver.extractDeviceId(state)
         deviceId.shouldBeNull()
     }
+
+    test("128자를 초과하는 deviceId는 무시되고 state가 변경되지 않아야 한다") {
+        val request = MockHttpServletRequest().apply {
+            addParameter("deviceId", "a".repeat(129))
+        }
+        val baseState = "csrf-token-abc"
+        val result = resolver.appendDeviceId(baseState, request)
+        result shouldBe baseState
+    }
+
+    test("허용되지 않는 문자가 포함된 deviceId는 무시되고 state가 변경되지 않아야 한다") {
+        val request = MockHttpServletRequest().apply {
+            addParameter("deviceId", "uuid|injected")
+        }
+        val baseState = "csrf-token-abc"
+        val result = resolver.appendDeviceId(baseState, request)
+        result shouldBe baseState
+    }
+
+    test("허용되지 않는 특수문자가 포함된 deviceId는 무시되어야 한다") {
+        val request = MockHttpServletRequest().apply {
+            addParameter("deviceId", "<script>alert(1)</script>")
+        }
+        val baseState = "csrf-token-abc"
+        val result = resolver.appendDeviceId(baseState, request)
+        result shouldBe baseState
+    }
+
+    test("정확히 128자인 deviceId는 허용되어야 한다") {
+        val validDeviceId = "a".repeat(128)
+        val request = MockHttpServletRequest().apply {
+            addParameter("deviceId", validDeviceId)
+        }
+        val baseState = "csrf-token-abc"
+        val result = resolver.appendDeviceId(baseState, request)
+        result shouldBe "csrf-token-abc|$validDeviceId"
+    }
+
+    test("영문/숫자/하이픈/언더스코어로 구성된 UUID 형식 deviceId는 허용되어야 한다") {
+        val request = MockHttpServletRequest().apply {
+            addParameter("deviceId", "a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+        }
+        val baseState = "csrf-token-abc"
+        val result = resolver.appendDeviceId(baseState, request)
+        result shouldBe "csrf-token-abc|a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    }
 })
