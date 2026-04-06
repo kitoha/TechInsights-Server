@@ -7,9 +7,10 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import java.time.Duration
+import java.util.Base64
 
 class JwtPluginTest : FunSpec({
-    val validSecret = "a".repeat(32) // 32 characters
+    val validSecret = Base64.getEncoder().encodeToString("a".repeat(32).toByteArray())
     val authProperties = AuthProperties(
         jwt = AuthProperties.Jwt(
             secretKey = validSecret,

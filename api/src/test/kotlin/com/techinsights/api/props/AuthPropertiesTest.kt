@@ -4,20 +4,24 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import java.time.Duration
+import java.util.Base64
 
 class AuthPropertiesTest {
+
+    private val validBase64Key = Base64.getEncoder()
+        .encodeToString("this-is-a-very-secure-secret-key!!".toByteArray())
 
     @Test
     fun `should bind valid properties`() {
         val jwt = AuthProperties.Jwt(
-            secretKey = "this-is-a-very-secure-secret-key-for-testing-purposes-only",
+            secretKey = validBase64Key,
             accessTokenExpiration = Duration.ofMinutes(15),
             refreshTokenExpiration = Duration.ofDays(7),
             cookieSecure = true
         )
         val props = AuthProperties(jwt = jwt)
 
-        assertThat(props.jwt.secretKey).isEqualTo("this-is-a-very-secure-secret-key-for-testing-purposes-only")
+        assertThat(props.jwt.secretKey).isEqualTo(validBase64Key)
         assertThat(props.jwt.accessTokenExpiration).isEqualTo(Duration.ofMinutes(15))
         assertThat(props.jwt.cookieSecure).isTrue()
     }
@@ -40,11 +44,39 @@ class AuthPropertiesTest {
 
     @Test
     fun `should have safe defaults`() {
-        // We cannot test default constructor directly for failure if we enforce it in init, 
-        // so we provide a valid key to test other defaults
-        val jwt = AuthProperties.Jwt(secretKey = "this-is-a-very-secure-secret-key-for-testing-purposes-only")
-        
+        val jwt = AuthProperties.Jwt(secretKey = validBase64Key)
+
         assertThat(jwt.accessTokenExpiration).isEqualTo(Duration.ofMinutes(30))
         assertThat(jwt.cookieSecure).isTrue()
+    }
+
+    @Test
+    fun `should fail when secret key is not valid Base64`() {
+        assertThatThrownBy {
+            AuthProperties.Jwt(secretKey = "this-is-not-base64-!@#\$%^&*()_+this-is-not-base64")
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("Secret key must be valid Base64")
+    }
+
+    @Test
+    fun `should pass when secret key is valid Base64 encoded`() {
+        val jwt = AuthProperties.Jwt(secretKey = validBase64Key)
+        assertThat(jwt.secretKey).isEqualTo(validBase64Key)
+    }
+
+    @Test
+    fun `should fail when secret key decoded bytes are less than 32 bytes`() {
+        assertThatThrownBy {
+            AuthProperties.Jwt(secretKey = "a".repeat(32))
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("Secret key decoded bytes must be at least 32 bytes")
+    }
+
+    @Test
+    fun `should expose secretKeyBytes as decoded bytes`() {
+        val jwt = AuthProperties.Jwt(secretKey = validBase64Key)
+        assertThat(jwt.secretKeyBytes).isEqualTo(
+            Base64.getDecoder().decode(validBase64Key)
+        )
     }
 }

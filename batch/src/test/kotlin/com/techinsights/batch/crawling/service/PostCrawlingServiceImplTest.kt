@@ -1,7 +1,9 @@
 package com.techinsights.batch.crawling.service
 
+import com.techinsights.batch.crawling.exception.UnsafeUrlException
 import com.techinsights.batch.crawling.parser.BlogParser
 import com.techinsights.batch.crawling.parser.BlogParserResolver
+import com.techinsights.batch.crawling.util.UrlValidator
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.utils.Tsid
@@ -28,6 +30,7 @@ class PostCrawlingServiceImplTest : FunSpec({
   lateinit var webClient: WebClient
   lateinit var parserResolver: BlogParserResolver
   lateinit var rateLimiterManager: DomainRateLimiterManager
+  lateinit var urlValidator: UrlValidator
   lateinit var service: PostCrawlingServiceImpl
 
   lateinit var requestHeadersUriSpec: WebClient.RequestHeadersUriSpec<*>
@@ -38,7 +41,8 @@ class PostCrawlingServiceImplTest : FunSpec({
     webClient = mockk()
     parserResolver = mockk()
     rateLimiterManager = mockk()
-    service = PostCrawlingServiceImpl(webClient, parserResolver, rateLimiterManager)
+    urlValidator = mockk { every { isSafe(any()) } returns true }
+    service = PostCrawlingServiceImpl(webClient, parserResolver, rateLimiterManager, urlValidator)
 
     requestHeadersUriSpec = mockk()
     requestHeadersSpec = mockk()
@@ -47,6 +51,25 @@ class PostCrawlingServiceImplTest : FunSpec({
 
   afterEach {
     clearAllMocks()
+  }
+
+  test("안전하지 않은 URL은 UnsafeUrlException을 던지고 webClient와 parserResolver를 호출하지 않는다") {
+    val companyDto = CompanyDto(
+      id = Tsid.encode(1L),
+      name = "Test Company",
+      blogUrl = "http://192.168.1.1/feed",
+      logoImageName = "test.png",
+      rssSupported = false
+    )
+
+    every { urlValidator.isSafe(companyDto.blogUrl) } returns false
+
+    shouldThrow<UnsafeUrlException> {
+      service.processCrawledData(companyDto)
+    }
+
+    verify { webClient wasNot Called }
+    verify { parserResolver wasNot Called }
   }
 
   test("RSS Feed를 성공적으로 크롤링하고 파싱한다") {

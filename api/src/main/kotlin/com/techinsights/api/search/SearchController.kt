@@ -30,7 +30,7 @@ class SearchController(
 
   @GetMapping("/instant")
   suspend fun instantSearch(
-    @RequestParam @NotBlank(message = "query must not be blank") query: String
+    @RequestParam @NotBlank(message = "query must not be blank") @Size(max = MAX_QUERY_LENGTH, message = "query must not exceed $MAX_QUERY_LENGTH characters") query: String
   ): ResponseEntity<InstantSearchResponse> = withContext(ioDispatcher) {
     val response = searchService.instantSearch(query)
     ResponseEntity.ok(response)

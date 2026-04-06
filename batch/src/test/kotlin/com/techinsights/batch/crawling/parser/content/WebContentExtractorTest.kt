@@ -3,6 +3,7 @@ package com.techinsights.batch.crawling.parser.content
 import com.techinsights.batch.crawling.parser.content.http.HttpHeaderProvider
 import com.techinsights.batch.crawling.parser.content.http.UserAgentPool
 import com.techinsights.batch.crawling.ratelimiter.DomainRateLimiterManager
+import com.techinsights.batch.crawling.util.UrlValidator
 import io.github.resilience4j.ratelimiter.RateLimiter
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -35,7 +36,8 @@ class WebContentExtractorTest : FunSpec({
             textExtractor,
             rateLimiterManager,
             userAgentPool,
-            httpHeaderProvider
+            httpHeaderProvider,
+            mockk<UrlValidator> { every { isSafe(any()) } returns true }
         )
         mockkStatic(Jsoup::class)
     }

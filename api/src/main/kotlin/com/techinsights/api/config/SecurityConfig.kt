@@ -1,6 +1,7 @@
 package com.techinsights.api.config
 
 import com.techinsights.api.auth.CustomOAuth2UserService
+import com.techinsights.api.auth.DeviceAwareOAuth2AuthorizationRequestResolver
 import com.techinsights.api.auth.OAuth2SuccessHandler
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -9,6 +10,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.http.HttpMethod
 import org.springframework.security.config.http.SessionCreationPolicy
 import com.techinsights.api.auth.JwtAuthenticationFilter
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.web.cors.CorsConfiguration
@@ -21,7 +23,8 @@ class SecurityConfig(
     private val customOAuth2UserService: CustomOAuth2UserService,
     private val oAuth2SuccessHandler: OAuth2SuccessHandler,
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
-    private val corsProperties: CorsProperties
+    private val corsProperties: CorsProperties,
+    private val clientRegistrationRepository: ClientRegistrationRepository
 ) {
 
     @Bean
@@ -38,7 +41,12 @@ class SecurityConfig(
                     .requestMatchers(HttpMethod.POST, "/api/v1/posts/*/bookmark").authenticated()
                     .requestMatchers(HttpMethod.POST, "/api/v1/github/*/bookmark").authenticated()
                     .requestMatchers("/api/v1/posts/**").permitAll()
-                    .requestMatchers("/api/v1/companies/**").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/companies/**").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.PUT, "/api/v1/companies/**").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.PATCH, "/api/v1/companies/**").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/api/v1/companies/**").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/api/v1/companies/**").permitAll()
+                    .requestMatchers("/api/v1/companies/**").hasRole("ADMIN")
                     .requestMatchers("/api/v1/companiesSummaries").permitAll()
                     .requestMatchers("/api/v1/categories/**").permitAll()
                     .requestMatchers("/api/v1/search/**").permitAll()
@@ -46,11 +54,17 @@ class SecurityConfig(
                     .requestMatchers("/api/v1/recommendations/**").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/github/**").permitAll()
                     .requestMatchers("/login/**", "/oauth2/**").permitAll()
-                    .requestMatchers("/actuator/health").permitAll()
+                    .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                    .requestMatchers("/actuator/**").authenticated()
                     .anyRequest().authenticated()
             }
             .oauth2Login { oauth2 ->
                 oauth2
+                    .authorizationEndpoint { endpoint ->
+                        endpoint.authorizationRequestResolver(
+                            DeviceAwareOAuth2AuthorizationRequestResolver(clientRegistrationRepository)
+                        )
+                    }
                     .userInfoEndpoint { userInfo ->
                         userInfo.userService(customOAuth2UserService)
                     }

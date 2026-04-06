@@ -20,9 +20,9 @@ class AuthController(
     @PostMapping("/refresh")
     fun refresh(request: HttpServletRequest, response: HttpServletResponse): ResponseEntity<Unit> {
         val refreshToken = request.cookies?.find { it.name == authProperties.jwt.refreshTokenCookieName }?.value
-            ?: throw com.techinsights.api.auth.InvalidTokenException("리프레시 토큰이 없습니다.")
+            ?: throw InvalidTokenException("리프레시 토큰이 없습니다.")
 
-        val deviceId = request.getHeader("X-Device-Id") ?: request.getHeader("User-Agent")
+        val deviceId = request.getHeader("X-Device-Id")
         val tokenResponse = tokenService.refresh(refreshToken, deviceId)
 
         addCookie(response, authProperties.jwt.accessTokenCookieName, tokenResponse.accessToken, authProperties.jwt.accessTokenExpiration.toSeconds())

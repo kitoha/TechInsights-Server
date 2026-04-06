@@ -18,7 +18,7 @@ class PostControllerTest : FunSpec() {
   private lateinit var mockMvc: MockMvc
   private val postService = mockk<PostService>()
   private val postViewService = mockk<PostViewService>()
-  private val dispatcher = Dispatchers.IO
+  private val dispatcher = Dispatchers.Unconfined
   private val aidProperties = mockk<AidProperties>(relaxed = true)
 
   init {
