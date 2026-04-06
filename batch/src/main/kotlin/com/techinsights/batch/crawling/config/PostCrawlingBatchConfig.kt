@@ -1,6 +1,7 @@
 package com.techinsights.batch.crawling.config
 
 import com.techinsights.batch.crawling.config.props.PostCrawlingBatchProperties
+import com.techinsights.batch.crawling.exception.UnsafeUrlException
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.batch.common.listener.LoggingJobExecutionListener
@@ -71,6 +72,7 @@ class PostCrawlingBatchConfig (
     .throttleLimit(properties.corePoolSize)
     .faultTolerant()
     .retry(Exception::class.java)
+    .noRetry(UnsafeUrlException::class.java)
     .retryLimit(properties.retryLimit)
     .skip(Exception::class.java)
     .skipLimit(10)

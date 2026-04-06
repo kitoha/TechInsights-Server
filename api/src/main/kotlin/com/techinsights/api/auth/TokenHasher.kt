@@ -12,8 +12,8 @@ class TokenHasher(
 ) {
     fun hash(token: String): String {
         val mac = Mac.getInstance("HmacSHA256")
-        val secretKey = SecretKeySpec(authProperties.jwt.secretKey.toByteArray(), "HmacSHA256")
-        mac.init(secretKey)
+        val secretKeySpec = SecretKeySpec(authProperties.jwt.secretKeyBytes, "HmacSHA256")
+        mac.init(secretKeySpec)
         val digest = mac.doFinal(token.toByteArray())
         return Base64.getUrlEncoder().withoutPadding().encodeToString(digest)
     }

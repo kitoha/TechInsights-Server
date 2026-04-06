@@ -77,6 +77,7 @@ kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version.
 kotest-property = { module = "io.kotest:kotest-property", version.ref = "kotest" }
 kotest-extensions-spring = { module = "io.kotest.extensions:kotest-extensions-spring", version.ref = "kotestExtensions" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+spring-security-test = { module = "org.springframework.security:spring-security-test" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 jjwt-api = { module = "io.jsonwebtoken:jjwt-api", version.ref = "jjwt" }
 jjwt-impl = { module = "io.jsonwebtoken:jjwt-impl", version.ref = "jjwt" }

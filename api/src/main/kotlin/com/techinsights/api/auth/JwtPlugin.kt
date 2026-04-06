@@ -21,7 +21,7 @@ class JwtPlugin(
 
     @PostConstruct
     fun init() {
-        this.key = Keys.hmacShaKeyFor(authProperties.jwt.secretKey.toByteArray())
+        this.key = Keys.hmacShaKeyFor(authProperties.jwt.secretKeyBytes)
     }
 
     fun generateAccessToken(userId: Long, email: String, role: UserRole): String {

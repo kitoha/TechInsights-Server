@@ -37,11 +37,11 @@ dependencies {
     implementation(libs.jjwt.api)
     runtimeOnly(libs.jjwt.impl)
     runtimeOnly(libs.jjwt.jackson)
-
     testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.bundles.kotest)
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.mockk)
+    testImplementation(libs.spring.security.test)
 }
 kotlin {
     jvmToolchain(21)
