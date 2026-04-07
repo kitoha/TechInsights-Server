@@ -18,7 +18,7 @@ interface GithubRepositoryJpaRepository : JpaRepository<GithubRepository, Long> 
                owner_avatar_url  AS ownerAvatarUrl,
                topics,
                html_url          AS htmlUrl,
-               readme_embedding_vector <-> CAST(:targetVector AS vector) AS distance
+               readme_embedding_vector <=> CAST(:targetVector AS vector) AS distance
         FROM github_repositories
         WHERE deleted_at IS NULL
           AND readme_embedding_vector IS NOT NULL
