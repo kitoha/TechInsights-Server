@@ -29,4 +29,4 @@ USER appuser
 
 COPY --from=builder /app/api/build/libs/*.jar app.jar
 
-ENTRYPOINT ["java", "-Xms256m", "-Xmx400m", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
