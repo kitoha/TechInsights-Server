@@ -19,14 +19,16 @@ class CacheConfig {
             GITHUB_TRENDING,
             Caffeine.newBuilder()
                 .expireAfterWrite(Duration.ofMinutes(10))
-                .maximumSize(200)
+                .maximumSize(50)
+                .softValues()
                 .build(),
         )
         manager.registerCustomCache(
             GITHUB_SEARCH,
             Caffeine.newBuilder()
                 .expireAfterWrite(Duration.ofMinutes(30))
-                .maximumSize(300)
+                .maximumSize(100)
+                .softValues()
                 .build(),
         )
         return manager

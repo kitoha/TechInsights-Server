@@ -11,6 +11,12 @@ spring:
             client-secret: ${GOOGLE_CLIENT_SECRET}
             redirect-uri: "https://api.techinsights.shop/login/oauth2/code/google"
 
+server:
+  tomcat:
+    threads:
+      max: 30
+      min-spare: 5
+
 cors:
   allowed-origins:
     - https://www.techinsights.shop
