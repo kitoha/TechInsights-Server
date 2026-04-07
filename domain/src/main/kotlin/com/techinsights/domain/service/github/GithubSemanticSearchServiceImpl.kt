@@ -1,8 +1,10 @@
 package com.techinsights.domain.service.github
 
+import com.techinsights.domain.config.cache.CacheConfig
 import com.techinsights.domain.dto.github.GithubSemanticSearchResult
 import com.techinsights.domain.repository.github.GithubRepositoryRepository
 import com.techinsights.domain.service.embedding.EmbeddingService
+import org.springframework.cache.annotation.Cacheable
 import org.springframework.stereotype.Service
 
 @Service
@@ -11,6 +13,7 @@ class GithubSemanticSearchServiceImpl(
     private val githubRepositoryRepository: GithubRepositoryRepository,
 ) : GithubSemanticSearchService {
 
+    @Cacheable(cacheNames = [CacheConfig.GITHUB_SEARCH])
     override fun search(query: String, size: Int): List<GithubSemanticSearchResult> {
         val cappedSize = minOf(size, MAX_SIZE)
         val vector = embeddingService.generateQuestionEmbedding(query)
