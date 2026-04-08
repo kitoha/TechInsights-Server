@@ -115,6 +115,31 @@ class GithubRepositoryRepositoryImpl(
             .map { GithubRepositoryDto.fromEntity(it) }
     }
 
+    override fun findForCommunityInsight(
+        pageSize: Int,
+        afterFetchedAt: LocalDateTime?,
+        afterId: Long?,
+    ): List<GithubRepositoryDto> {
+        val repo = QGithubRepository.githubRepository
+
+        val cursorCondition = when {
+            afterFetchedAt != null && afterId != null ->
+                repo.communityFetchedAt.gt(afterFetchedAt)
+                    .or(repo.communityFetchedAt.eq(afterFetchedAt).and(repo.id.gt(afterId)))
+            afterId != null ->
+                repo.communityFetchedAt.isNotNull
+                    .or(repo.communityFetchedAt.isNull.and(repo.id.gt(afterId)))
+            else -> null
+        }
+
+        return queryFactory.selectFrom(repo)
+            .where(repo.deletedAt.isNull, cursorCondition)
+            .orderBy(repo.communityFetchedAt.asc().nullsFirst(), repo.id.asc())
+            .limit(pageSize.toLong())
+            .fetch()
+            .map { GithubRepositoryDto.fromEntity(it) }
+    }
+
     override fun findSimilarRepositories(
         targetVector: String,
         limit: Long,

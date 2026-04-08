@@ -34,4 +34,10 @@ interface GithubRepositoryRepository {
         targetVector: String,
         limit: Long,
     ): List<GithubRepositoryWithDistance>
+
+    fun findForCommunityInsight(
+        pageSize: Int,
+        afterFetchedAt: LocalDateTime?,
+        afterId: Long?,
+    ): List<GithubRepositoryDto>
 }
