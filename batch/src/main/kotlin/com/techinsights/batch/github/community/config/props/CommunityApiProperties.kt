@@ -9,6 +9,7 @@ data class CommunityApiProperties(
 ) {
     data class HnApiProperties(
         val baseUrl: String = "https://hn.algolia.com",
+        val itemBaseUrl: String = "https://news.ycombinator.com",
         val userAgent: String = "TechInsights-Bot/1.0",
     )
 
