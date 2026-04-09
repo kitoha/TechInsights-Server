@@ -4,6 +4,7 @@ import com.querydsl.core.types.OrderSpecifier
 import com.querydsl.jpa.impl.JPAQueryFactory
 import com.techinsights.domain.dto.github.GithubRepositoryDto
 import com.techinsights.domain.entity.github.QGithubRepository
+import com.techinsights.domain.enums.CommunityStatus
 import com.techinsights.domain.enums.ErrorType
 import com.techinsights.domain.enums.GithubSortType
 import org.springframework.data.domain.Page
@@ -115,26 +116,69 @@ class GithubRepositoryRepositoryImpl(
             .map { GithubRepositoryDto.fromEntity(it) }
     }
 
-    override fun findForCommunityInsight(
+    override fun findForCommunityCollect(
         pageSize: Int,
-        afterFetchedAt: LocalDateTime?,
+        afterCollectedAt: LocalDateTime?,
         afterId: Long?,
+        noMentionsRefreshAfter: LocalDateTime,
+        normalRefreshAfter: LocalDateTime,
     ): List<GithubRepositoryDto> {
         val repo = QGithubRepository.githubRepository
 
+        // 수집 대상: 미수집 OR (NO_MENTIONS: 30일 경과) OR (일반: 14일 경과)
+        val eligibleCondition =
+            repo.communityCollectedAt.isNull
+                .or(
+                    repo.communityStatus.eq(CommunityStatus.NO_MENTIONS)
+                        .and(repo.communityCollectedAt.lt(noMentionsRefreshAfter))
+                )
+                .or(
+                    repo.communityStatus.ne(CommunityStatus.NO_MENTIONS)
+                        .and(repo.communityCollectedAt.lt(normalRefreshAfter))
+                )
+
         val cursorCondition = when {
-            afterFetchedAt != null && afterId != null ->
-                repo.communityFetchedAt.gt(afterFetchedAt)
-                    .or(repo.communityFetchedAt.eq(afterFetchedAt).and(repo.id.gt(afterId)))
+            afterCollectedAt != null && afterId != null ->
+                repo.communityCollectedAt.gt(afterCollectedAt)
+                    .or(repo.communityCollectedAt.eq(afterCollectedAt).and(repo.id.gt(afterId)))
             afterId != null ->
-                repo.communityFetchedAt.isNotNull
-                    .or(repo.communityFetchedAt.isNull.and(repo.id.gt(afterId)))
+                repo.communityCollectedAt.isNotNull
+                    .or(repo.communityCollectedAt.isNull.and(repo.id.gt(afterId)))
             else -> null
         }
 
         return queryFactory.selectFrom(repo)
-            .where(repo.deletedAt.isNull, cursorCondition)
-            .orderBy(repo.communityFetchedAt.asc().nullsFirst(), repo.id.asc())
+            .where(repo.deletedAt.isNull, eligibleCondition, cursorCondition)
+            .orderBy(repo.communityCollectedAt.asc().nullsFirst(), repo.id.asc())
+            .limit(pageSize.toLong())
+            .fetch()
+            .map { GithubRepositoryDto.fromEntity(it) }
+    }
+
+    override fun findForCommunityAnalyze(
+        pageSize: Int,
+        afterId: Long?,
+    ): List<GithubRepositoryDto> {
+        val repo = QGithubRepository.githubRepository
+
+        // 분석 대상: 수집이 분석보다 최신 AND raw_mention_count > mention_count (또는 미분석)
+        val analyzeCondition =
+            repo.communityCollectedAt.isNotNull
+                .and(
+                    repo.communityFetchedAt.isNull
+                        .or(repo.communityCollectedAt.gt(repo.communityFetchedAt))
+                )
+                .and(
+                    repo.communityRawMentionCount.gt(
+                        repo.communityMentionCount.coalesce(-1)
+                    )
+                )
+
+        val cursorCondition = afterId?.let { repo.id.gt(it) }
+
+        return queryFactory.selectFrom(repo)
+            .where(repo.deletedAt.isNull, analyzeCondition, cursorCondition)
+            .orderBy(repo.id.asc())
             .limit(pageSize.toLong())
             .fetch()
             .map { GithubRepositoryDto.fromEntity(it) }

@@ -92,24 +92,30 @@ class GithubRepository(
     @Column(name = "readme_summary_error_type", length = 50)
     var readmeSummaryErrorType: ErrorType? = null,
 
-    @Column(name = "community_insights", columnDefinition = "jsonb")
-    var communityInsights: String? = null,
+    @Column(name = "community_collected_at")
+    var communityCollectedAt: LocalDateTime? = null,
+
+    @Column(name = "community_raw_mention_count")
+    var communityRawMentionCount: Int? = null,
 
     @Column(name = "community_highlights", columnDefinition = "jsonb")
     var communityHighlights: String? = null,
 
-    @Column(name = "community_sentiment", columnDefinition = "jsonb")
-    var communitySentiment: String? = null,
+    @Column(name = "community_fetched_at")
+    var communityFetchedAt: LocalDateTime? = null,
 
     @Column(name = "community_mention_count")
     var communityMentionCount: Int? = null,
 
+    @Column(name = "community_sentiment", columnDefinition = "jsonb")
+    var communitySentiment: String? = null,
+
+    @Column(name = "community_insights", columnDefinition = "jsonb")
+    var communityInsights: String? = null,
+
     @Enumerated(EnumType.STRING)
     @Column(name = "community_status", length = 20)
     var communityStatus: CommunityStatus? = null,
-
-    @Column(name = "community_fetched_at")
-    var communityFetchedAt: LocalDateTime? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "community_error_type", length = 50)

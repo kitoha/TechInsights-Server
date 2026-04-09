@@ -35,9 +35,16 @@ interface GithubRepositoryRepository {
         limit: Long,
     ): List<GithubRepositoryWithDistance>
 
-    fun findForCommunityInsight(
+    fun findForCommunityCollect(
         pageSize: Int,
-        afterFetchedAt: LocalDateTime?,
+        afterCollectedAt: LocalDateTime?,
+        afterId: Long?,
+        noMentionsRefreshAfter: LocalDateTime,
+        normalRefreshAfter: LocalDateTime,
+    ): List<GithubRepositoryDto>
+
+    fun findForCommunityAnalyze(
+        pageSize: Int,
         afterId: Long?,
     ): List<GithubRepositoryDto>
 }

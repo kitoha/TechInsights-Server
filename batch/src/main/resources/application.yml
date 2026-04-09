@@ -32,9 +32,17 @@ batch:
     chunk-size: 10         # Writer 1회 API 호출(batchEmbedContents) 당 처리할 레포 수
     page-size: 100         # DB에서 한 번에 읽어올 레포 수
     max-items-per-run: 5000 # 1회 실행당 최대 처리 수 (chunk 500회 = API 500회, RPD 1,000 여유)
-  community-insight:
-    job-name: communityInsightJob
-    step-name: communityInsightStep
+  community-collect:
+    job-name: communityCollectJob
+    step-name: communityCollectStep
+    chunk-size: 50
+    page-size: 100
+    max-items-per-run: 2834  # 전체 레포 순환 (HN/Reddit 무료)
+    normal-refresh-days: 14
+    no-mentions-refresh-days: 30
+  community-analyze:
+    job-name: communityAnalyzeJob
+    step-name: communityAnalyzeStep
     chunk-size: 10         # Gemini 1회 배치 요청당 처리 레포 수 (10개 × 20 RPD = 200 repos/day)
     page-size: 50
     max-items-per-run: 200 # 20 req/day × 10 repos = 200 repos/day

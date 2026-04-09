@@ -13,7 +13,6 @@ import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.slot
 import io.mockk.verify
 import java.time.LocalDateTime
 
@@ -24,6 +23,8 @@ class GithubRepositoryRepositoryImplCommunityInsightTest : FunSpec({
     val repository = GithubRepositoryRepositoryImpl(jpaRepository, queryFactory)
 
     val now = LocalDateTime.of(2026, 4, 8, 12, 0)
+    val normalRefreshAfter = now.minusDays(14)
+    val noMentionsRefreshAfter = now.minusDays(30)
 
     beforeTest { clearAllMocks() }
 
@@ -32,87 +33,129 @@ class GithubRepositoryRepositoryImplCommunityInsightTest : FunSpec({
         every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
         every { query.where(*anyVararg<BooleanExpression>()) } returns query
         every { query.orderBy(any(), any()) } returns query
+        every { query.orderBy(any()) } returns query
         every { query.limit(any()) } returns query
         every { query.fetch() } returns results
         return query
     }
 
-    test("findForCommunityInsight - communityFetchedAt이 null인 레포를 반환한다") {
-        val entity = buildCommunityEntity(id = 1L, communityFetchedAt = null)
-        mockQuery(listOf(entity))
+    context("findForCommunityCollect") {
 
-        val result = repository.findForCommunityInsight(pageSize = 10, afterFetchedAt = null, afterId = null)
+        test("communityCollectedAt이 null인 레포를 반환한다") {
+            val entity = buildCommunityEntity(id = 1L, communityCollectedAt = null)
+            mockQuery(listOf(entity))
 
-        result shouldHaveSize 1
-        result[0].id shouldBe 1L
+            val result = repository.findForCommunityCollect(
+                pageSize = 10,
+                afterCollectedAt = null,
+                afterId = null,
+                noMentionsRefreshAfter = noMentionsRefreshAfter,
+                normalRefreshAfter = normalRefreshAfter,
+            )
+
+            result shouldHaveSize 1
+            result[0].id shouldBe 1L
+        }
+
+        test("빈 결과를 반환할 수 있다") {
+            mockQuery(emptyList())
+
+            val result = repository.findForCommunityCollect(
+                pageSize = 10,
+                afterCollectedAt = null,
+                afterId = null,
+                noMentionsRefreshAfter = noMentionsRefreshAfter,
+                normalRefreshAfter = normalRefreshAfter,
+            )
+
+            result.shouldBeEmpty()
+        }
+
+        test("pageSize만큼 limit을 설정한다") {
+            val query = mockQuery(emptyList())
+
+            repository.findForCommunityCollect(
+                pageSize = 50,
+                afterCollectedAt = null,
+                afterId = null,
+                noMentionsRefreshAfter = noMentionsRefreshAfter,
+                normalRefreshAfter = normalRefreshAfter,
+            )
+
+            verify { query.limit(50L) }
+        }
+
+        test("DTO의 communityCollectedAt이 엔티티와 일치한다") {
+            val entity = buildCommunityEntity(id = 1L, communityCollectedAt = now)
+            mockQuery(listOf(entity))
+
+            val result = repository.findForCommunityCollect(
+                pageSize = 10,
+                afterCollectedAt = null,
+                afterId = null,
+                noMentionsRefreshAfter = noMentionsRefreshAfter,
+                normalRefreshAfter = normalRefreshAfter,
+            )
+
+            result[0].communityCollectedAt shouldBe now
+        }
+
+        test("communityStatus가 COMPLETED인 레포 DTO로 변환된다") {
+            val entity = buildCommunityEntity(id = 1L, communityStatus = CommunityStatus.COMPLETED)
+            mockQuery(listOf(entity))
+
+            val result = repository.findForCommunityCollect(
+                pageSize = 10,
+                afterCollectedAt = null,
+                afterId = null,
+                noMentionsRefreshAfter = noMentionsRefreshAfter,
+                normalRefreshAfter = normalRefreshAfter,
+            )
+
+            result[0].communityStatus shouldBe CommunityStatus.COMPLETED
+        }
     }
 
-    test("findForCommunityInsight - 빈 결과를 반환할 수 있다") {
-        mockQuery(emptyList())
+    context("findForCommunityAnalyze") {
 
-        val result = repository.findForCommunityInsight(pageSize = 10, afterFetchedAt = null, afterId = null)
+        test("빈 결과를 반환할 수 있다") {
+            mockQuery(emptyList())
 
-        result.shouldBeEmpty()
-    }
+            val result = repository.findForCommunityAnalyze(pageSize = 10, afterId = null)
 
-    test("findForCommunityInsight - pageSize만큼 limit을 설정한다") {
-        val query = mockQuery(emptyList())
+            result.shouldBeEmpty()
+        }
 
-        repository.findForCommunityInsight(pageSize = 50, afterFetchedAt = null, afterId = null)
+        test("pageSize만큼 limit을 설정한다") {
+            val query = mockQuery(emptyList())
 
-        verify { query.limit(50L) }
-    }
+            repository.findForCommunityAnalyze(pageSize = 20, afterId = null)
 
-    test("findForCommunityInsight - afterFetchedAt과 afterId가 모두 있을 때 cursor 조건을 적용한다") {
-        val entity = buildCommunityEntity(id = 5L, communityFetchedAt = now.plusDays(1))
-        mockQuery(listOf(entity))
+            verify { query.limit(20L) }
+        }
 
-        val result = repository.findForCommunityInsight(
-            pageSize = 10,
-            afterFetchedAt = now,
-            afterId = 3L,
-        )
+        test("communityRawMentionCount가 있는 레포 DTO로 변환된다") {
+            val entity = buildCommunityEntity(
+                id = 1L,
+                communityCollectedAt = now,
+                communityRawMentionCount = 5,
+            )
+            mockQuery(listOf(entity))
 
-        result shouldHaveSize 1
-    }
+            val result = repository.findForCommunityAnalyze(pageSize = 10, afterId = null)
 
-    test("findForCommunityInsight - afterId만 있을 때 null 구간 cursor 조건을 적용한다") {
-        val entity = buildCommunityEntity(id = 10L, communityFetchedAt = now)
-        mockQuery(listOf(entity))
-
-        val result = repository.findForCommunityInsight(
-            pageSize = 10,
-            afterFetchedAt = null,
-            afterId = 5L,
-        )
-
-        result shouldHaveSize 1
-    }
-
-    test("findForCommunityInsight - DTO의 communityFetchedAt이 엔티티와 일치한다") {
-        val entity = buildCommunityEntity(id = 1L, communityFetchedAt = now)
-        mockQuery(listOf(entity))
-
-        val result = repository.findForCommunityInsight(pageSize = 10, afterFetchedAt = null, afterId = null)
-
-        result[0].communityFetchedAt shouldBe now
-    }
-
-    test("findForCommunityInsight - communityStatus가 COMPLETED인 레포 DTO로 변환된다") {
-        val entity = buildCommunityEntity(id = 1L, communityStatus = CommunityStatus.COMPLETED)
-        mockQuery(listOf(entity))
-
-        val result = repository.findForCommunityInsight(pageSize = 10, afterFetchedAt = null, afterId = null)
-
-        result[0].communityStatus shouldBe CommunityStatus.COMPLETED
+            result[0].communityRawMentionCount shouldBe 5
+        }
     }
 })
 
 private fun buildCommunityEntity(
     id: Long,
+    communityCollectedAt: LocalDateTime? = null,
+    communityRawMentionCount: Int? = null,
     communityFetchedAt: LocalDateTime? = null,
-    communityStatus: CommunityStatus? = null,
     communityMentionCount: Int? = null,
+    communityStatus: CommunityStatus? = null,
     communityUpdateCount: Int = 0,
 ): GithubRepository = GithubRepository(
     id = id,
@@ -131,8 +174,10 @@ private fun buildCommunityEntity(
     weeklyStarDelta = 0L,
     dailyStarDelta = 0L,
 ).also {
+    it.communityCollectedAt = communityCollectedAt
+    it.communityRawMentionCount = communityRawMentionCount
     it.communityFetchedAt = communityFetchedAt
-    it.communityStatus = communityStatus
     it.communityMentionCount = communityMentionCount
+    it.communityStatus = communityStatus
     it.communityUpdateCount = communityUpdateCount
 }
