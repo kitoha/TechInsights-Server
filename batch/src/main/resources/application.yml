@@ -32,12 +32,27 @@ batch:
     chunk-size: 10         # Writer 1회 API 호출(batchEmbedContents) 당 처리할 레포 수
     page-size: 100         # DB에서 한 번에 읽어올 레포 수
     max-items-per-run: 5000 # 1회 실행당 최대 처리 수 (chunk 500회 = API 500회, RPD 1,000 여유)
+  community-insight:
+    job-name: communityInsightJob
+    step-name: communityInsightStep
+    chunk-size: 10         # Gemini 1회 배치 요청당 처리 레포 수 (10개 × 20 RPD = 200 repos/day)
+    page-size: 50
+    max-items-per-run: 200 # 20 req/day × 10 repos = 200 repos/day
 
 github:
   api:
     base-url: https://api.github.com
     token: ${GITHUB_TOKEN:}
     per-page: 100
+
+community:
+  api:
+    hn:
+      base-url: https://hn.algolia.com
+      user-agent: TechInsights-Bot/1.0
+    reddit:
+      base-url: https://www.reddit.com
+      user-agent: TechInsights-Bot/1.0
 
 web-client:
   connect-timeout-millis: 10000
