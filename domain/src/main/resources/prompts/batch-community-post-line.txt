@@ -1,0 +1,1 @@
+[{{platform}}] "{{title}}" (점수: {{score}}, 댓글: {{comment_count}})
