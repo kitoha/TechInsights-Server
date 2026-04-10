@@ -1,6 +1,7 @@
 package com.techinsights.batch.github.community.analyze.processor
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.techinsights.domain.dto.community.CommunityAnalysisInput
 import com.techinsights.domain.dto.community.CommunityPost
 import com.techinsights.domain.dto.github.GithubRepositoryDto
@@ -11,7 +12,7 @@ import org.springframework.stereotype.Component
 @Component
 class CommunityAnalyzeProcessor : ItemProcessor<GithubRepositoryDto, CommunityAnalysisInput> {
 
-    private val objectMapper = ObjectMapper()
+    private val objectMapper = jacksonObjectMapper()
 
     override fun process(item: GithubRepositoryDto): CommunityAnalysisInput? {
         val highlights = item.communityHighlights ?: run {
@@ -36,36 +37,25 @@ class CommunityAnalyzeProcessor : ItemProcessor<GithubRepositoryDto, CommunityAn
 
     private fun parseHighlights(json: String): HighlightsData {
         val tree = objectMapper.readTree(json)
+        return HighlightsData(
+            hnPosts = parsePosts(tree, "hnPosts"),
+            redditPosts = parsePosts(tree, "redditPosts"),
+        )
+    }
 
-        val hnPosts = tree.path("hnPosts").let { node ->
-            if (node.isMissingNode || node.isNull) emptyList()
-            else node.map { postNode ->
-                CommunityPost(
-                    platform = postNode.path("platform").asText(),
-                    title = postNode.path("title").asText(),
-                    score = postNode.path("score").asInt(),
-                    commentCount = postNode.path("commentCount").asInt(),
-                    username = postNode.path("username").takeUnless { it.isNull }?.asText(),
-                    url = postNode.path("url").asText(),
-                )
-            }
+    private fun parsePosts(tree: JsonNode, path: String): List<CommunityPost> {
+        val node = tree.path(path)
+        return if (node.isMissingNode || node.isNull) emptyList()
+        else node.map { postNode ->
+            CommunityPost(
+                platform = postNode.path("platform").asText(),
+                title = postNode.path("title").asText(),
+                score = postNode.path("score").asInt(),
+                commentCount = postNode.path("commentCount").asInt(),
+                username = postNode.path("username").takeUnless { it.isNull }?.asText(),
+                url = postNode.path("url").asText(),
+            )
         }
-
-        val redditPosts = tree.path("redditPosts").let { node ->
-            if (node.isMissingNode || node.isNull) emptyList()
-            else node.map { postNode ->
-                CommunityPost(
-                    platform = postNode.path("platform").asText(),
-                    title = postNode.path("title").asText(),
-                    score = postNode.path("score").asInt(),
-                    commentCount = postNode.path("commentCount").asInt(),
-                    username = postNode.path("username").takeUnless { it.isNull }?.asText(),
-                    url = postNode.path("url").asText(),
-                )
-            }
-        }
-
-        return HighlightsData(hnPosts = hnPosts, redditPosts = redditPosts)
     }
 
     private data class HighlightsData(

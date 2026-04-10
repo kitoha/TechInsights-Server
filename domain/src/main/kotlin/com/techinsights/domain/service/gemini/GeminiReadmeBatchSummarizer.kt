@@ -82,7 +82,7 @@ class GeminiReadmeBatchSummarizer(
                 geminiClient.models.generateContentStream(modelName, prompt, config)
             }
 
-            val jsonParser = StreamingJsonParser()
+            val jsonParser = StreamingJsonParser(SummaryResultWithId::class.java) { it.id }
             for (res in responseStream) {
                 val candidates = res.candidates().orElse(null)
                 val finishReason = candidates?.firstOrNull()?.finishReason()?.orElse(null)

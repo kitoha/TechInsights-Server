@@ -2,10 +2,12 @@ package com.techinsights.domain.service.gemini
 
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.techinsights.domain.dto.gemini.SummaryResultWithId
 import org.slf4j.LoggerFactory
 
-class StreamingJsonParser {
+class StreamingJsonParser<T>(
+    private val targetClass: Class<T>,
+    private val idExtractor: (T) -> String?,
+) {
     companion object {
         private const val OBJECT_START = '{'
         private const val OBJECT_END = '}'
@@ -19,9 +21,9 @@ class StreamingJsonParser {
     }
     private var buffer = ""
 
-    fun process(chunk: String): List<SummaryResultWithId> {
+    fun process(chunk: String): List<T> {
         buffer += chunk
-        val summaries = mutableListOf<SummaryResultWithId>()
+        val results = mutableListOf<T>()
 
         while (true) {
             val startIndex = buffer.indexOf(OBJECT_START)
@@ -30,10 +32,10 @@ class StreamingJsonParser {
             val endIndex = findEndOfObject(startIndex)
             if (endIndex != -1) {
                 val jsonObject = buffer.substring(startIndex, endIndex + 1)
-                val summary = parseSummary(jsonObject)
-                
-                if (summary != null) {
-                    summaries.add(summary)
+                val result = parseObject(jsonObject)
+
+                if (result != null) {
+                    results.add(result)
                     buffer = buffer.substring(endIndex + 1)
                 } else {
                     buffer = buffer.substring(startIndex + 1)
@@ -42,7 +44,7 @@ class StreamingJsonParser {
                 break
             }
         }
-        return summaries
+        return results
     }
 
     private fun findEndOfObject(startIndex: Int): Int {
@@ -72,13 +74,14 @@ class StreamingJsonParser {
         return -1
     }
 
-    private fun parseSummary(json: String): SummaryResultWithId? {
+    private fun parseObject(json: String): T? {
         return try {
-            val result = mapper.readValue(json, SummaryResultWithId::class.java)
-            if (result.id.isNullOrEmpty()) {
+            val result = mapper.readValue(json, targetClass)
+            val id = idExtractor(result)
+            if (id.isNullOrEmpty()) {
                 null
             } else {
-                log.info("Successfully parsed summary for ID: ${result.id}")
+                log.info("Successfully parsed ${targetClass.simpleName} for ID: $id")
                 result
             }
         } catch (e: Exception) {
