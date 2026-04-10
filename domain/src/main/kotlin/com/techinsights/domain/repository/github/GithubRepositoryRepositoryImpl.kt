@@ -141,6 +141,8 @@ class GithubRepositoryRepositoryImpl(
             afterCollectedAt != null && afterId != null ->
                 repo.communityCollectedAt.gt(afterCollectedAt)
                     .or(repo.communityCollectedAt.eq(afterCollectedAt).and(repo.id.gt(afterId)))
+            afterCollectedAt != null ->
+                repo.communityCollectedAt.gt(afterCollectedAt)
             afterId != null ->
                 repo.communityCollectedAt.isNotNull
                     .or(repo.communityCollectedAt.isNull.and(repo.id.gt(afterId)))
@@ -148,7 +150,7 @@ class GithubRepositoryRepositoryImpl(
         }
 
         return queryFactory.selectFrom(repo)
-            .where(repo.deletedAt.isNull, eligibleCondition, cursorCondition)
+            .where(*listOfNotNull(repo.deletedAt.isNull, eligibleCondition, cursorCondition).toTypedArray())
             .orderBy(repo.communityCollectedAt.asc().nullsFirst(), repo.id.asc())
             .limit(pageSize.toLong())
             .fetch()
@@ -177,7 +179,7 @@ class GithubRepositoryRepositoryImpl(
         val cursorCondition = afterId?.let { repo.id.gt(it) }
 
         return queryFactory.selectFrom(repo)
-            .where(repo.deletedAt.isNull, analyzeCondition, cursorCondition)
+            .where(*listOfNotNull(repo.deletedAt.isNull, analyzeCondition, cursorCondition).toTypedArray())
             .orderBy(repo.id.asc())
             .limit(pageSize.toLong())
             .fetch()

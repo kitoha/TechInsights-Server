@@ -7,6 +7,7 @@ import com.techinsights.batch.github.community.dto.RedditSearchResponse
 import com.techinsights.domain.dto.community.CommunityPost
 import io.github.resilience4j.kotlin.ratelimiter.executeSuspendFunction
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import org.slf4j.LoggerFactory
@@ -62,6 +63,7 @@ class CommunityFetcherImpl(
                     .top5()
                     .mapNotNull { convertHnPost(it) }
             }.getOrElse { e ->
+                if (e is CancellationException) throw e
                 log.warn("[HN] fetch failed for $ownerName/$repoName: ${e.message}")
                 emptyList()
             }
@@ -83,6 +85,7 @@ class CommunityFetcherImpl(
                     .top5()
                     .mapNotNull { convertRedditPost(it) }
             }.getOrElse { e ->
+                if (e is CancellationException) throw e
                 log.warn("[Reddit] fetch failed for $ownerName/$repoName: ${e.message}")
                 emptyList()
             }

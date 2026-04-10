@@ -98,6 +98,7 @@ class GithubRepository(
     @Column(name = "community_raw_mention_count")
     var communityRawMentionCount: Int? = null,
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "community_highlights", columnDefinition = "jsonb")
     var communityHighlights: String? = null,
 
@@ -107,9 +108,11 @@ class GithubRepository(
     @Column(name = "community_mention_count")
     var communityMentionCount: Int? = null,
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "community_sentiment", columnDefinition = "jsonb")
     var communitySentiment: String? = null,
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "community_insights", columnDefinition = "jsonb")
     var communityInsights: String? = null,
 
