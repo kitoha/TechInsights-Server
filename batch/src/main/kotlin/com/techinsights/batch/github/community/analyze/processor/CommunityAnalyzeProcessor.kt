@@ -1,7 +1,7 @@
 package com.techinsights.batch.github.community.analyze.processor
 
 import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.techinsights.domain.dto.community.CommunityAnalysisInput
 import com.techinsights.domain.dto.community.CommunityPost
 import com.techinsights.domain.dto.github.GithubRepositoryDto
@@ -10,9 +10,9 @@ import org.springframework.batch.item.ItemProcessor
 import org.springframework.stereotype.Component
 
 @Component
-class CommunityAnalyzeProcessor : ItemProcessor<GithubRepositoryDto, CommunityAnalysisInput> {
-
-    private val objectMapper = jacksonObjectMapper()
+class CommunityAnalyzeProcessor(
+    private val objectMapper: ObjectMapper,
+) : ItemProcessor<GithubRepositoryDto, CommunityAnalysisInput> {
 
     override fun process(item: GithubRepositoryDto): CommunityAnalysisInput? {
         val highlights = item.communityHighlights ?: run {

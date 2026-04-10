@@ -1,6 +1,6 @@
 package com.techinsights.batch.github.community.collect.writer
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.techinsights.batch.github.community.dto.CommunityBuzzInput
 import org.slf4j.LoggerFactory
 import org.springframework.batch.item.Chunk
@@ -12,9 +12,8 @@ import org.springframework.stereotype.Component
 @Component
 class CommunityCollectWriter(
     private val jdbcTemplate: NamedParameterJdbcTemplate,
+    private val objectMapper: ObjectMapper,
 ) : ItemWriter<CommunityBuzzInput> {
-
-    private val objectMapper = jacksonObjectMapper()
 
     override fun write(chunk: Chunk<out CommunityBuzzInput>) {
         if (chunk.isEmpty) return

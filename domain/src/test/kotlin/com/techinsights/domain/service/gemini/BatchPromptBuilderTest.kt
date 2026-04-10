@@ -1,5 +1,6 @@
 package com.techinsights.domain.service.gemini
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.techinsights.domain.dto.gemini.ArticleInput
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.string.shouldContain
@@ -40,7 +41,7 @@ class BatchPromptBuilderTest : FunSpec({
   }
 
   test("should build prompt with multiple articles") {
-    val builder = BatchPromptBuilder(summaryResource, schemaResource, articleItemResource)
+    val builder = BatchPromptBuilder(summaryResource, schemaResource, articleItemResource, jacksonObjectMapper())
     val articles = listOf(
       ArticleInput("1", "Title 1", "Content 1"),
       ArticleInput("2", "Title 2", "Content 2")
@@ -60,7 +61,7 @@ class BatchPromptBuilderTest : FunSpec({
   }
 
   test("should build prompt with single article") {
-    val builder = BatchPromptBuilder(summaryResource, schemaResource, articleItemResource)
+    val builder = BatchPromptBuilder(summaryResource, schemaResource, articleItemResource, jacksonObjectMapper())
     val articles = listOf(
       ArticleInput("1", "Single Title", "Single Content")
     )
@@ -75,7 +76,7 @@ class BatchPromptBuilderTest : FunSpec({
   }
 
   test("should build schema with categories") {
-    val builder = BatchPromptBuilder(summaryResource, schemaResource, articleItemResource)
+    val builder = BatchPromptBuilder(summaryResource, schemaResource, articleItemResource, jacksonObjectMapper())
     val categories = listOf("AI", "Backend", "Frontend")
 
     val schema = builder.buildSchema(categories)
@@ -85,7 +86,7 @@ class BatchPromptBuilderTest : FunSpec({
   }
 
   test("should handle articles with special characters") {
-    val builder = BatchPromptBuilder(summaryResource, schemaResource, articleItemResource)
+    val builder = BatchPromptBuilder(summaryResource, schemaResource, articleItemResource, jacksonObjectMapper())
     val articles = listOf(
       ArticleInput("1", "Title with special chars!", "Content with @#\$%")
     )
@@ -98,7 +99,7 @@ class BatchPromptBuilderTest : FunSpec({
   }
 
   test("should handle articles with multiline content") {
-    val builder = BatchPromptBuilder(summaryResource, schemaResource, articleItemResource)
+    val builder = BatchPromptBuilder(summaryResource, schemaResource, articleItemResource, jacksonObjectMapper())
     val articles = listOf(
       ArticleInput(
         "1",
@@ -120,7 +121,7 @@ class BatchPromptBuilderTest : FunSpec({
   }
 
   test("should handle Korean text in articles") {
-    val builder = BatchPromptBuilder(summaryResource, schemaResource, articleItemResource)
+    val builder = BatchPromptBuilder(summaryResource, schemaResource, articleItemResource, jacksonObjectMapper())
     val articles = listOf(
       ArticleInput("1", "한글 제목", "한글로 작성된 내용입니다.")
     )
@@ -134,7 +135,7 @@ class BatchPromptBuilderTest : FunSpec({
   }
 
   test("should handle empty categories list") {
-    val builder = BatchPromptBuilder(summaryResource, schemaResource, articleItemResource)
+    val builder = BatchPromptBuilder(summaryResource, schemaResource, articleItemResource, jacksonObjectMapper())
     val articles = listOf(
       ArticleInput("1", "Title", "Content")
     )
@@ -146,7 +147,7 @@ class BatchPromptBuilderTest : FunSpec({
   }
 
   test("should replace all placeholders correctly") {
-    val builder = BatchPromptBuilder(summaryResource, schemaResource, articleItemResource)
+    val builder = BatchPromptBuilder(summaryResource, schemaResource, articleItemResource, jacksonObjectMapper())
     val articles = listOf(
       ArticleInput("123", "Test Title", "Test Content")
     )
@@ -164,7 +165,7 @@ class BatchPromptBuilderTest : FunSpec({
   }
 
   test("should build prompt with 10 articles") {
-    val builder = BatchPromptBuilder(summaryResource, schemaResource, articleItemResource)
+    val builder = BatchPromptBuilder(summaryResource, schemaResource, articleItemResource, jacksonObjectMapper())
     val articles = (1..10).map {
       ArticleInput(it.toString(), "Title $it", "Content $it")
     }
@@ -178,7 +179,7 @@ class BatchPromptBuilderTest : FunSpec({
   }
 
   test("should separate articles with double newline") {
-    val builder = BatchPromptBuilder(summaryResource, schemaResource, articleItemResource)
+    val builder = BatchPromptBuilder(summaryResource, schemaResource, articleItemResource, jacksonObjectMapper())
     val articles = listOf(
       ArticleInput("1", "Title 1", "Content 1"),
       ArticleInput("2", "Title 2", "Content 2")

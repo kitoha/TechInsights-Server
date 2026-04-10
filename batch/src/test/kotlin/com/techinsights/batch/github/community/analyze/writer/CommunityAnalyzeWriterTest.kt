@@ -1,5 +1,6 @@
 package com.techinsights.batch.github.community.analyze.writer
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.techinsights.domain.dto.community.CommunityAnalysisInput
 import com.techinsights.domain.dto.community.CommunityAnalysisResult
 import com.techinsights.domain.dto.community.CommunityPost
@@ -20,7 +21,7 @@ class CommunityAnalyzeWriterTest : FunSpec({
     beforeTest { clearAllMocks() }
 
     test("빈 청크는 analyzer를 호출하지 않는다") {
-        val writer = CommunityAnalyzeWriter(analyzer, jdbcTemplate)
+        val writer = CommunityAnalyzeWriter(analyzer, jdbcTemplate, jacksonObjectMapper())
 
         writer.write(Chunk(emptyList()))
 
@@ -46,7 +47,7 @@ class CommunityAnalyzeWriterTest : FunSpec({
 
         every { analyzer.analyze(listOf(input)) } returns flowOf(result)
 
-        val writer = CommunityAnalyzeWriter(analyzer, jdbcTemplate)
+        val writer = CommunityAnalyzeWriter(analyzer, jdbcTemplate, jacksonObjectMapper())
         writer.write(Chunk(listOf(input)))
 
         val capturedSqls = mutableListOf<String>()
@@ -82,7 +83,7 @@ class CommunityAnalyzeWriterTest : FunSpec({
 
         every { analyzer.analyze(listOf(input)) } returns flowOf(result)
 
-        val writer = CommunityAnalyzeWriter(analyzer, jdbcTemplate)
+        val writer = CommunityAnalyzeWriter(analyzer, jdbcTemplate, jacksonObjectMapper())
         writer.write(Chunk(listOf(input)))
 
         val capturedSqls = mutableListOf<String>()
@@ -118,7 +119,7 @@ class CommunityAnalyzeWriterTest : FunSpec({
 
         every { analyzer.analyze(listOf(input)) } returns flowOf(result)
 
-        val writer = CommunityAnalyzeWriter(analyzer, jdbcTemplate)
+        val writer = CommunityAnalyzeWriter(analyzer, jdbcTemplate, jacksonObjectMapper())
         writer.write(Chunk(listOf(input)))
 
         val capturedParams = mutableListOf<MapSqlParameterSource>()
@@ -153,7 +154,7 @@ class CommunityAnalyzeWriterTest : FunSpec({
 
         every { analyzer.analyze(listOf(input)) } returns flowOf(result)
 
-        val writer = CommunityAnalyzeWriter(analyzer, jdbcTemplate)
+        val writer = CommunityAnalyzeWriter(analyzer, jdbcTemplate, jacksonObjectMapper())
         writer.write(Chunk(listOf(input)))
 
         val capturedParams = mutableListOf<MapSqlParameterSource>()
@@ -175,7 +176,7 @@ class CommunityAnalyzeWriterTest : FunSpec({
 
         every { analyzer.analyze(any()) } throws RuntimeException("Gemini unavailable")
 
-        val writer = CommunityAnalyzeWriter(analyzer, jdbcTemplate)
+        val writer = CommunityAnalyzeWriter(analyzer, jdbcTemplate, jacksonObjectMapper())
         writer.write(Chunk(listOf(input1, input2)))
 
         val capturedSqls = mutableListOf<String>()

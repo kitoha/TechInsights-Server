@@ -1,6 +1,6 @@
 package com.techinsights.domain.service.gemini
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.genai.Client
 import com.google.genai.types.GenerateContentConfig
 import com.techinsights.domain.config.gemini.GeminiProperties
@@ -25,13 +25,13 @@ class GeminiCommunityAnalyzerImpl(
     private val geminiClient: Client,
     private val geminiProperties: GeminiProperties,
     private val promptBuilder: CommunityBuzzPromptBuilder,
+    private val mapper: ObjectMapper,
     rateLimiterRegistry: RateLimiterRegistry,
     circuitBreakerRegistry: CircuitBreakerRegistry,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO,
 ) : CommunityAnalyzer {
 
     private val log = LoggerFactory.getLogger(javaClass)
-    private val mapper = jacksonObjectMapper()
 
     private val rpmLimiter = rateLimiterRegistry.rateLimiter("geminiCommunityRpm")
     private val rpdLimiter = rateLimiterRegistry.rateLimiter("geminiCommunityRpd")

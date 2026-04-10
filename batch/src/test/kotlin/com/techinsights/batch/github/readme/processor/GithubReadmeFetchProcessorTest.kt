@@ -1,5 +1,6 @@
 package com.techinsights.batch.github.readme.processor
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.techinsights.domain.dto.github.GithubRepositoryDto
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
@@ -26,7 +27,7 @@ class GithubReadmeFetchProcessorTest : FunSpec({
         every { responseSpec.onStatus(any(), any()) } returns responseSpec
         every { responseSpec.bodyToMono(String::class.java) } returns responseMono
 
-        return GithubReadmeFetchProcessor(webClient)
+        return GithubReadmeFetchProcessor(webClient, jacksonObjectMapper())
     }
 
     test("README를 성공적으로 가져오면 ArticleInput을 반환한다") {

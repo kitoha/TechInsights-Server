@@ -1,5 +1,6 @@
 package com.techinsights.domain.service.gemini
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
@@ -32,7 +33,7 @@ class PromptTemplateEngineTest : FunSpec({
   }
 
   test("should build prompt with categories and article") {
-    val engine = PromptTemplateEngine(summaryResource, schemaResource)
+    val engine = PromptTemplateEngine(summaryResource, schemaResource, jacksonObjectMapper())
     val categories = listOf("AI", "Backend", "Frontend")
     val article = "This is a test article about technology."
 
@@ -45,7 +46,7 @@ class PromptTemplateEngineTest : FunSpec({
   }
 
   test("should build prompt with single category") {
-    val engine = PromptTemplateEngine(summaryResource, schemaResource)
+    val engine = PromptTemplateEngine(summaryResource, schemaResource, jacksonObjectMapper())
     val categories = listOf("AI")
     val article = "AI article content"
 
@@ -56,7 +57,7 @@ class PromptTemplateEngineTest : FunSpec({
   }
 
   test("should build prompt with empty categories") {
-    val engine = PromptTemplateEngine(summaryResource, schemaResource)
+    val engine = PromptTemplateEngine(summaryResource, schemaResource, jacksonObjectMapper())
     val categories = emptyList<String>()
     val article = "Article without categories"
 
@@ -67,7 +68,7 @@ class PromptTemplateEngineTest : FunSpec({
   }
 
   test("should build schema with categories") {
-    val engine = PromptTemplateEngine(summaryResource, schemaResource)
+    val engine = PromptTemplateEngine(summaryResource, schemaResource, jacksonObjectMapper())
     val categories = listOf("AI", "Backend")
 
     val schema = engine.buildSchema(categories)
@@ -77,7 +78,7 @@ class PromptTemplateEngineTest : FunSpec({
   }
 
   test("should build schema with single category") {
-    val engine = PromptTemplateEngine(summaryResource, schemaResource)
+    val engine = PromptTemplateEngine(summaryResource, schemaResource, jacksonObjectMapper())
     val categories = listOf("AI")
 
     val schema = engine.buildSchema(categories)
@@ -86,7 +87,7 @@ class PromptTemplateEngineTest : FunSpec({
   }
 
   test("should build schema with empty categories") {
-    val engine = PromptTemplateEngine(summaryResource, schemaResource)
+    val engine = PromptTemplateEngine(summaryResource, schemaResource, jacksonObjectMapper())
     val categories = emptyList<String>()
 
     val schema = engine.buildSchema(categories)
@@ -95,7 +96,7 @@ class PromptTemplateEngineTest : FunSpec({
   }
 
   test("should handle special characters in article") {
-    val engine = PromptTemplateEngine(summaryResource, schemaResource)
+    val engine = PromptTemplateEngine(summaryResource, schemaResource, jacksonObjectMapper())
     val categories = listOf("AI")
     val article = "Article with special chars: \$, #, @, %, &"
 
@@ -105,7 +106,7 @@ class PromptTemplateEngineTest : FunSpec({
   }
 
   test("should handle multiline article") {
-    val engine = PromptTemplateEngine(summaryResource, schemaResource)
+    val engine = PromptTemplateEngine(summaryResource, schemaResource, jacksonObjectMapper())
     val categories = listOf("AI")
     val article = """
       Line 1
@@ -121,7 +122,7 @@ class PromptTemplateEngineTest : FunSpec({
   }
 
   test("should handle Korean text in categories and article") {
-    val engine = PromptTemplateEngine(summaryResource, schemaResource)
+    val engine = PromptTemplateEngine(summaryResource, schemaResource, jacksonObjectMapper())
     val categories = listOf("인공지능", "백엔드")
     val article = "한글로 작성된 기술 블로그 내용입니다."
 

@@ -1,6 +1,6 @@
 package com.techinsights.domain.service.gemini
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.Resource
 import org.springframework.stereotype.Component
@@ -10,9 +10,9 @@ class PromptTemplateEngine(
     @Value("classpath:prompts/article-summary.md")
     private val summaryTplResource: Resource,
     @Value("classpath:prompts/article-schema.json")
-    private val schemaTplResource: Resource
+    private val schemaTplResource: Resource,
+    private val mapper: ObjectMapper,
 ) {
-    private val mapper = jacksonObjectMapper()
 
     private val summaryTemplate: String by lazy {
         summaryTplResource.inputStream.bufferedReader().readText()

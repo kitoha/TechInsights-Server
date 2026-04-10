@@ -1,6 +1,7 @@
 package com.techinsights.domain.service.gemini
 
 import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.slf4j.LoggerFactory
 
@@ -13,12 +14,13 @@ class StreamingJsonParser<T>(
         private const val OBJECT_END = '}'
         private const val QUOTE = '"'
         private const val ESCAPE = '\u005C'
+
+        val mapper: ObjectMapper = jacksonObjectMapper().apply {
+            configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+        }
     }
 
     private val log = LoggerFactory.getLogger(javaClass)
-    private val mapper = jacksonObjectMapper().apply {
-        configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-    }
     private var buffer = ""
 
     fun process(chunk: String): List<T> {

@@ -1,5 +1,6 @@
 package com.techinsights.domain.service.gemini
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.google.genai.Client
 import com.techinsights.domain.config.gemini.GeminiProperties
 import com.techinsights.domain.dto.community.CommunityAnalysisInput
@@ -51,6 +52,7 @@ class GeminiCommunityAnalyzerImplTest : FunSpec({
         geminiClient = geminiClient,
         geminiProperties = geminiProperties,
         promptBuilder = promptBuilder,
+        mapper = jacksonObjectMapper(),
         rateLimiterRegistry = rateLimiterRegistry,
         circuitBreakerRegistry = circuitBreakerRegistry,
         ioDispatcher = Dispatchers.Unconfined,

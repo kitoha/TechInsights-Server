@@ -1,5 +1,6 @@
 package com.techinsights.batch.github.community.collect.writer
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.techinsights.batch.github.community.dto.CommunityBuzzInput
 import com.techinsights.domain.dto.community.CommunityPost
 import io.kotest.core.spec.style.FunSpec
@@ -18,7 +19,7 @@ class CommunityCollectWriterTest : FunSpec({
     beforeTest { clearAllMocks() }
 
     test("빈 청크는 DB 호출 없음") {
-        val writer = CommunityCollectWriter(jdbcTemplate)
+        val writer = CommunityCollectWriter(jdbcTemplate, jacksonObjectMapper())
 
         writer.write(Chunk(emptyList()))
 
@@ -37,7 +38,7 @@ class CommunityCollectWriterTest : FunSpec({
             updateCount = 0,
         )
 
-        val writer = CommunityCollectWriter(jdbcTemplate)
+        val writer = CommunityCollectWriter(jdbcTemplate, jacksonObjectMapper())
         writer.write(Chunk(listOf(input)))
 
         val capturedSqls = mutableListOf<String>()
@@ -64,7 +65,7 @@ class CommunityCollectWriterTest : FunSpec({
             updateCount = 0,
         )
 
-        val writer = CommunityCollectWriter(jdbcTemplate)
+        val writer = CommunityCollectWriter(jdbcTemplate, jacksonObjectMapper())
         writer.write(Chunk(listOf(input)))
 
         val capturedSqls = mutableListOf<String>()
@@ -92,7 +93,7 @@ class CommunityCollectWriterTest : FunSpec({
             updateCount = 0,
         )
 
-        val writer = CommunityCollectWriter(jdbcTemplate)
+        val writer = CommunityCollectWriter(jdbcTemplate, jacksonObjectMapper())
         writer.write(Chunk(listOf(input)))
 
         val capturedSqls = mutableListOf<String>()
@@ -127,7 +128,7 @@ class CommunityCollectWriterTest : FunSpec({
             updateCount = 0,
         )
 
-        val writer = CommunityCollectWriter(jdbcTemplate)
+        val writer = CommunityCollectWriter(jdbcTemplate, jacksonObjectMapper())
         writer.write(Chunk(listOf(input)))
 
         val capturedParams = mutableListOf<MapSqlParameterSource>()
@@ -161,7 +162,7 @@ class CommunityCollectWriterTest : FunSpec({
             updateCount = 0,
         )
 
-        val writer = CommunityCollectWriter(jdbcTemplate)
+        val writer = CommunityCollectWriter(jdbcTemplate, jacksonObjectMapper())
         writer.write(Chunk(listOf(noMentionsInput, pendingInput)))
 
         val capturedSqls = mutableListOf<String>()
@@ -187,7 +188,7 @@ class CommunityCollectWriterTest : FunSpec({
             updateCount = 0,
         )
 
-        val writer = CommunityCollectWriter(jdbcTemplate)
+        val writer = CommunityCollectWriter(jdbcTemplate, jacksonObjectMapper())
         writer.write(Chunk(listOf(input)))
 
         val capturedSqls = mutableListOf<String>()

@@ -1,5 +1,6 @@
 package com.techinsights.batch.github.community.analyze.processor
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.techinsights.domain.dto.github.GithubRepositoryDto
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
@@ -8,7 +9,7 @@ import java.time.LocalDateTime
 
 class CommunityAnalyzeProcessorTest : FunSpec({
 
-    val processor = CommunityAnalyzeProcessor()
+    val processor = CommunityAnalyzeProcessor(jacksonObjectMapper())
 
     test("정상적인 communityHighlights JSON을 파싱해 CommunityAnalysisInput을 반환한다") {
         val highlights = """

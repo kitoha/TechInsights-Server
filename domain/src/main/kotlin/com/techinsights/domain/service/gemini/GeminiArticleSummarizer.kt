@@ -1,6 +1,6 @@
 package com.techinsights.domain.service.gemini
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.genai.Client
 import com.google.genai.types.GenerateContentConfig
 import com.techinsights.domain.config.gemini.GeminiProperties
@@ -12,16 +12,15 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
-class GeminiArticleSummarizer (
+class GeminiArticleSummarizer(
   private val geminiClient: Client,
   private val geminiProperties: GeminiProperties,
+  private val mapper: ObjectMapper,
   rateLimiterRegistry: RateLimiterRegistry,
-  private val promptTemplateEngine: PromptTemplateEngine
+  private val promptTemplateEngine: PromptTemplateEngine,
 ) : ArticleSummarizer {
 
   private val log = LoggerFactory.getLogger(GeminiArticleSummarizer::class.java)
-
-  private val mapper  = jacksonObjectMapper()
 
   private val rateLimiter = rateLimiterRegistry.rateLimiter("geminiArticleSummarizer")
 

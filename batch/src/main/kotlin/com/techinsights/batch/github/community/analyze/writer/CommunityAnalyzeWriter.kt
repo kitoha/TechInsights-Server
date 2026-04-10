@@ -18,9 +18,8 @@ import org.springframework.stereotype.Component
 class CommunityAnalyzeWriter(
     private val analyzer: CommunityAnalyzer,
     private val jdbcTemplate: NamedParameterJdbcTemplate,
+    private val objectMapper: ObjectMapper,
 ) : ItemWriter<CommunityAnalysisInput> {
-
-    private val objectMapper = ObjectMapper()
 
     override fun write(chunk: Chunk<out CommunityAnalysisInput>) {
         if (chunk.isEmpty) return
