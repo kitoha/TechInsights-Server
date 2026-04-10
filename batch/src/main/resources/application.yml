@@ -148,6 +148,22 @@ rate-limiter:
     limit-for-period: 8       # 인증 없음: Search API 10 req/min 안전마진. GITHUB_TOKEN 있으면 25로 변경
     refresh-period-seconds: 60
     timeout-seconds: 90
+  hn-api:
+    limit-for-period: 20      # HN Algolia API 공식 한도 없음, 20 RPM 안전 마진
+    refresh-period-seconds: 60
+    timeout-seconds: 10
+  reddit-api:
+    limit-for-period: 8       # Reddit search: 60 req/min, 8 RPM 보수적 안전 마진
+    refresh-period-seconds: 60
+    timeout-seconds: 30
+  gemini-community-rpm:
+    limit-for-period: 2       # TPM 250K ÷ 100K tokens/req = 2.5 → 2 RPM 안전
+    refresh-period-seconds: 60
+    timeout-seconds: 60
+  gemini-community-rpd:
+    limit-for-period: 20      # 20 req/day × 10 repos = 200 repos/day
+    refresh-period-seconds: 86400
+    timeout-seconds: 1
   crawler:
     ultra-safe:
       limit-for-period: 5
@@ -163,6 +179,14 @@ rate-limiter:
       timeout-seconds: 30
 
 circuit-breaker:
+  community-insight:
+    failure-rate-threshold: 50
+    slow-call-rate-threshold: 50
+    slow-call-duration-threshold-seconds: 30
+    wait-duration-in-open-state-seconds: 120
+    permitted-number-of-calls-in-half-open-state: 3
+    sliding-window-size: 10
+    minimum-number-of-calls: 5
   gemini-batch:
     failure-rate-threshold: 50  # 실패율 50% 이상 시 오픈
     slow-call-rate-threshold: 80  # 느린 호출 80% 이상 시 오픈

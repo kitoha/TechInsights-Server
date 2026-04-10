@@ -28,6 +28,7 @@ dependencies {
     implementation(libs.bundles.kotlinx.coroutines)
     implementation(libs.jsoup)
     implementation(libs.kotlin.reflect)
+    implementation(libs.jackson.module.kotlin)
 
     testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.bundles.kotest)
