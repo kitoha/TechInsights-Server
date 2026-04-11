@@ -4,6 +4,7 @@ import com.techinsights.api.post.PageResponse
 import com.techinsights.domain.enums.GithubSortType
 import com.techinsights.domain.service.github.GithubSemanticSearchService
 import com.techinsights.domain.service.github.GithubTrendingService
+import com.techinsights.domain.utils.decode
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
@@ -63,6 +65,14 @@ class GithubTrendingController(
                 processingTimeMs = processingTimeMs,
             )
         )
+    }
+
+    @GetMapping("/api/v1/github/{id}/community")
+    suspend fun getCommunity(
+        @PathVariable id: String,
+    ): ResponseEntity<GithubCommunityResponse> = withContext(ioDispatcher) {
+        val dto = githubTrendingService.getRepositoryById(id.decode())
+        ResponseEntity.ok(GithubCommunityResponse.fromDto(dto))
     }
 
     companion object {

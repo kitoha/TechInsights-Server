@@ -1,6 +1,7 @@
 package com.techinsights.api.github
 
 import com.techinsights.domain.dto.github.GithubRepositoryDto
+import com.techinsights.domain.enums.CommunityStatus
 import com.techinsights.domain.utils.encode
 import java.time.LocalDateTime
 
@@ -22,6 +23,8 @@ data class GithubRepositoryResponse(
     val fetchedAt: LocalDateTime,
     val readmeSummary: String?,
     val readmeSummarizedAt: LocalDateTime?,
+    val communityStatus: CommunityStatus?,
+    val communityMentionCount: Int?,
 ) {
     companion object {
         fun fromDto(dto: GithubRepositoryDto): GithubRepositoryResponse = GithubRepositoryResponse(
@@ -42,6 +45,8 @@ data class GithubRepositoryResponse(
             fetchedAt = dto.fetchedAt,
             readmeSummary = dto.readmeSummary,
             readmeSummarizedAt = dto.readmeSummarizedAt,
+            communityStatus = dto.communityStatus,
+            communityMentionCount = dto.communityMentionCount,
         )
     }
 }

@@ -1,13 +1,18 @@
 package com.techinsights.api.github
 
+import com.techinsights.api.exception.GlobalExceptionHandler
 import com.techinsights.domain.dto.github.GithubRepositoryDto
+import com.techinsights.domain.enums.CommunityStatus
 import com.techinsights.domain.enums.GithubSortType
+import com.techinsights.domain.exception.GithubRepositoryNotFoundException
 import com.techinsights.domain.service.github.GithubSemanticSearchService
 import com.techinsights.domain.service.github.GithubTrendingService
+import com.techinsights.domain.utils.encode
 import io.kotest.core.spec.style.FunSpec
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -38,7 +43,9 @@ class GithubTrendingControllerTest : FunSpec() {
                 githubSemanticSearchService = githubSemanticSearchService,
                 ioDispatcher = dispatcher,
             )
-            mockMvc = MockMvcBuilders.standaloneSetup(controller).build()
+            mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(GlobalExceptionHandler())
+                .build()
 
             // 기본 stub — 각 테스트에서 덮어쓸 수 있음
             coEvery { githubTrendingService.getRepositories(any(), any(), any(), any()) } returns PageImpl(emptyList())
@@ -170,6 +177,41 @@ class GithubTrendingControllerTest : FunSpec() {
                 .andExpect(MockMvcResultMatchers.jsonPath("$.content[0].dailyStarDelta").value(10))
 
             coVerify(exactly = 1) { githubTrendingService.getRepositories(0, 20, GithubSortType.STARS, null) }
+        }
+
+        context("GET /api/v1/github/{id}/community") {
+
+        test("community 데이터가 있는 레포 - 200 반환") {
+            val dto = createMockDto(1L).copy(
+                communityStatus = CommunityStatus.COMPLETED,
+                communitySentiment = """{"positive":0.8,"neutral":0.1,"negative":0.1}""",
+                communityInsights = """[{"title":"Popular","description":"High activity"}]""",
+                communityHighlights = """{"hnPosts":[],"redditPosts":[]}""",
+                communityMentionCount = 42,
+            )
+            every { githubTrendingService.getRepositoryById(1L) } returns dto
+
+            val asyncResult = mockMvc.get("/api/v1/github/${1L.encode()}/community") {
+                accept = MediaType.APPLICATION_JSON
+            }.andReturn()
+
+            mockMvc.perform(asyncDispatch(asyncResult))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.communityStatus").value("COMPLETED"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.communityMentionCount").value(42))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.communitySentiment").isNotEmpty)
+        }
+
+        test("존재하지 않는 레포 - 404 반환") {
+            every { githubTrendingService.getRepositoryById(any()) } throws GithubRepositoryNotFoundException("not found")
+
+            val asyncResult = mockMvc.get("/api/v1/github/${1L.encode()}/community") {
+                accept = MediaType.APPLICATION_JSON
+            }.andReturn()
+
+            mockMvc.perform(asyncDispatch(asyncResult))
+                .andExpect(MockMvcResultMatchers.status().isNotFound())
+        }
         }
     }
 
