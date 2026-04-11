@@ -18,16 +18,16 @@ class CommunityBuzzPromptBuilder(
     private val postLineTplResource: Resource,
 ) {
     private val summaryTemplate: String by lazy {
-        summaryTplResource.inputStream.bufferedReader().readText()
+        summaryTplResource.inputStream.bufferedReader().use { it.readText() }
     }
     private val schemaTemplate: String by lazy {
-        schemaTplResource.inputStream.bufferedReader().readText()
+        schemaTplResource.inputStream.bufferedReader().use { it.readText() }
     }
     private val itemTemplate: String by lazy {
-        itemTplResource.inputStream.bufferedReader().readText()
+        itemTplResource.inputStream.bufferedReader().use { it.readText() }
     }
     private val postLineTemplate: String by lazy {
-        postLineTplResource.inputStream.bufferedReader().readText().trimEnd()
+        postLineTplResource.inputStream.bufferedReader().use { it.readText() }.trimEnd()
     }
 
     fun buildPrompt(items: List<CommunityAnalysisInput>): String {
@@ -49,11 +49,14 @@ class CommunityBuzzPromptBuilder(
     private fun formatPosts(item: CommunityAnalysisInput): String =
         (item.hnPosts + item.redditPosts).joinToString("\n") { it.toLine() }
 
-    private fun CommunityPost.toLine(): String = postLineTemplate
-        .replace(PLACEHOLDER_PLATFORM, platform)
-        .replace(PLACEHOLDER_TITLE, title)
-        .replace(PLACEHOLDER_SCORE, score.toString())
-        .replace(PLACEHOLDER_COMMENT_COUNT, commentCount.toString())
+    private fun CommunityPost.toLine(): String = postLineTemplate.replacePlaceholders(
+        mapOf(
+            PLACEHOLDER_PLATFORM to platform,
+            PLACEHOLDER_TITLE to title,
+            PLACEHOLDER_SCORE to score.toString(),
+            PLACEHOLDER_COMMENT_COUNT to commentCount.toString(),
+        )
+    )
 
     companion object {
         private const val PLACEHOLDER_REPO_COUNT = "{{repo_count}}"
@@ -67,5 +70,11 @@ class CommunityBuzzPromptBuilder(
         private const val PLACEHOLDER_SCORE = "{{score}}"
         private const val PLACEHOLDER_COMMENT_COUNT = "{{comment_count}}"
         private const val ITEM_SEPARATOR = "\n\n"
+
+        private fun String.replacePlaceholders(replacements: Map<String, String>): String {
+            if (replacements.isEmpty()) return this
+            val pattern = Regex(replacements.keys.joinToString("|") { Regex.escape(it) })
+            return pattern.replace(this) { match -> replacements[match.value] ?: match.value }
+        }
     }
 }

@@ -166,6 +166,45 @@ class CommunityBuzzPromptBuilderTest : FunSpec({
         }
     }
 
+    context("buildPrompt() - 플레이스홀더 문자열이 입력값에 포함된 경우") {
+
+        test("제목에 {{score}} 형태의 문자열이 있어도 실제 점수 치환에 영향을 주지 않는다") {
+            val builder = buildBuilder(postLineTpl = "[{{platform}}] {{title}} 점수:{{score}} 댓글:{{comment_count}}")
+            val items = listOf(input(hnPosts = listOf(
+                CommunityPost("hn", "{{score}} is a cool metric", score = 42, commentCount = 7, username = "user", url = "https://example.com")
+            )))
+
+            val prompt = builder.buildPrompt(items)
+
+            prompt shouldContain "{{score}} is a cool metric"
+            prompt shouldContain "점수:42"
+        }
+
+        test("제목에 {{comment_count}} 형태의 문자열이 있어도 실제 댓글 수 치환에 영향을 주지 않는다") {
+            val builder = buildBuilder(postLineTpl = "[{{platform}}] {{title}} 점수:{{score}} 댓글:{{comment_count}}")
+            val items = listOf(input(hnPosts = listOf(
+                CommunityPost("hn", "{{comment_count}} comments expected", score = 10, commentCount = 5, username = "user", url = "https://example.com")
+            )))
+
+            val prompt = builder.buildPrompt(items)
+
+            prompt shouldContain "{{comment_count}} comments expected"
+            prompt shouldContain "댓글:5"
+        }
+
+        test("플랫폼 값에 {{title}} 형태의 문자열이 있어도 제목 치환에 영향을 주지 않는다") {
+            val builder = buildBuilder(postLineTpl = "[{{platform}}] {{title}}")
+            val items = listOf(input(hnPosts = listOf(
+                CommunityPost("{{title}}", "actual title", score = 1, commentCount = 0, username = "user", url = "https://example.com")
+            )))
+
+            val prompt = builder.buildPrompt(items)
+
+            prompt shouldContain "[{{title}}]"
+            prompt shouldContain "actual title"
+        }
+    }
+
     context("buildSchema()") {
 
         test("스키마 템플릿을 그대로 반환한다") {
