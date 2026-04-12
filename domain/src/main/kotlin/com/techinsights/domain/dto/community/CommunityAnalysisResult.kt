@@ -3,14 +3,13 @@ package com.techinsights.domain.dto.community
 data class CommunityAnalysisResult(
     val id: String,
     val success: Boolean,
-    val sentiment: SentimentBreakdown? = null,
+    val postClassifications: List<PostClassification> = emptyList(),
     val insights: List<CommunityInsight>? = null,
     val error: String? = null,
 ) {
-    data class SentimentBreakdown(
-        val positive: Int,
-        val neutral: Int,
-        val negative: Int,
+    data class PostClassification(
+        val url: String,
+        val sentiment: String,  // "POSITIVE" | "NEUTRAL" | "NEGATIVE"
     )
 
     data class CommunityInsight(

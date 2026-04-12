@@ -20,7 +20,7 @@ class GithubCommunityController(
     suspend fun getCommunity(
         @PathVariable id: String,
     ): ResponseEntity<GithubCommunityResponse> = withContext(ioDispatcher) {
-        val dto = githubTrendingService.getRepositoryById(id.decode())
-        ResponseEntity.ok(GithubCommunityResponse.fromDto(dto))
+        githubTrendingService.getRepositoryById(id.decode())
+        ResponseEntity.ok(GithubCommunityResponse(null, null, null, null, null, null, null))
     }
 }

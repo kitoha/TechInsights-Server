@@ -1,8 +1,6 @@
 package com.techinsights.domain.dto.github
 
 import com.techinsights.domain.entity.github.GithubRepository
-import com.techinsights.domain.enums.CommunityStatus
-import com.techinsights.domain.enums.ErrorType
 import java.time.LocalDateTime
 
 data class GithubRepositoryDto(
@@ -21,19 +19,7 @@ data class GithubRepositoryDto(
     val fetchedAt: LocalDateTime,
     val weeklyStarDelta: Long,
     val dailyStarDelta: Long,
-    val readmeSummary: String?,
-    val readmeSummarizedAt: LocalDateTime? = null,
-    val readmeEmbeddedAt: LocalDateTime? = null,
-    val communityCollectedAt: LocalDateTime? = null,
-    val communityRawMentionCount: Int? = null,
-    val communityHighlights: String? = null,
-    val communityFetchedAt: LocalDateTime? = null,
-    val communityMentionCount: Int? = null,
-    val communitySentiment: String? = null,
-    val communityInsights: String? = null,
-    val communityStatus: CommunityStatus? = null,
-    val communityErrorType: ErrorType? = null,
-    val communityUpdateCount: Int = 0,
+    val readmeSummary: String? = null,
 ) {
     companion object {
         fun fromEntity(entity: GithubRepository): GithubRepositoryDto {
@@ -57,19 +43,6 @@ data class GithubRepositoryDto(
                 fetchedAt = entity.fetchedAt,
                 weeklyStarDelta = entity.weeklyStarDelta,
                 dailyStarDelta = entity.dailyStarDelta,
-                readmeSummary = entity.readmeSummary,
-                readmeSummarizedAt = entity.readmeSummarizedAt,
-                readmeEmbeddedAt = entity.readmeEmbeddedAt,
-                communityCollectedAt = entity.communityCollectedAt,
-                communityRawMentionCount = entity.communityRawMentionCount,
-                communityHighlights = entity.communityHighlights,
-                communityFetchedAt = entity.communityFetchedAt,
-                communityMentionCount = entity.communityMentionCount,
-                communitySentiment = entity.communitySentiment,
-                communityInsights = entity.communityInsights,
-                communityStatus = entity.communityStatus,
-                communityErrorType = entity.communityErrorType,
-                communityUpdateCount = entity.communityUpdateCount,
             )
         }
     }

@@ -41,17 +41,14 @@ class CommunityAnalyzeWriter(
         }
 
         val successParams = results
-            .filter { it.success && it.sentiment != null }
+            .filter { it.success && it.postClassifications.isNotEmpty() }
             .mapNotNull { result ->
                 val input = inputMap[result.id] ?: return@mapNotNull null
-                val highlightPosts = buildHighlights(input.hnPosts, input.redditPosts)
                 val mentionCount = input.hnPosts.size + input.redditPosts.size
 
                 MapSqlParameterSource()
                     .addValue("id", result.id)
-                    .addValue("sentiment", objectMapper.writeValueAsString(result.sentiment))
                     .addValue("insights", objectMapper.writeValueAsString(result.insights ?: emptyList<Any>()))
-                    .addValue("highlights", objectMapper.writeValueAsString(highlightPosts))
                     .addValue("mentionCount", mentionCount)
             }
             .toTypedArray()
@@ -62,7 +59,7 @@ class CommunityAnalyzeWriter(
         }
 
         val failedParams = results
-            .filter { !it.success || it.sentiment == null }
+            .filter { !it.success || it.postClassifications.isEmpty() }
             .map { result ->
                 MapSqlParameterSource().addValue("id", result.id)
             }

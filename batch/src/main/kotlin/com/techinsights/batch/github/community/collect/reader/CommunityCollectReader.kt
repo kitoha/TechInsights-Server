@@ -57,7 +57,7 @@ class CommunityCollectReader(
 
         buffer.addAll(page)
         val last = page.last()
-        lastCollectedAt = last.communityCollectedAt
+        lastCollectedAt = null
         lastId = last.id
         log.info("[CommunityCollectReader] Loaded ${page.size} repos (cursor: collectedAt=$lastCollectedAt, id=$lastId)")
     }

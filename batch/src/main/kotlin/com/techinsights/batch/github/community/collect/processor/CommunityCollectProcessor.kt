@@ -20,8 +20,8 @@ class CommunityCollectProcessor(
                 repoFullName = item.fullName,
                 ownerName = item.ownerName,
                 repoName = item.repoName,
-                prevMentionCount = item.communityMentionCount,
-                updateCount = item.communityUpdateCount,
+                prevMentionCount = null,
+                updateCount = 0,
             )
         }
     }

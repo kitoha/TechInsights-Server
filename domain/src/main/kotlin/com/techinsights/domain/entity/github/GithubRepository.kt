@@ -1,17 +1,10 @@
 package com.techinsights.domain.entity.github
 
 import com.techinsights.domain.entity.BaseEntity
-import com.techinsights.domain.enums.CommunityStatus
-import com.techinsights.domain.enums.ErrorType
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
-import jakarta.persistence.EnumType
-import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
-import org.hibernate.annotations.Array
-import org.hibernate.annotations.JdbcTypeCode
-import org.hibernate.type.SqlTypes
 import java.time.LocalDateTime
 
 @Entity
@@ -74,56 +67,4 @@ class GithubRepository(
     @Column(name = "star_count_prev_day_updated_at")
     var starCountPrevDayUpdatedAt: LocalDateTime? = null,
 
-    @Column(name = "readme_summary", columnDefinition = "TEXT")
-    var readmeSummary: String? = null,
-
-    @Column(name = "readme_summarized_at")
-    var readmeSummarizedAt: LocalDateTime? = null,
-
-    @JdbcTypeCode(SqlTypes.VECTOR)
-    @Array(length = 3072)
-    @Column(name = "readme_embedding_vector")
-    var readmeEmbeddingVector: FloatArray? = null,
-
-    @Column(name = "readme_embedded_at")
-    var readmeEmbeddedAt: LocalDateTime? = null,
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "readme_summary_error_type", length = 50)
-    var readmeSummaryErrorType: ErrorType? = null,
-
-    @Column(name = "community_collected_at")
-    var communityCollectedAt: LocalDateTime? = null,
-
-    @Column(name = "community_raw_mention_count")
-    var communityRawMentionCount: Int? = null,
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "community_highlights", columnDefinition = "jsonb")
-    var communityHighlights: String? = null,
-
-    @Column(name = "community_fetched_at")
-    var communityFetchedAt: LocalDateTime? = null,
-
-    @Column(name = "community_mention_count")
-    var communityMentionCount: Int? = null,
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "community_sentiment", columnDefinition = "jsonb")
-    var communitySentiment: String? = null,
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "community_insights", columnDefinition = "jsonb")
-    var communityInsights: String? = null,
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "community_status", length = 20)
-    var communityStatus: CommunityStatus? = null,
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "community_error_type", length = 50)
-    var communityErrorType: ErrorType? = null,
-
-    @Column(name = "community_update_count")
-    var communityUpdateCount: Int = 0,
 ) : BaseEntity()

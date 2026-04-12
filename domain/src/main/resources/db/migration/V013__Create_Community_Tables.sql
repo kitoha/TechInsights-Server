@@ -70,8 +70,6 @@ CREATE TABLE IF NOT EXISTS community_posts (
     title                 TEXT         NOT NULL,
     score                 INTEGER      NOT NULL DEFAULT 0,
     comment_count         INTEGER      NOT NULL DEFAULT 0,
-    author                VARCHAR(255),
-    subreddit             VARCHAR(100),
     post_created_at       TIMESTAMP,
     sentiment             VARCHAR(20),
     sentiment_analyzed_at TIMESTAMP,

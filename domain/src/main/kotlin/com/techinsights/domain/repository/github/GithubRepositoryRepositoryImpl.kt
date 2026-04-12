@@ -4,7 +4,7 @@ import com.querydsl.core.types.OrderSpecifier
 import com.querydsl.jpa.impl.JPAQueryFactory
 import com.techinsights.domain.dto.github.GithubRepositoryDto
 import com.techinsights.domain.entity.github.QGithubRepository
-import com.techinsights.domain.enums.CommunityStatus
+import com.techinsights.domain.entity.github.QGithubRepositoryReadme
 import com.techinsights.domain.enums.ErrorType
 import com.techinsights.domain.enums.GithubSortType
 import org.springframework.data.domain.Page
@@ -68,22 +68,25 @@ class GithubRepositoryRepositoryImpl(
         retryableErrorTypes: Set<ErrorType>,
     ): List<GithubRepositoryDto> {
         val repo = QGithubRepository.githubRepository
+        val readme = QGithubRepositoryReadme.githubRepositoryReadme
 
         val cursorCondition = if (afterStarCount != null && afterId != null) {
             repo.starCount.lt(afterStarCount)
                 .or(repo.starCount.eq(afterStarCount).and(repo.id.lt(afterId)))
         } else null
 
-        val neverAttempted = repo.readmeSummarizedAt.isNull
+        // LEFT JOIN — readme 행이 없으면 한번도 시도 안 한 레포
+        val neverAttempted = readme.repoId.isNull
 
         val retryCondition = if (retryAfter != null && retryableErrorTypes.isNotEmpty()) {
-            repo.readmeSummaryErrorType.stringValue().`in`(retryableErrorTypes.map { it.name })
-                .and(repo.readmeSummarizedAt.lt(retryAfter))
+            readme.readmeSummaryErrorType.`in`(retryableErrorTypes.map { it.name })
+                .and(readme.readmeSummarizedAt.lt(retryAfter))
         } else null
 
         val mainCondition = retryCondition?.let { neverAttempted.or(it) } ?: neverAttempted
 
         return queryFactory.selectFrom(repo)
+            .leftJoin(readme).on(readme.repoId.eq(repo.id))
             .where(mainCondition, cursorCondition)
             .orderBy(repo.starCount.desc(), repo.id.desc())
             .limit(pageSize.toLong())
@@ -97,94 +100,45 @@ class GithubRepositoryRepositoryImpl(
         afterId: Long?,
     ): List<GithubRepositoryDto> {
         val repo = QGithubRepository.githubRepository
+        val readme = QGithubRepositoryReadme.githubRepositoryReadme
 
         val cursorCondition = if (afterStarCount != null && afterId != null) {
             repo.starCount.lt(afterStarCount)
                 .or(repo.starCount.eq(afterStarCount).and(repo.id.lt(afterId)))
         } else null
 
-        return queryFactory.selectFrom(repo)
+        return queryFactory.select(repo, readme)
+            .from(repo)
+            .join(readme).on(readme.repoId.eq(repo.id))
             .where(
-                repo.readmeSummarizedAt.isNotNull,   // 요약이 완료된 것만
-                repo.readmeSummary.isNotNull,         // 실제 summary가 있는 것만 (실패 마킹 제외)
-                repo.readmeEmbeddedAt.isNull,         // 아직 임베딩 안 된 것
+                readme.readmeSummarizedAt.isNotNull,
+                readme.readmeSummary.isNotNull,
+                readme.readmeEmbeddedAt.isNull,
                 cursorCondition,
             )
             .orderBy(repo.starCount.desc(), repo.id.desc())
             .limit(pageSize.toLong())
             .fetch()
-            .map { GithubRepositoryDto.fromEntity(it) }
+            .map { tuple ->
+                GithubRepositoryDto.fromEntity(tuple.get(repo)!!)
+                    .copy(readmeSummary = tuple.get(readme)?.readmeSummary)
+            }
     }
 
+    // Step 6에서 GithubRepositoryCommunity 기반으로 재구현 예정
     override fun findForCommunityCollect(
         pageSize: Int,
         afterCollectedAt: LocalDateTime?,
         afterId: Long?,
         noMentionsRefreshAfter: LocalDateTime,
         normalRefreshAfter: LocalDateTime,
-    ): List<GithubRepositoryDto> {
-        val repo = QGithubRepository.githubRepository
+    ): List<GithubRepositoryDto> = emptyList()
 
-        // 수집 대상: 미수집 OR (NO_MENTIONS: 30일 경과) OR (일반: 14일 경과)
-        val eligibleCondition =
-            repo.communityCollectedAt.isNull
-                .or(
-                    repo.communityStatus.eq(CommunityStatus.NO_MENTIONS)
-                        .and(repo.communityCollectedAt.lt(noMentionsRefreshAfter))
-                )
-                .or(
-                    repo.communityStatus.ne(CommunityStatus.NO_MENTIONS)
-                        .and(repo.communityCollectedAt.lt(normalRefreshAfter))
-                )
-
-        val cursorCondition = when {
-            afterCollectedAt != null && afterId != null ->
-                repo.communityCollectedAt.gt(afterCollectedAt)
-                    .or(repo.communityCollectedAt.eq(afterCollectedAt).and(repo.id.gt(afterId)))
-            afterCollectedAt != null ->
-                repo.communityCollectedAt.gt(afterCollectedAt)
-            afterId != null ->
-                repo.communityCollectedAt.isNotNull
-                    .or(repo.communityCollectedAt.isNull.and(repo.id.gt(afterId)))
-            else -> null
-        }
-
-        return queryFactory.selectFrom(repo)
-            .where(*listOfNotNull(repo.deletedAt.isNull, eligibleCondition, cursorCondition).toTypedArray())
-            .orderBy(repo.communityCollectedAt.asc().nullsFirst(), repo.id.asc())
-            .limit(pageSize.toLong())
-            .fetch()
-            .map { GithubRepositoryDto.fromEntity(it) }
-    }
-
+    // Step 7에서 GithubRepositoryCommunity 기반으로 재구현 예정
     override fun findForCommunityAnalyze(
         pageSize: Int,
         afterId: Long?,
-    ): List<GithubRepositoryDto> {
-        val repo = QGithubRepository.githubRepository
-
-        // 분석 대상: 수집이 분석보다 최신 AND raw_mention_count > mention_count (또는 미분석)
-        val analyzeCondition =
-            repo.communityCollectedAt.isNotNull
-                .and(
-                    repo.communityFetchedAt.isNull
-                        .or(repo.communityCollectedAt.gt(repo.communityFetchedAt))
-                )
-                .and(
-                    repo.communityRawMentionCount.gt(
-                        repo.communityMentionCount.coalesce(-1)
-                    )
-                )
-
-        val cursorCondition = afterId?.let { repo.id.gt(it) }
-
-        return queryFactory.selectFrom(repo)
-            .where(*listOfNotNull(repo.deletedAt.isNull, analyzeCondition, cursorCondition).toTypedArray())
-            .orderBy(repo.id.asc())
-            .limit(pageSize.toLong())
-            .fetch()
-            .map { GithubRepositoryDto.fromEntity(it) }
-    }
+    ): List<GithubRepositoryDto> = emptyList()
 
     override fun findSimilarRepositories(
         targetVector: String,
