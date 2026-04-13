@@ -20,4 +20,4 @@ ALTER TABLE github_repositories
     DROP COLUMN IF EXISTS community_update_count;
 
 -- HNSW 인덱스는 github_repository_readme로 이전했으므로 기존 인덱스 제거
-DROP INDEX IF EXISTS idx_github_repositories_readme_embedding;
+DROP INDEX IF EXISTS idx_github_repositories_readme_embedding_hnsw;
