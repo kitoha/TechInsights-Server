@@ -55,11 +55,23 @@ class GithubRepositoryRepositoryImpl(
 
     override fun findById(id: Long): GithubRepositoryDto? {
         val repo = QGithubRepository.githubRepository
+        val community = QGithubRepositoryCommunity.githubRepositoryCommunity
 
-        return queryFactory.selectFrom(repo)
+        return queryFactory.select(repo, community)
+            .from(repo)
+            .leftJoin(community).on(community.repoId.eq(repo.id))
             .where(repo.id.eq(id))
             .fetchOne()
-            ?.let { GithubRepositoryDto.fromEntity(it) }
+            ?.let { tuple ->
+                GithubRepositoryDto.fromEntity(tuple.get(repo)!!).copy(
+                    communityStatus = tuple.get(community)?.communityStatus,
+                    communitySentiment = tuple.get(community)?.communitySentiment,
+                    communityInsights = tuple.get(community)?.communityInsights,
+                    communityCollectedAt = tuple.get(community)?.communityCollectedAt,
+                    communityMentionCount = tuple.get(community)?.communityMentionCount,
+                    communityHighlights = tuple.get(community)?.communityHighlights,
+                )
+            }
     }
 
     override fun findUnsummarized(

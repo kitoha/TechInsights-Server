@@ -85,12 +85,13 @@ class CommunityAnalyzeWriter(
         private val log = LoggerFactory.getLogger(CommunityAnalyzeWriter::class.java)
 
         private const val UPDATE_SUCCESS_SQL = """
-            INSERT INTO github_repository_community (repo_id, community_mention_count, community_highlights, community_insights, community_fetched_at, community_status, community_error_type, community_update_count, created_at, updated_at)
-            SELECT id, :mentionCount, :highlights::jsonb, :insights::jsonb, NOW(), 'COMPLETED', NULL, COALESCE((SELECT community_update_count FROM github_repository_community WHERE repo_id = gr.id), 0) + 1, NOW(), NOW()
+            INSERT INTO github_repository_community (repo_id, community_sentiment, community_mention_count, community_highlights, community_insights, community_fetched_at, community_status, community_error_type, community_update_count, created_at, updated_at)
+            SELECT id, :sentiment::jsonb, :mentionCount, :highlights::jsonb, :insights::jsonb, NOW(), 'COMPLETED', NULL, COALESCE((SELECT community_update_count FROM github_repository_community WHERE repo_id = gr.id), 0) + 1, NOW(), NOW()
             FROM github_repositories gr
             WHERE gr.full_name = :id
             ON CONFLICT (repo_id) DO UPDATE
-                SET community_mention_count  = EXCLUDED.community_mention_count,
+                SET community_sentiment      = EXCLUDED.community_sentiment,
+                    community_mention_count  = EXCLUDED.community_mention_count,
                     community_highlights     = EXCLUDED.community_highlights,
                     community_insights       = EXCLUDED.community_insights,
                     community_fetched_at     = EXCLUDED.community_fetched_at,

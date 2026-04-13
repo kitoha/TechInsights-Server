@@ -49,6 +49,10 @@ class GithubRepositoryCommunity(
     var sentimentNegative: Int = 0,
 
     @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "community_sentiment", columnDefinition = "jsonb")
+    var communitySentiment: String? = null,
+
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "community_highlights", columnDefinition = "jsonb")
     var communityHighlights: String? = null,
 

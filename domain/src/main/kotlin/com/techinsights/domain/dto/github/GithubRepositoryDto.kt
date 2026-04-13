@@ -22,6 +22,8 @@ data class GithubRepositoryDto(
     val dailyStarDelta: Long,
     val readmeSummary: String? = null,
     val communityStatus: CommunityStatus? = null,
+    val communitySentiment: String? = null,
+    val communityInsights: String? = null,
     val communityCollectedAt: LocalDateTime? = null,
     val communityMentionCount: Int? = null,
     val communityRawMentionCount: Int? = null,
