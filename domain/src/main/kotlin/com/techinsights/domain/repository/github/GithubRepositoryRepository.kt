@@ -1,6 +1,7 @@
 package com.techinsights.domain.repository.github
 
 import com.techinsights.domain.dto.github.GithubRepositoryDto
+import com.techinsights.domain.dto.github.GithubRepositoryCursor
 import com.techinsights.domain.enums.ErrorType
 import com.techinsights.domain.enums.GithubSortType
 import org.springframework.data.domain.Page
@@ -13,6 +14,13 @@ interface GithubRepositoryRepository {
         sortType: GithubSortType,
         language: String?,
     ): Page<GithubRepositoryDto>
+
+    fun findRepositoriesByCursor(
+        limit: Int,
+        sortType: GithubSortType,
+        language: String?,
+        cursor: GithubRepositoryCursor?,
+    ): List<GithubRepositoryDto>
 
     fun findById(id: Long): GithubRepositoryDto?
 

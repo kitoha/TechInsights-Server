@@ -2,6 +2,8 @@ package com.techinsights.domain.service.github
 
 import com.techinsights.domain.config.cache.CacheConfig
 import com.techinsights.domain.dto.github.GithubRepositoryDto
+import com.techinsights.domain.dto.github.GithubRepositoryCursor
+import com.techinsights.domain.dto.github.GithubRepositoryCursorPage
 import com.techinsights.domain.enums.GithubSortType
 import com.techinsights.domain.exception.GithubRepositoryNotFoundException
 import com.techinsights.domain.repository.github.GithubRepositoryRepository
@@ -16,6 +18,32 @@ import org.springframework.transaction.annotation.Transactional
 class GithubTrendingService(
     private val githubRepositoryRepository: GithubRepositoryRepository,
 ) {
+
+    @Cacheable(cacheNames = [CacheConfig.GITHUB_TRENDING])
+    @Transactional(readOnly = true)
+    fun getRepositoriesByCursor(
+        cursor: String?,
+        size: Int,
+        sort: GithubSortType,
+        language: String?,
+    ): GithubRepositoryCursorPage {
+        val decodedCursor = cursor?.let { GithubRepositoryCursor.decode(it, sort) }
+        val results = githubRepositoryRepository.findRepositoriesByCursor(size + 1, sort, language, decodedCursor)
+        val hasNext = results.size > size
+        val content = if (hasNext) results.take(size) else results
+        val nextCursor = if (hasNext && content.isNotEmpty()) {
+            GithubRepositoryCursor.fromDto(content.last(), sort).encode()
+        } else {
+            null
+        }
+
+        return GithubRepositoryCursorPage(
+            content = content,
+            size = size,
+            hasNext = hasNext,
+            nextCursor = nextCursor,
+        )
+    }
 
     @Cacheable(cacheNames = [CacheConfig.GITHUB_TRENDING])
     @Transactional(readOnly = true)

@@ -1,6 +1,7 @@
 package com.techinsights.domain.service.github
 
 import com.techinsights.domain.dto.github.GithubRepositoryDto
+import com.techinsights.domain.dto.github.GithubRepositoryCursor
 import com.techinsights.domain.enums.GithubSortType
 import com.techinsights.domain.exception.GithubRepositoryNotFoundException
 import com.techinsights.domain.repository.github.GithubRepositoryRepository
@@ -114,6 +115,34 @@ class GithubTrendingServiceTest : FunSpec({
         result.content shouldHaveSize 1
         result.content[0].dailyStarDelta shouldBe 30L
         verify(exactly = 1) { githubRepositoryRepository.findRepositories(pageable, GithubSortType.DAILY_TRENDING, null) }
+    }
+
+    test("cursor 없이 첫 페이지를 커서 기반으로 조회한다") {
+        every {
+            githubRepositoryRepository.findRepositoriesByCursor(21, GithubSortType.STARS, null, null)
+        } returns listOf(sampleDto)
+
+        val result = service.getRepositoriesByCursor(null, 20, GithubSortType.STARS, null)
+
+        result.content shouldHaveSize 1
+        result.hasNext shouldBe false
+        result.nextCursor shouldBe null
+        verify(exactly = 1) {
+            githubRepositoryRepository.findRepositoriesByCursor(21, GithubSortType.STARS, null, null)
+        }
+    }
+
+    test("다음 페이지가 있으면 nextCursor를 생성한다") {
+        val secondDto = sampleDto.copy(id = 2L, starCount = 70_000L)
+        every {
+            githubRepositoryRepository.findRepositoriesByCursor(2, GithubSortType.STARS, null, null)
+        } returns listOf(sampleDto, secondDto)
+
+        val result = service.getRepositoriesByCursor(null, 1, GithubSortType.STARS, null)
+
+        result.content shouldHaveSize 1
+        result.hasNext shouldBe true
+        result.nextCursor shouldBe GithubRepositoryCursor.fromDto(sampleDto, GithubSortType.STARS).encode()
     }
 
     test("레포지토리 단건 조회 - 성공") {

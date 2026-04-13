@@ -1,8 +1,10 @@
 package com.techinsights.domain.repository.github
 
 import com.querydsl.core.types.OrderSpecifier
+import com.querydsl.core.types.dsl.BooleanExpression
 import com.querydsl.jpa.impl.JPAQueryFactory
 import com.techinsights.domain.dto.github.GithubRepositoryDto
+import com.techinsights.domain.dto.github.GithubRepositoryCursor
 import com.techinsights.domain.entity.github.QGithubRepository
 import com.techinsights.domain.entity.github.QGithubRepositoryCommunity
 import com.techinsights.domain.entity.github.QGithubRepositoryReadme
@@ -21,6 +23,24 @@ class GithubRepositoryRepositoryImpl(
     private val queryFactory: JPAQueryFactory,
 ) : GithubRepositoryRepository {
 
+    override fun findRepositoriesByCursor(
+        limit: Int,
+        sortType: GithubSortType,
+        language: String?,
+        cursor: GithubRepositoryCursor?,
+    ): List<GithubRepositoryDto> {
+        val repo = QGithubRepository.githubRepository
+        val languageCondition = language?.let { repo.primaryLanguage.eq(it) }
+        val cursorCondition = buildCursorCondition(repo, sortType, cursor)
+
+        return queryFactory.selectFrom(repo)
+            .where(languageCondition, cursorCondition)
+            .orderBy(*buildOrderSpecifiers(repo, sortType))
+            .limit(limit.toLong())
+            .fetch()
+            .map { GithubRepositoryDto.fromEntity(it) }
+    }
+
     override fun findRepositories(
         pageable: Pageable,
         sortType: GithubSortType,
@@ -28,18 +48,11 @@ class GithubRepositoryRepositoryImpl(
     ): Page<GithubRepositoryDto> {
         val repo = QGithubRepository.githubRepository
 
-        val orderSpecifiers: Array<OrderSpecifier<*>> = when (sortType) {
-            GithubSortType.STARS          -> arrayOf(repo.starCount.desc(), repo.id.desc())
-            GithubSortType.LATEST         -> arrayOf(repo.pushedAt.desc(), repo.id.desc())
-            GithubSortType.TRENDING       -> arrayOf(repo.weeklyStarDelta.desc(), repo.starCount.desc(), repo.id.desc())
-            GithubSortType.DAILY_TRENDING -> arrayOf(repo.dailyStarDelta.desc(), repo.starCount.desc(), repo.id.desc())
-        }
-
         val languageCondition = language?.let { repo.primaryLanguage.eq(it) }
 
         val results = queryFactory.selectFrom(repo)
             .where(languageCondition)
-            .orderBy(*orderSpecifiers)
+            .orderBy(*buildOrderSpecifiers(repo, sortType))
             .offset(pageable.offset)
             .limit(pageable.pageSize.toLong())
             .fetch()
@@ -219,4 +232,46 @@ class GithubRepositoryRepositoryImpl(
         limit: Long,
     ): List<GithubRepositoryWithDistance> =
         githubRepositoryJpaRepository.findSimilarRepositories(targetVector, limit)
+
+    private fun buildOrderSpecifiers(
+        repo: QGithubRepository,
+        sortType: GithubSortType,
+    ): Array<OrderSpecifier<*>> = when (sortType) {
+        GithubSortType.STARS          -> arrayOf(repo.starCount.desc(), repo.id.desc())
+        GithubSortType.LATEST         -> arrayOf(repo.pushedAt.desc(), repo.id.desc())
+        GithubSortType.TRENDING       -> arrayOf(repo.weeklyStarDelta.desc(), repo.starCount.desc(), repo.id.desc())
+        GithubSortType.DAILY_TRENDING -> arrayOf(repo.dailyStarDelta.desc(), repo.starCount.desc(), repo.id.desc())
+    }
+
+    private fun buildCursorCondition(
+        repo: QGithubRepository,
+        sortType: GithubSortType,
+        cursor: GithubRepositoryCursor?,
+    ): BooleanExpression? {
+        if (cursor == null) return null
+
+        return when (sortType) {
+            GithubSortType.STARS -> repo.starCount.lt(cursor.primaryAsLong())
+                .or(repo.starCount.eq(cursor.primaryAsLong()).and(repo.id.lt(cursor.id)))
+
+            GithubSortType.LATEST -> repo.pushedAt.lt(cursor.primaryAsDateTime())
+                .or(repo.pushedAt.eq(cursor.primaryAsDateTime()).and(repo.id.lt(cursor.id)))
+
+            GithubSortType.TRENDING -> repo.weeklyStarDelta.lt(cursor.primaryAsLong())
+                .or(
+                    repo.weeklyStarDelta.eq(cursor.primaryAsLong()).and(
+                        repo.starCount.lt(cursor.secondaryAsLong())
+                            .or(repo.starCount.eq(cursor.secondaryAsLong()).and(repo.id.lt(cursor.id)))
+                    )
+                )
+
+            GithubSortType.DAILY_TRENDING -> repo.dailyStarDelta.lt(cursor.primaryAsLong())
+                .or(
+                    repo.dailyStarDelta.eq(cursor.primaryAsLong()).and(
+                        repo.starCount.lt(cursor.secondaryAsLong())
+                            .or(repo.starCount.eq(cursor.secondaryAsLong()).and(repo.id.lt(cursor.id)))
+                    )
+                )
+        }
+    }
 }
