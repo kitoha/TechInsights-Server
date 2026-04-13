@@ -5,6 +5,7 @@ import com.querydsl.core.types.dsl.BooleanExpression
 import com.querydsl.jpa.impl.JPAQuery
 import com.querydsl.jpa.impl.JPAQueryFactory
 import com.techinsights.domain.entity.github.GithubRepository
+import com.techinsights.domain.entity.github.QGithubRepositoryCommunity
 import com.techinsights.domain.entity.github.GithubRepositoryReadme
 import com.techinsights.domain.entity.github.QGithubRepository
 import com.techinsights.domain.entity.github.QGithubRepositoryReadme
@@ -207,24 +208,37 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
     context("findById") {
 
         test("존재하는 id로 조회하면 DTO를 반환한다") {
-            val query = mockk<JPAQuery<GithubRepository>>()
+            val repo = QGithubRepository.githubRepository
+            val community = QGithubRepositoryCommunity.githubRepositoryCommunity
+            val query = mockk<JPAQuery<Tuple>>()
+            val tuple = mockk<Tuple>()
 
-            every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
+            every { queryFactory.select(repo, community) } returns query
+            every { query.from(repo) } returns query
+            every { query.leftJoin(community) } returns query
+            every { query.on(any<BooleanExpression>()) } returns query
             every { query.where(any<BooleanExpression>()) } returns query
-            every { query.fetchOne() } returns entity1
+            every { query.fetchOne() } returns tuple
+            every { tuple.get(repo) } returns entity1
+            every { tuple.get(community) } returns null
 
             val result = repository.findById(1L)
 
             result.shouldNotBeNull()
-            result!!.fullName shouldBe "owner/repo1"
+            result.fullName shouldBe "owner/repo1"
             result.starCount shouldBe 2000L
             result.primaryLanguage shouldBe "Kotlin"
         }
 
         test("존재하지 않는 id로 조회하면 null을 반환한다") {
-            val query = mockk<JPAQuery<GithubRepository>>()
+            val repo = QGithubRepository.githubRepository
+            val community = QGithubRepositoryCommunity.githubRepositoryCommunity
+            val query = mockk<JPAQuery<Tuple>>()
 
-            every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
+            every { queryFactory.select(repo, community) } returns query
+            every { query.from(repo) } returns query
+            every { query.leftJoin(community) } returns query
+            every { query.on(any<BooleanExpression>()) } returns query
             every { query.where(any<BooleanExpression>()) } returns query
             every { query.fetchOne() } returns null
 
