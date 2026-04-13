@@ -8,20 +8,21 @@ interface GithubRepositoryJpaRepository : JpaRepository<GithubRepository, Long> 
 
     @Query(
         value = """
-        SELECT full_name         AS fullName,
-               repo_name         AS repoName,
-               description,
-               readme_summary    AS readmeSummary,
-               primary_language  AS primaryLanguage,
-               star_count        AS starCount,
-               owner_name        AS ownerName,
-               owner_avatar_url  AS ownerAvatarUrl,
-               topics,
-               html_url          AS htmlUrl,
-               readme_embedding_vector::halfvec(3072) <=> CAST(:targetVector AS halfvec) AS distance
-        FROM github_repositories
-        WHERE deleted_at IS NULL
-          AND readme_embedding_vector IS NOT NULL
+        SELECT gr.full_name        AS fullName,
+               gr.repo_name        AS repoName,
+               gr.description,
+               grr.readme_summary  AS readmeSummary,
+               gr.primary_language AS primaryLanguage,
+               gr.star_count       AS starCount,
+               gr.owner_name       AS ownerName,
+               gr.owner_avatar_url AS ownerAvatarUrl,
+               gr.topics,
+               gr.html_url         AS htmlUrl,
+               grr.readme_embedding_vector::halfvec(3072) <=> CAST(:targetVector AS halfvec) AS distance
+        FROM github_repositories gr
+        JOIN github_repository_readme grr ON grr.repo_id = gr.id
+        WHERE gr.deleted_at IS NULL
+          AND grr.readme_embedding_vector IS NOT NULL
         ORDER BY distance
         LIMIT :limit
         """,

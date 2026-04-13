@@ -4,7 +4,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 
 @ConfigurationProperties(prefix = "circuit-breaker")
 data class CircuitBreakerProperties(
-    val geminiBatch: CircuitBreakerConfig = CircuitBreakerConfig()
+    val geminiBatch: CircuitBreakerConfig = CircuitBreakerConfig(),
+    val communityInsight: CircuitBreakerConfig = CircuitBreakerConfig(
+        slowCallDurationThresholdSeconds = 30,
+        waitDurationInOpenStateSeconds = 120,
+    ),
 ) {
     data class CircuitBreakerConfig(
         val failureRateThreshold: Int = 50,

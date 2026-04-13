@@ -44,4 +44,5 @@ class GithubRepositoryDtoTest : FunSpec({
         dto.weeklyStarDelta shouldBe 200L
         dto.dailyStarDelta shouldBe 30L
     }
+
 })

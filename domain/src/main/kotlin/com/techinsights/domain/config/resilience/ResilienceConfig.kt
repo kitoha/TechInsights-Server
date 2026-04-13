@@ -27,6 +27,10 @@ class ResilienceConfig(
     val githubConfig = createRateLimiterConfig(rateLimiterProperties.github)
     val geminiReadmeRpmConfig = createRateLimiterConfig(rateLimiterProperties.geminiReadmeRpm)
     val geminiReadmeRpdConfig = createRateLimiterConfig(rateLimiterProperties.geminiReadmeRpd)
+    val hnApiConfig = createRateLimiterConfig(rateLimiterProperties.hnApi)
+    val redditApiConfig = createRateLimiterConfig(rateLimiterProperties.redditApi)
+    val geminiCommunityRpmConfig = createRateLimiterConfig(rateLimiterProperties.geminiCommunityRpm)
+    val geminiCommunityRpdConfig = createRateLimiterConfig(rateLimiterProperties.geminiCommunityRpd)
     val ultraSafeConfig = createRateLimiterConfig(rateLimiterProperties.crawler.ultraSafe)
     val conservativeConfig = createRateLimiterConfig(rateLimiterProperties.crawler.conservative)
     val defaultConfig = createRateLimiterConfig(rateLimiterProperties.crawler.standard)
@@ -43,6 +47,12 @@ class ResilienceConfig(
     // README 요약 관련 RateLimiter
     registry.rateLimiter("geminiReadmeRpm", geminiReadmeRpmConfig)
     registry.rateLimiter("geminiReadmeRpd", geminiReadmeRpdConfig)
+
+    // Community Insight RateLimiter
+    registry.rateLimiter("hnApi", hnApiConfig)
+    registry.rateLimiter("redditApi", redditApiConfig)
+    registry.rateLimiter("geminiCommunityRpm", geminiCommunityRpmConfig)
+    registry.rateLimiter("geminiCommunityRpd", geminiCommunityRpdConfig)
 
     // 크롤링 RateLimiter
     registry.addConfiguration("ultraSafe", ultraSafeConfig)
@@ -68,6 +78,19 @@ class ResilienceConfig(
       .build()
 
     registry.circuitBreaker("geminiBatch", batchConfig)
+
+    val communityProps = circuitBreakerProperties.communityInsight
+    val communityConfig = CircuitBreakerConfig.custom()
+      .failureRateThreshold(communityProps.failureRateThreshold.toFloat())
+      .slowCallRateThreshold(communityProps.slowCallRateThreshold.toFloat())
+      .slowCallDurationThreshold(Duration.ofSeconds(communityProps.slowCallDurationThresholdSeconds))
+      .waitDurationInOpenState(Duration.ofSeconds(communityProps.waitDurationInOpenStateSeconds))
+      .permittedNumberOfCallsInHalfOpenState(communityProps.permittedNumberOfCallsInHalfOpenState)
+      .slidingWindowSize(communityProps.slidingWindowSize)
+      .minimumNumberOfCalls(communityProps.minimumNumberOfCalls)
+      .build()
+
+    registry.circuitBreaker("communityInsight", communityConfig)
 
     return registry
   }

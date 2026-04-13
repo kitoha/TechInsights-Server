@@ -1,6 +1,6 @@
 package com.techinsights.domain.service.gemini
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.techinsights.domain.dto.gemini.ArticleInput
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.Resource
@@ -13,10 +13,9 @@ class BatchPromptBuilder(
     @Value("classpath:prompts/batch-article-schema.json")
     private val schemaTplResource: Resource,
     @Value("classpath:prompts/batch-article-item.txt")
-    private val articleItemTplResource: Resource
+    private val articleItemTplResource: Resource,
+    private val mapper: ObjectMapper,
 ) {
-
-    private val mapper = jacksonObjectMapper()
 
     private val summaryTemplate: String by lazy { 
         summaryTplResource.inputStream.bufferedReader().readText() 

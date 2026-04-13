@@ -1,0 +1,155 @@
+package com.techinsights.domain.service.gemini
+
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.google.genai.Client
+import com.google.genai.types.GenerateContentConfig
+import com.techinsights.domain.config.gemini.GeminiProperties
+import com.techinsights.domain.dto.community.CommunityAnalysisInput
+import com.techinsights.domain.dto.community.CommunityAnalysisResult
+import com.techinsights.domain.enums.GeminiModelType
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
+import io.github.resilience4j.ratelimiter.RateLimiterRegistry
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.buffer
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.slf4j.LoggerFactory
+import org.springframework.stereotype.Service
+import kotlin.coroutines.CoroutineContext
+
+@Service
+class GeminiCommunityAnalyzerImpl(
+    private val geminiClient: Client,
+    private val geminiProperties: GeminiProperties,
+    private val promptBuilder: CommunityBuzzPromptBuilder,
+    private val mapper: ObjectMapper,
+    rateLimiterRegistry: RateLimiterRegistry,
+    circuitBreakerRegistry: CircuitBreakerRegistry,
+    private val ioDispatcher: CoroutineContext = Dispatchers.IO,
+) : CommunityAnalyzer {
+
+    private val log = LoggerFactory.getLogger(javaClass)
+
+    private val rpmLimiter = rateLimiterRegistry.rateLimiter("geminiCommunityRpm")
+    private val rpdLimiter = rateLimiterRegistry.rateLimiter("geminiCommunityRpd")
+    private val circuitBreaker = circuitBreakerRegistry.circuitBreaker("communityInsight")
+
+    override fun analyze(items: List<CommunityAnalysisInput>): Flow<CommunityAnalysisResult> {
+        if (items.isEmpty()) return channelFlow { }
+
+        return channelFlow {
+            val responded = mutableSetOf<String>()
+            var lastErrorMessage: String? = null
+
+            callGeminiApi(items).collect { result ->
+                if (result.id == SYSTEM_ERROR_MARKER) {
+                    lastErrorMessage = result.error
+                } else {
+                    responded.add(result.id)
+                    if (!result.success) {
+                        lastErrorMessage = result.error
+                    }
+                    send(result)
+                }
+            }
+
+            items.filter { it.repoFullName !in responded }.forEach { missing ->
+                val errorMessage = lastErrorMessage ?: "Response missing from Gemini stream"
+                log.warn("Community analysis ${missing.repoFullName} missing from Gemini response.")
+                send(CommunityAnalysisResult(id = missing.repoFullName, success = false, error = errorMessage))
+            }
+        }.buffer(Channel.UNLIMITED)
+    }
+
+    private fun callGeminiApi(items: List<CommunityAnalysisInput>): Flow<CommunityAnalysisResult> = channelFlow {
+        val modelName = GeminiModelType.GEMINI_2_5_FLASH.get()
+        val prompt = promptBuilder.buildPrompt(items)
+        val config = buildGeminiConfig(items.size)
+
+        acquireRateLimiterPermission()
+
+        try {
+            val responseStream = circuitBreaker.executeCallable {
+                geminiClient.models.generateContentStream(modelName, prompt, config)
+            }
+
+            val jsonParser = StreamingJsonParser(CommunityAnalysisResult::class.java) { it.id }
+            for (res in responseStream) {
+                val candidates = res.candidates().orElse(null)
+                val finishReason = candidates?.firstOrNull()?.finishReason()?.orElse(null)
+
+                if (finishReason != null) {
+                    val finishReasonStr = finishReason.toString().uppercase()
+                    if (finishReasonStr == "SAFETY" || finishReasonStr == "MAX_TOKENS" || finishReasonStr == "OTHER") {
+                        log.warn("Gemini stream interrupted. reason=$finishReason, repos=${items.map { it.repoFullName }}")
+                        send(CommunityAnalysisResult(
+                            id = SYSTEM_ERROR_MARKER,
+                            success = false,
+                            error = "Gemini finished with reason: $finishReason",
+                        ))
+                    }
+                }
+
+                res.text()?.let { chunk ->
+                    jsonParser.process(chunk).forEach { result ->
+                        launch(ioDispatcher) { send(result) }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            log.error("Community analysis failed for [${items.map { it.repoFullName }.joinToString()}].", e)
+            items.forEach { item ->
+                launch(ioDispatcher) {
+                    send(CommunityAnalysisResult(item.repoFullName, false, error = e.message ?: "Streaming failed"))
+                }
+            }
+        }
+    }.buffer(Channel.UNLIMITED)
+
+    internal fun calculateOutputTokens(batchSize: Int): Int {
+        val estimatedInputTokens = batchSize * geminiProperties.inputTokensPerItem
+        val remainingBudget = geminiProperties.maxTokensPerRequest - estimatedInputTokens
+        if (remainingBudget <= 0) {
+            val maxBeforeInputOverflow = geminiProperties.maxTokensPerRequest / geminiProperties.inputTokensPerItem
+            val maxForAdequateOutput = geminiProperties.maxTokensPerRequest / (geminiProperties.inputTokensPerItem + geminiProperties.outputTokensPerItem)
+            log.error(
+                "[GeminiCommunity] 입력 토큰 추정치($estimatedInputTokens)가 " +
+                    "maxTokensPerRequest(${geminiProperties.maxTokensPerRequest})를 초과. " +
+                    "batchSize=$batchSize. " +
+                    "입력 overflow 없는 최대 chunk-size=$maxBeforeInputOverflow, " +
+                    "출력 품질 보장 권장 chunk-size=$maxForAdequateOutput (application.yml 확인)"
+            )
+        }
+        val itemTarget = batchSize * geminiProperties.outputTokensPerItem
+        val upperBound = minOf(itemTarget, geminiProperties.maxOutputTokens).coerceAtLeast(1024)
+        return remainingBudget.coerceIn(1024, upperBound)
+    }
+
+    private fun buildGeminiConfig(batchSize: Int): GenerateContentConfig {
+        val dynamicMaxOutput = calculateOutputTokens(batchSize)
+        log.info("[GeminiCommunity] batchSize=$batchSize dynamicMaxOutput=$dynamicMaxOutput")
+
+        val schema = promptBuilder.buildSchema()
+        val schemaNode = mapper.readTree(schema)
+
+        return GenerateContentConfig.builder()
+            .responseJsonSchema(schemaNode)
+            .responseMimeType("application/json")
+            .maxOutputTokens(dynamicMaxOutput)
+            .build()
+    }
+
+    private suspend fun acquireRateLimiterPermission() {
+        withContext(ioDispatcher) {
+            rpdLimiter.acquirePermission()
+            rpmLimiter.acquirePermission()
+        }
+    }
+
+    companion object {
+        private const val SYSTEM_ERROR_MARKER = "SYSTEM_ERROR_MARKER"
+    }
+}

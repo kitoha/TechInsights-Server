@@ -1,6 +1,7 @@
 package com.techinsights.domain.service.github
 
 import com.techinsights.domain.config.cache.CacheConfig
+import com.techinsights.domain.dto.github.GithubRepositoryCursorPage
 import com.techinsights.domain.dto.github.GithubRepositoryDto
 import com.techinsights.domain.enums.GithubSortType
 import com.techinsights.domain.repository.github.GithubRepositoryRepository
@@ -101,6 +102,19 @@ class GithubTrendingServiceCachingTest : FunSpec() {
             }
             verify(exactly = 1) {
                 mockRepo.findRepositories(pageableSecond, GithubSortType.STARS, null)
+            }
+        }
+
+        test("동일한 cursor 파라미터로 두 번 호출 시 repository는 한 번만 호출된다") {
+            every {
+                mockRepo.findRepositoriesByCursor(21, GithubSortType.STARS, null, null)
+            } returns listOf(sampleDto)
+
+            service.getRepositoriesByCursor(null, 20, GithubSortType.STARS, null)
+            service.getRepositoriesByCursor(null, 20, GithubSortType.STARS, null)
+
+            verify(exactly = 1) {
+                mockRepo.findRepositoriesByCursor(21, GithubSortType.STARS, null, null)
             }
         }
     }

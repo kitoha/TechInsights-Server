@@ -1,16 +1,10 @@
 package com.techinsights.domain.entity.github
 
 import com.techinsights.domain.entity.BaseEntity
-import com.techinsights.domain.enums.ErrorType
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
-import jakarta.persistence.EnumType
-import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
-import org.hibernate.annotations.Array
-import org.hibernate.annotations.JdbcTypeCode
-import org.hibernate.type.SqlTypes
 import java.time.LocalDateTime
 
 @Entity
@@ -73,21 +67,4 @@ class GithubRepository(
     @Column(name = "star_count_prev_day_updated_at")
     var starCountPrevDayUpdatedAt: LocalDateTime? = null,
 
-    @Column(name = "readme_summary", columnDefinition = "TEXT")
-    var readmeSummary: String? = null,
-
-    @Column(name = "readme_summarized_at")
-    var readmeSummarizedAt: LocalDateTime? = null,
-
-    @JdbcTypeCode(SqlTypes.VECTOR)
-    @Array(length = 3072)
-    @Column(name = "readme_embedding_vector")
-    var readmeEmbeddingVector: FloatArray? = null,
-
-    @Column(name = "readme_embedded_at")
-    var readmeEmbeddedAt: LocalDateTime? = null,
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "readme_summary_error_type", length = 50)
-    var readmeSummaryErrorType: ErrorType? = null,
 ) : BaseEntity()

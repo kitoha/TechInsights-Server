@@ -50,10 +50,11 @@ class GithubReadmeEmbeddingWriter(
         private val log = LoggerFactory.getLogger(GithubReadmeEmbeddingWriter::class.java)
 
         private const val UPDATE_SQL = """
-            UPDATE github_repositories
+            UPDATE github_repository_readme
             SET readme_embedding_vector = CAST(:vector AS vector),
-                readme_embedded_at      = NOW()
-            WHERE id = :id
+                readme_embedded_at      = NOW(),
+                updated_at              = NOW()
+            WHERE repo_id = :id
         """
     }
 }

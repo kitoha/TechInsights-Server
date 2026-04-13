@@ -60,18 +60,26 @@ class GithubReadmeBatchSummaryWriter(
         private val log = LoggerFactory.getLogger(GithubReadmeBatchSummaryWriter::class.java)
 
         private const val UPDATE_SQL = """
-            UPDATE github_repositories
-            SET readme_summary = :summary,
-                readme_summarized_at = NOW(),
-                readme_summary_error_type = NULL
+            INSERT INTO github_repository_readme (repo_id, readme_summary, readme_summarized_at, readme_summary_error_type, created_at, updated_at)
+            SELECT id, :summary, NOW(), NULL, NOW(), NOW()
+            FROM github_repositories
             WHERE full_name = :fullName
+            ON CONFLICT (repo_id) DO UPDATE
+                SET readme_summary            = EXCLUDED.readme_summary,
+                    readme_summarized_at      = EXCLUDED.readme_summarized_at,
+                    readme_summary_error_type = NULL,
+                    updated_at                = NOW()
         """
 
         private const val MARK_FAILED_SQL = """
-            UPDATE github_repositories
-            SET readme_summarized_at = NOW(),
-                readme_summary_error_type = :errorType
+            INSERT INTO github_repository_readme (repo_id, readme_summarized_at, readme_summary_error_type, created_at, updated_at)
+            SELECT id, NOW(), :errorType, NOW(), NOW()
+            FROM github_repositories
             WHERE full_name = :fullName
+            ON CONFLICT (repo_id) DO UPDATE
+                SET readme_summarized_at      = EXCLUDED.readme_summarized_at,
+                    readme_summary_error_type = EXCLUDED.readme_summary_error_type,
+                    updated_at                = NOW()
         """
     }
 }

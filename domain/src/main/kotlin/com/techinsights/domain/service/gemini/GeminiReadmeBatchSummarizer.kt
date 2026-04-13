@@ -1,6 +1,6 @@
 package com.techinsights.domain.service.gemini
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.genai.Client
 import com.google.genai.types.GenerateContentConfig
 import com.techinsights.domain.config.gemini.GeminiProperties
@@ -26,13 +26,13 @@ class GeminiReadmeBatchSummarizer(
     private val geminiClient: Client,
     private val geminiProperties: GeminiProperties,
     private val promptBuilder: GithubReadmePromptBuilder,
+    private val mapper: ObjectMapper,
     rateLimiterRegistry: RateLimiterRegistry,
     circuitBreakerRegistry: CircuitBreakerRegistry,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO,
 ) : GithubReadmeBatchSummarizer {
 
     private val log = LoggerFactory.getLogger(javaClass)
-    private val mapper = jacksonObjectMapper()
 
     private val rpmLimiter = rateLimiterRegistry.rateLimiter("geminiReadmeRpm")
     private val rpdLimiter = rateLimiterRegistry.rateLimiter("geminiReadmeRpd")
@@ -82,7 +82,7 @@ class GeminiReadmeBatchSummarizer(
                 geminiClient.models.generateContentStream(modelName, prompt, config)
             }
 
-            val jsonParser = StreamingJsonParser()
+            val jsonParser = StreamingJsonParser(SummaryResultWithId::class.java) { it.id }
             for (res in responseStream) {
                 val candidates = res.candidates().orElse(null)
                 val finishReason = candidates?.firstOrNull()?.finishReason()?.orElse(null)

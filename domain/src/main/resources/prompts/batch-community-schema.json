@@ -1,0 +1,50 @@
+{
+  "type": "object",
+  "properties": {
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "레포지토리 full_name (owner/repo 형식)"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "sentiment": {
+            "type": "object",
+            "description": "커뮤니티 감정 분포 (합계 100%)",
+            "properties": {
+              "positive": { "type": "integer" },
+              "neutral":  { "type": "integer" },
+              "negative": { "type": "integer" }
+            },
+            "required": ["positive", "neutral", "negative"]
+          },
+          "insights": {
+            "type": "array",
+            "description": "커뮤니티 반응 주요 포인트 (최대 3개, 한국어)",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": { "type": "string" },
+                "tone": {
+                  "type": "string",
+                  "enum": ["positive", "neutral", "negative"]
+                }
+              },
+              "required": ["text", "tone"]
+            }
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "success"]
+      }
+    }
+  },
+  "required": ["results"]
+}

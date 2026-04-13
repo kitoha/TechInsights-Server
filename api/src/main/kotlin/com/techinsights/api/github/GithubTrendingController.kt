@@ -1,6 +1,5 @@
 package com.techinsights.api.github
 
-import com.techinsights.api.post.PageResponse
 import com.techinsights.domain.enums.GithubSortType
 import com.techinsights.domain.service.github.GithubSemanticSearchService
 import com.techinsights.domain.service.github.GithubTrendingService
@@ -27,20 +26,19 @@ class GithubTrendingController(
 
     @GetMapping("/api/v1/github/trending")
     suspend fun getTrendingRepos(
-        @RequestParam(defaultValue = "0") @Min(0) page: Int,
+        @RequestParam(required = false) cursor: String?,
         @RequestParam(defaultValue = "20") @Min(1) @Max(100) size: Int,
         @RequestParam(defaultValue = "STARS") sort: GithubSortType,
         @RequestParam(required = false) language: String?,
-    ): ResponseEntity<PageResponse<GithubRepositoryResponse>> = withContext(ioDispatcher) {
-        val result = githubTrendingService.getRepositories(page, size, sort, language)
+    ): ResponseEntity<CursorPageResponse<GithubRepositoryResponse>> = withContext(ioDispatcher) {
+        val result = githubTrendingService.getRepositoriesByCursor(cursor, size, sort, language)
         val content = result.content.map { GithubRepositoryResponse.fromDto(it) }
         ResponseEntity.ok(
-            PageResponse(
+            CursorPageResponse(
                 content = content,
-                page = result.number,
                 size = result.size,
-                totalElements = result.totalElements,
-                totalPages = result.totalPages,
+                hasNext = result.hasNext,
+                nextCursor = result.nextCursor,
             )
         )
     }

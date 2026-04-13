@@ -32,12 +32,35 @@ batch:
     chunk-size: 10         # Writer 1회 API 호출(batchEmbedContents) 당 처리할 레포 수
     page-size: 100         # DB에서 한 번에 읽어올 레포 수
     max-items-per-run: 5000 # 1회 실행당 최대 처리 수 (chunk 500회 = API 500회, RPD 1,000 여유)
+  community-collect:
+    job-name: communityCollectJob
+    step-name: communityCollectStep
+    chunk-size: 50
+    page-size: 100
+    max-items-per-run: 2834  # 전체 레포 순환 (HN/Reddit 무료)
+    normal-refresh-days: 14
+    no-mentions-refresh-days: 30
+  community-analyze:
+    job-name: communityAnalyzeJob
+    step-name: communityAnalyzeStep
+    chunk-size: 10         # Gemini 1회 배치 요청당 처리 레포 수 (10개 × 20 RPD = 200 repos/day)
+    page-size: 50
+    max-items-per-run: 200 # 20 req/day × 10 repos = 200 repos/day
 
 github:
   api:
     base-url: https://api.github.com
     token: ${GITHUB_TOKEN:}
     per-page: 100
+
+community:
+  api:
+    hn:
+      base-url: https://hn.algolia.com
+      user-agent: TechInsights-Bot/1.0
+    reddit:
+      base-url: https://www.reddit.com
+      user-agent: TechInsights-Bot/1.0
 
 web-client:
   connect-timeout-millis: 10000
@@ -125,6 +148,22 @@ rate-limiter:
     limit-for-period: 8       # 인증 없음: Search API 10 req/min 안전마진. GITHUB_TOKEN 있으면 25로 변경
     refresh-period-seconds: 60
     timeout-seconds: 90
+  hn-api:
+    limit-for-period: 20      # HN Algolia API 공식 한도 없음, 20 RPM 안전 마진
+    refresh-period-seconds: 60
+    timeout-seconds: 10
+  reddit-api:
+    limit-for-period: 8       # Reddit search: 60 req/min, 8 RPM 보수적 안전 마진
+    refresh-period-seconds: 60
+    timeout-seconds: 30
+  gemini-community-rpm:
+    limit-for-period: 2       # TPM 250K ÷ 100K tokens/req = 2.5 → 2 RPM 안전
+    refresh-period-seconds: 60
+    timeout-seconds: 60
+  gemini-community-rpd:
+    limit-for-period: 20      # 20 req/day × 10 repos = 200 repos/day
+    refresh-period-seconds: 86400
+    timeout-seconds: 1
   crawler:
     ultra-safe:
       limit-for-period: 5
@@ -140,6 +179,14 @@ rate-limiter:
       timeout-seconds: 30
 
 circuit-breaker:
+  community-insight:
+    failure-rate-threshold: 50
+    slow-call-rate-threshold: 50
+    slow-call-duration-threshold-seconds: 30
+    wait-duration-in-open-state-seconds: 120
+    permitted-number-of-calls-in-half-open-state: 3
+    sliding-window-size: 10
+    minimum-number-of-calls: 5
   gemini-batch:
     failure-rate-threshold: 50  # 실패율 50% 이상 시 오픈
     slow-call-rate-threshold: 80  # 느린 호출 80% 이상 시 오픈

@@ -1,6 +1,7 @@
 package com.techinsights.api.exception
 
 import com.techinsights.domain.exception.CompanyNotFoundException
+import com.techinsights.domain.exception.GithubRepositoryNotFoundException
 import com.techinsights.domain.exception.PostNotFoundException
 import com.techinsights.domain.exception.UnauthorizedException
 import com.techinsights.api.auth.AuthException
@@ -76,6 +77,24 @@ class GlobalExceptionHandler {
                 ErrorResponse(
                     errorCode = e.errorCode,
                     message = e.message,
+                    path = extractPath(request)
+                )
+            )
+    }
+
+    @ExceptionHandler(GithubRepositoryNotFoundException::class)
+    fun handleGithubRepositoryNotFound(
+        e: GithubRepositoryNotFoundException,
+        request: WebRequest
+    ): ResponseEntity<ErrorResponse> {
+        logger.warn { "Github repository not found: ${e.message}" }
+
+        return ResponseEntity
+            .status(HttpStatus.NOT_FOUND)
+            .body(
+                ErrorResponse(
+                    errorCode = "GITHUB_REPOSITORY_NOT_FOUND",
+                    message = "레포지토리를 찾을 수 없습니다.",
                     path = extractPath(request)
                 )
             )

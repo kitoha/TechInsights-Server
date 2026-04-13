@@ -1,18 +1,17 @@
 package com.techinsights.api.github
 
+import com.techinsights.domain.dto.github.GithubRepositoryCursorPage
 import com.techinsights.domain.dto.github.GithubRepositoryDto
 import com.techinsights.domain.enums.GithubSortType
 import com.techinsights.domain.service.github.GithubSemanticSearchService
 import com.techinsights.domain.service.github.GithubTrendingService
 import io.kotest.core.spec.style.FunSpec
 import io.mockk.clearAllMocks
-import io.mockk.coEvery
-import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import org.springframework.data.domain.PageImpl
-import org.springframework.data.domain.PageRequest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
@@ -40,127 +39,78 @@ class GithubTrendingControllerTest : FunSpec() {
             )
             mockMvc = MockMvcBuilders.standaloneSetup(controller).build()
 
-            // 기본 stub — 각 테스트에서 덮어쓸 수 있음
-            coEvery { githubTrendingService.getRepositories(any(), any(), any(), any()) } returns PageImpl(emptyList())
+            every {
+                githubTrendingService.getRepositoriesByCursor(any(), any(), any(), any())
+            } returns GithubRepositoryCursorPage(
+                content = emptyList(),
+                size = 20,
+                hasNext = false,
+                nextCursor = null,
+            )
         }
 
-        test("GET /api/v1/github/trending - 기본 파라미터(page=0, size=20, sort=STARS)로 200 반환") {
-            // given
-            val page = PageImpl(listOf(createMockDto(1L), createMockDto(2L)), PageRequest.of(0, 20), 2L)
-            coEvery { githubTrendingService.getRepositories(any(), any(), any(), any()) } returns page
+        test("GET /api/v1/github/trending - 기본 파라미터(cursor=null, size=20, sort=STARS)로 200 반환") {
+            every {
+                githubTrendingService.getRepositoriesByCursor(any(), any(), any(), any())
+            } returns GithubRepositoryCursorPage(
+                content = listOf(createMockDto(1L), createMockDto(2L)),
+                size = 20,
+                hasNext = false,
+                nextCursor = null,
+            )
 
-            // when & then
-            mockMvc.get("/api/v1/github/trending") {
+            val asyncResult = mockMvc.get("/api/v1/github/trending") {
                 accept = MediaType.APPLICATION_JSON
-            }.andExpect {
-                status { isOk() }
-            }
+            }.andReturn()
 
-            coVerify(exactly = 1) { githubTrendingService.getRepositories(0, 20, GithubSortType.STARS, null) }
+            mockMvc.perform(asyncDispatch(asyncResult))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.size").value(20))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.hasNext").value(false))
+
+            verify(exactly = 1) {
+                githubTrendingService.getRepositoriesByCursor(null, 20, GithubSortType.STARS, null)
+            }
         }
 
-        test("GET /api/v1/github/trending - 커스텀 page·size 파라미터 서비스에 전달") {
-            // given
-            val page = PageImpl(listOf(createMockDto(3L)), PageRequest.of(1, 10), 11L)
-            coEvery { githubTrendingService.getRepositories(any(), any(), any(), any()) } returns page
+        test("GET /api/v1/github/trending - cursor, size, language, sort 파라미터를 서비스에 전달") {
+            every {
+                githubTrendingService.getRepositoriesByCursor(any(), any(), any(), any())
+            } returns GithubRepositoryCursorPage(
+                content = listOf(createMockDto(3L)),
+                size = 10,
+                hasNext = true,
+                nextCursor = "next-cursor-token",
+            )
 
-            // when & then
-            mockMvc.get("/api/v1/github/trending") {
-                param("page", "1")
+            val asyncResult = mockMvc.get("/api/v1/github/trending") {
+                param("cursor", "cursor-token")
                 param("size", "10")
-                accept = MediaType.APPLICATION_JSON
-            }.andExpect {
-                status { isOk() }
-            }
-
-            coVerify(exactly = 1) { githubTrendingService.getRepositories(1, 10, GithubSortType.STARS, null) }
-        }
-
-        test("GET /api/v1/github/trending - language 파라미터 서비스에 전달") {
-            // given
-            val page = PageImpl(listOf(createMockDto(1L, language = "Kotlin")))
-            coEvery { githubTrendingService.getRepositories(any(), any(), any(), any()) } returns page
-
-            // when & then
-            mockMvc.get("/api/v1/github/trending") {
+                param("sort", "TRENDING")
                 param("language", "Kotlin")
                 accept = MediaType.APPLICATION_JSON
-            }.andExpect {
-                status { isOk() }
+            }.andReturn()
+
+            mockMvc.perform(asyncDispatch(asyncResult))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.hasNext").value(true))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.nextCursor").value("next-cursor-token"))
+
+            verify(exactly = 1) {
+                githubTrendingService.getRepositoriesByCursor("cursor-token", 10, GithubSortType.TRENDING, "Kotlin")
             }
-
-            coVerify(exactly = 1) { githubTrendingService.getRepositories(0, 20, GithubSortType.STARS, "Kotlin") }
-        }
-
-        test("GET /api/v1/github/trending - sort=TRENDING 파라미터 서비스에 전달") {
-            // given
-            val page = PageImpl(listOf(createMockDto(1L)))
-            coEvery { githubTrendingService.getRepositories(any(), any(), any(), any()) } returns page
-
-            // when & then
-            mockMvc.get("/api/v1/github/trending") {
-                param("sort", "TRENDING")
-                accept = MediaType.APPLICATION_JSON
-            }.andExpect {
-                status { isOk() }
-            }
-
-            coVerify(exactly = 1) { githubTrendingService.getRepositories(0, 20, GithubSortType.TRENDING, null) }
-        }
-
-        test("GET /api/v1/github/trending - sort=LATEST 파라미터 서비스에 전달") {
-            // given
-            val page = PageImpl(listOf(createMockDto(1L)))
-            coEvery { githubTrendingService.getRepositories(any(), any(), any(), any()) } returns page
-
-            // when & then
-            mockMvc.get("/api/v1/github/trending") {
-                param("sort", "LATEST")
-                accept = MediaType.APPLICATION_JSON
-            }.andExpect {
-                status { isOk() }
-            }
-
-            coVerify(exactly = 1) { githubTrendingService.getRepositories(0, 20, GithubSortType.LATEST, null) }
-        }
-
-        test("GET /api/v1/github/trending - language 없이 null 전달") {
-            // given
-            coEvery { githubTrendingService.getRepositories(any(), any(), any(), any()) } returns PageImpl(emptyList())
-
-            // when & then
-            mockMvc.get("/api/v1/github/trending") {
-                accept = MediaType.APPLICATION_JSON
-            }.andExpect {
-                status { isOk() }
-            }
-
-            coVerify(exactly = 1) { githubTrendingService.getRepositories(0, 20, GithubSortType.STARS, null) }
-        }
-
-        test("GET /api/v1/github/trending - sort=DAILY_TRENDING 파라미터가 서비스에 전달된다") {
-            // given
-            val page = PageImpl(listOf(createMockDto(1L)))
-            coEvery { githubTrendingService.getRepositories(any(), any(), any(), any()) } returns page
-
-            // when & then
-            mockMvc.get("/api/v1/github/trending") {
-                param("sort", "DAILY_TRENDING")
-                accept = MediaType.APPLICATION_JSON
-            }.andExpect {
-                status { isOk() }
-            }
-
-            coVerify(exactly = 1) { githubTrendingService.getRepositories(0, 20, GithubSortType.DAILY_TRENDING, null) }
         }
 
         test("GET /api/v1/github/trending - dailyStarDelta가 포함된 DTO로 200 반환") {
-            // given
-            val page = PageImpl(listOf(createMockDto(1L)), PageRequest.of(0, 20), 1L)
-            coEvery { githubTrendingService.getRepositories(any(), any(), any(), any()) } returns page
+            every {
+                githubTrendingService.getRepositoriesByCursor(any(), any(), any(), any())
+            } returns GithubRepositoryCursorPage(
+                content = listOf(createMockDto(1L)),
+                size = 20,
+                hasNext = false,
+                nextCursor = null,
+            )
 
-            // when & then
-            // withContext로 인해 Spring MVC가 async dispatch를 사용하므로 asyncDispatch 필요
             val asyncResult = mockMvc.get("/api/v1/github/trending") {
                 accept = MediaType.APPLICATION_JSON
             }.andReturn()
@@ -168,8 +118,6 @@ class GithubTrendingControllerTest : FunSpec() {
             mockMvc.perform(asyncDispatch(asyncResult))
                 .andExpect(MockMvcResultMatchers.status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("$.content[0].dailyStarDelta").value(10))
-
-            coVerify(exactly = 1) { githubTrendingService.getRepositories(0, 20, GithubSortType.STARS, null) }
         }
     }
 

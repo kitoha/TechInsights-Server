@@ -39,6 +39,26 @@ data class RateLimiterProperties(
     refreshPeriodSeconds = 86400,
     timeoutSeconds = 1
   ),
+  val hnApi: LimiterConfig = LimiterConfig(
+    limitForPeriod = 20,
+    refreshPeriodSeconds = 60,
+    timeoutSeconds = 10
+  ),
+  val redditApi: LimiterConfig = LimiterConfig(
+    limitForPeriod = 8,
+    refreshPeriodSeconds = 60,
+    timeoutSeconds = 30
+  ),
+  val geminiCommunityRpm: LimiterConfig = LimiterConfig(
+    limitForPeriod = 2,
+    refreshPeriodSeconds = 60,
+    timeoutSeconds = 60
+  ),
+  val geminiCommunityRpd: LimiterConfig = LimiterConfig(
+    limitForPeriod = 20,
+    refreshPeriodSeconds = 86400,
+    timeoutSeconds = 1
+  ),
   val crawler: CrawlerLimiterConfig = CrawlerLimiterConfig()
 ) {
 

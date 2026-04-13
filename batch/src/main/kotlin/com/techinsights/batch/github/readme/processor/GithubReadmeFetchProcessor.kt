@@ -14,9 +14,8 @@ import java.util.Base64
 @Component
 class GithubReadmeFetchProcessor(
     @Qualifier("githubWebClient") private val webClient: WebClient,
+    private val mapper: ObjectMapper,
 ) : ItemProcessor<GithubRepositoryDto, ArticleInput> {
-
-    private val mapper = ObjectMapper()
 
     override fun process(item: GithubRepositoryDto): ArticleInput? {
         val cleanedReadme = fetchAndCleanReadme(item)
