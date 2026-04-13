@@ -45,23 +45,4 @@ class GithubRepositoryDtoTest : FunSpec({
         dto.dailyStarDelta shouldBe 30L
     }
 
-    test("fromEntity - communitySentiment가 Entity 값으로 매핑된다") {
-        val entity = buildEntity().also {
-            it.communitySentiment = """{"positive":0.8,"neutral":0.1,"negative":0.1}"""
-        }
-
-        val dto = GithubRepositoryDto.fromEntity(entity)
-
-        dto.communitySentiment shouldBe """{"positive":0.8,"neutral":0.1,"negative":0.1}"""
-    }
-
-    test("fromEntity - communityInsights가 Entity 값으로 매핑된다") {
-        val entity = buildEntity().also {
-            it.communityInsights = """[{"title":"Popular","description":"High activity"}]"""
-        }
-
-        val dto = GithubRepositoryDto.fromEntity(entity)
-
-        dto.communityInsights shouldBe """[{"title":"Popular","description":"High activity"}]"""
-    }
 })

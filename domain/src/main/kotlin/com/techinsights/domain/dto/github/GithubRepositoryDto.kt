@@ -1,6 +1,7 @@
 package com.techinsights.domain.dto.github
 
 import com.techinsights.domain.entity.github.GithubRepository
+import com.techinsights.domain.enums.CommunityStatus
 import java.time.LocalDateTime
 
 data class GithubRepositoryDto(
@@ -20,6 +21,12 @@ data class GithubRepositoryDto(
     val weeklyStarDelta: Long,
     val dailyStarDelta: Long,
     val readmeSummary: String? = null,
+    val communityStatus: CommunityStatus? = null,
+    val communityCollectedAt: LocalDateTime? = null,
+    val communityMentionCount: Int? = null,
+    val communityRawMentionCount: Int? = null,
+    val communityUpdateCount: Int = 0,
+    val communityHighlights: String? = null,
 ) {
     companion object {
         fun fromEntity(entity: GithubRepository): GithubRepositoryDto {

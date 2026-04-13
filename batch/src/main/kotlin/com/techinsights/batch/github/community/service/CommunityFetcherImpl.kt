@@ -98,6 +98,7 @@ class CommunityFetcherImpl(
             title = title,
             score = hit.points,
             commentCount = hit.numComments,
+            username = hit.author,
             url = hit.url ?: "${communityApiProperties.hn.itemBaseUrl}/item?id=${hit.objectId}",
         )
     }
@@ -112,6 +113,7 @@ class CommunityFetcherImpl(
             title = title,
             score = post.score,
             commentCount = post.numComments,
+            username = post.author,
             url = url,
         )
     }

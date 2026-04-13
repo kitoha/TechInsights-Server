@@ -4,7 +4,9 @@ import com.querydsl.core.types.OrderSpecifier
 import com.querydsl.jpa.impl.JPAQueryFactory
 import com.techinsights.domain.dto.github.GithubRepositoryDto
 import com.techinsights.domain.entity.github.QGithubRepository
+import com.techinsights.domain.entity.github.QGithubRepositoryCommunity
 import com.techinsights.domain.entity.github.QGithubRepositoryReadme
+import com.techinsights.domain.enums.CommunityStatus
 import com.techinsights.domain.enums.ErrorType
 import com.techinsights.domain.enums.GithubSortType
 import org.springframework.data.domain.Page
@@ -75,9 +77,7 @@ class GithubRepositoryRepositoryImpl(
                 .or(repo.starCount.eq(afterStarCount).and(repo.id.lt(afterId)))
         } else null
 
-        // LEFT JOIN — readme 행이 없으면 한번도 시도 안 한 레포
         val neverAttempted = readme.repoId.isNull
-
         val retryCondition = if (retryAfter != null && retryableErrorTypes.isNotEmpty()) {
             readme.readmeSummaryErrorType.`in`(retryableErrorTypes.map { it.name })
                 .and(readme.readmeSummarizedAt.lt(retryAfter))
@@ -125,20 +125,82 @@ class GithubRepositoryRepositoryImpl(
             }
     }
 
-    // Step 6에서 GithubRepositoryCommunity 기반으로 재구현 예정
     override fun findForCommunityCollect(
         pageSize: Int,
         afterCollectedAt: LocalDateTime?,
         afterId: Long?,
         noMentionsRefreshAfter: LocalDateTime,
         normalRefreshAfter: LocalDateTime,
-    ): List<GithubRepositoryDto> = emptyList()
+    ): List<GithubRepositoryDto> {
+        val repo = QGithubRepository.githubRepository
+        val community = QGithubRepositoryCommunity.githubRepositoryCommunity
 
-    // Step 7에서 GithubRepositoryCommunity 기반으로 재구현 예정
+        val neverCollected = community.repoId.isNull
+        val noMentionsRefresh = community.communityStatus.eq(CommunityStatus.NO_MENTIONS)
+            .and(community.communityCollectedAt.lt(noMentionsRefreshAfter))
+        val normalRefresh = community.communityStatus.ne(CommunityStatus.NO_MENTIONS)
+            .and(community.communityCollectedAt.lt(normalRefreshAfter))
+
+        val cursorCondition = if (afterCollectedAt != null && afterId != null) {
+            community.communityCollectedAt.gt(afterCollectedAt)
+                .or(community.communityCollectedAt.eq(afterCollectedAt).and(repo.id.gt(afterId)))
+        } else if (afterCollectedAt == null && afterId != null) {
+            community.communityCollectedAt.isNotNull
+                .or(community.communityCollectedAt.isNull.and(repo.id.gt(afterId)))
+        } else null
+
+        return queryFactory.select(repo, community)
+            .from(repo)
+            .leftJoin(community).on(community.repoId.eq(repo.id))
+            .where(
+                neverCollected.or(noMentionsRefresh).or(normalRefresh),
+                cursorCondition,
+            )
+            .orderBy(community.communityCollectedAt.asc().nullsFirst(), repo.id.asc())
+            .limit(pageSize.toLong())
+            .fetch()
+            .map { tuple ->
+                GithubRepositoryDto.fromEntity(tuple.get(repo)!!).copy(
+                    communityStatus = tuple.get(community)?.communityStatus,
+                    communityCollectedAt = tuple.get(community)?.communityCollectedAt,
+                    communityMentionCount = tuple.get(community)?.communityMentionCount,
+                    communityRawMentionCount = tuple.get(community)?.communityRawMentionCount,
+                    communityUpdateCount = tuple.get(community)?.communityUpdateCount ?: 0,
+                    communityHighlights = tuple.get(community)?.communityHighlights,
+                )
+            }
+    }
+
     override fun findForCommunityAnalyze(
         pageSize: Int,
         afterId: Long?,
-    ): List<GithubRepositoryDto> = emptyList()
+    ): List<GithubRepositoryDto> {
+        val repo = QGithubRepository.githubRepository
+        val community = QGithubRepositoryCommunity.githubRepositoryCommunity
+
+        val cursorCondition = afterId?.let { repo.id.gt(it) }
+
+        return queryFactory.select(repo, community)
+            .from(repo)
+            .join(community).on(community.repoId.eq(repo.id))
+            .where(
+                community.communityStatus.eq(CommunityStatus.PENDING),
+                cursorCondition,
+            )
+            .orderBy(repo.id.asc())
+            .limit(pageSize.toLong())
+            .fetch()
+            .map { tuple ->
+                GithubRepositoryDto.fromEntity(tuple.get(repo)!!).copy(
+                    communityStatus = tuple.get(community)?.communityStatus,
+                    communityCollectedAt = tuple.get(community)?.communityCollectedAt,
+                    communityMentionCount = tuple.get(community)?.communityMentionCount,
+                    communityRawMentionCount = tuple.get(community)?.communityRawMentionCount,
+                    communityUpdateCount = tuple.get(community)?.communityUpdateCount ?: 0,
+                    communityHighlights = tuple.get(community)?.communityHighlights,
+                )
+            }
+    }
 
     override fun findSimilarRepositories(
         targetVector: String,

@@ -33,6 +33,9 @@ class GithubRepositoryCommunity(
     @Column(name = "community_fetched_at")
     var communityFetchedAt: LocalDateTime? = null,
 
+    @Column(name = "community_raw_mention_count", nullable = false)
+    var communityRawMentionCount: Int = 0,
+
     @Column(name = "community_mention_count", nullable = false)
     var communityMentionCount: Int = 0,
 
@@ -46,8 +49,15 @@ class GithubRepositoryCommunity(
     var sentimentNegative: Int = 0,
 
     @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "community_highlights", columnDefinition = "jsonb")
+    var communityHighlights: String? = null,
+
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "community_insights", columnDefinition = "jsonb")
     var communityInsights: String? = null,
+
+    @Column(name = "community_update_count", nullable = false)
+    var communityUpdateCount: Int = 0,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "community_error_type", length = 50)

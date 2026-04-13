@@ -41,14 +41,17 @@ class CommunityAnalyzeWriter(
         }
 
         val successParams = results
-            .filter { it.success && it.postClassifications.isNotEmpty() }
+            .filter { it.success }
             .mapNotNull { result ->
                 val input = inputMap[result.id] ?: return@mapNotNull null
                 val mentionCount = input.hnPosts.size + input.redditPosts.size
+                val highlights = buildHighlights(input.hnPosts, input.redditPosts)
 
                 MapSqlParameterSource()
                     .addValue("id", result.id)
+                    .addValue("sentiment", objectMapper.writeValueAsString(result.sentiment))
                     .addValue("insights", objectMapper.writeValueAsString(result.insights ?: emptyList<Any>()))
+                    .addValue("highlights", objectMapper.writeValueAsString(highlights))
                     .addValue("mentionCount", mentionCount)
             }
             .toTypedArray()
@@ -59,7 +62,7 @@ class CommunityAnalyzeWriter(
         }
 
         val failedParams = results
-            .filter { !it.success || it.postClassifications.isEmpty() }
+            .filter { !it.success }
             .map { result ->
                 MapSqlParameterSource().addValue("id", result.id)
             }
@@ -82,24 +85,30 @@ class CommunityAnalyzeWriter(
         private val log = LoggerFactory.getLogger(CommunityAnalyzeWriter::class.java)
 
         private const val UPDATE_SUCCESS_SQL = """
-            UPDATE github_repositories
-            SET community_sentiment      = :sentiment::jsonb,
-                community_insights       = :insights::jsonb,
-                community_highlights     = :highlights::jsonb,
-                community_mention_count  = :mentionCount,
-                community_fetched_at     = NOW(),
-                community_status         = 'COMPLETED',
-                community_error_type     = NULL,
-                community_update_count   = community_update_count + 1
-            WHERE full_name = :id
+            INSERT INTO github_repository_community (repo_id, community_mention_count, community_highlights, community_insights, community_fetched_at, community_status, community_error_type, community_update_count, created_at, updated_at)
+            SELECT id, :mentionCount, :highlights::jsonb, :insights::jsonb, NOW(), 'COMPLETED', NULL, COALESCE((SELECT community_update_count FROM github_repository_community WHERE repo_id = gr.id), 0) + 1, NOW(), NOW()
+            FROM github_repositories gr
+            WHERE gr.full_name = :id
+            ON CONFLICT (repo_id) DO UPDATE
+                SET community_mention_count  = EXCLUDED.community_mention_count,
+                    community_highlights     = EXCLUDED.community_highlights,
+                    community_insights       = EXCLUDED.community_insights,
+                    community_fetched_at     = EXCLUDED.community_fetched_at,
+                    community_status         = 'COMPLETED',
+                    community_error_type     = NULL,
+                    community_update_count   = github_repository_community.community_update_count + 1,
+                    updated_at               = NOW()
         """
 
         private const val MARK_FAILED_SQL = """
-            UPDATE github_repositories
-            SET community_fetched_at = NOW(),
-                community_status     = 'FAILED',
-                community_error_type = NULL
+            INSERT INTO github_repository_community (repo_id, community_fetched_at, community_status, created_at, updated_at)
+            SELECT id, NOW(), 'FAILED', NOW(), NOW()
+            FROM github_repositories
             WHERE full_name = :id
+            ON CONFLICT (repo_id) DO UPDATE
+                SET community_fetched_at = NOW(),
+                    community_status     = 'FAILED',
+                    updated_at           = NOW()
         """
     }
 }

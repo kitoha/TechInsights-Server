@@ -63,21 +63,28 @@ class CommunityCollectWriter(
         private val log = LoggerFactory.getLogger(CommunityCollectWriter::class.java)
 
         private const val NO_MENTIONS_SQL = """
-            UPDATE github_repositories
-            SET community_highlights        = NULL,
-                community_raw_mention_count = 0,
-                community_collected_at      = NOW(),
-                community_status            = 'NO_MENTIONS'
+            INSERT INTO github_repository_community (repo_id, community_raw_mention_count, community_collected_at, community_status, created_at, updated_at)
+            SELECT id, 0, NOW(), 'NO_MENTIONS', NOW(), NOW()
+            FROM github_repositories
             WHERE full_name = :fullName
+            ON CONFLICT (repo_id) DO UPDATE
+                SET community_raw_mention_count = 0,
+                    community_collected_at      = NOW(),
+                    community_status            = 'NO_MENTIONS',
+                    updated_at                  = NOW()
         """
 
         private const val PENDING_SQL = """
-            UPDATE github_repositories
-            SET community_highlights        = :highlights::jsonb,
-                community_raw_mention_count = :rawMentionCount,
-                community_collected_at      = NOW(),
-                community_status            = 'PENDING'
+            INSERT INTO github_repository_community (repo_id, community_highlights, community_raw_mention_count, community_collected_at, community_status, created_at, updated_at)
+            SELECT id, :highlights::jsonb, :rawMentionCount, NOW(), 'PENDING', NOW(), NOW()
+            FROM github_repositories
             WHERE full_name = :fullName
+            ON CONFLICT (repo_id) DO UPDATE
+                SET community_highlights        = EXCLUDED.community_highlights,
+                    community_raw_mention_count = EXCLUDED.community_raw_mention_count,
+                    community_collected_at      = NOW(),
+                    community_status            = 'PENDING',
+                    updated_at                  = NOW()
         """
     }
 }
