@@ -66,3 +66,23 @@ Flyway migrations live in `domain/src/main/resources/db/migration/`.
 - **Vector search**: `pgvector` extension with HNSW index (see `V011__Add_Vector_Hnsw_Index.sql`). Embedding stored in `PostEmbedding` and `GithubRepository` entities.
 
 ## For module-specific guidance, see AGENTS.md in each module directory.
+
+## Document References
+
+Read the following documents based on the type of task before starting work.
+
+**Planning a new feature or creating an implementation plan**
+- MUST read [docs/product-specs/index.md](./docs/product-specs/index.md) — check current feature status before planning
+- MUST read the relevant spec file under `docs/product-specs/` if one exists for the feature
+- Read [docs/generated/db-schema.md](./docs/generated/db-schema.md) if the feature involves database changes
+
+**Working on API layer**
+- Read the relevant spec in `docs/product-specs/`
+- See [api/AGENTS.md](./api/AGENTS.md) for conventions
+
+**Working on batch jobs**
+- See [batch/AGENTS.md](./batch/AGENTS.md) for job structure conventions
+
+**Working on database migrations**
+- MUST read [docs/generated/db-schema.md](./docs/generated/db-schema.md) to understand the current schema before writing a migration
+- See [domain/AGENTS.md](./domain/AGENTS.md) for migration naming rules
