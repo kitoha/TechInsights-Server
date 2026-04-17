@@ -67,6 +67,20 @@ Flyway migrations live in `domain/src/main/resources/db/migration/`.
 
 ## For module-specific guidance, see AGENTS.md in each module directory.
 
+## Available Skills & Agents
+
+Use these at the right moment — do not skip them.
+
+| Situation | What to use |
+|---|---|
+| Planning a new feature or clarifying requirements | `/pm` skill |
+| Deciding module placement or design patterns | `architect` agent or `/architecture` skill |
+| Adding API endpoints or changing auth logic | `security-reviewer` agent after implementation |
+| Writing or reviewing DB migrations | `db-analyst` agent or `/database-design` skill |
+| Before merging any PR | `security-reviewer` agent |
+| Encountering a bug or test failure | `/superpowers:systematic-debugging` skill |
+| Starting implementation of a multi-step feature | `/superpowers:writing-plans` skill |
+
 ## Document References
 
 Read the following documents based on the type of task before starting work.
