@@ -6,7 +6,6 @@ import com.querydsl.jpa.impl.JPAQuery
 import com.querydsl.jpa.impl.JPAQueryFactory
 import com.techinsights.domain.entity.github.GithubRepository
 import com.techinsights.domain.entity.github.QGithubRepositoryCommunity
-import com.techinsights.domain.entity.github.GithubRepositoryReadme
 import com.techinsights.domain.entity.github.QGithubRepository
 import com.techinsights.domain.entity.github.QGithubRepositoryReadme
 import com.techinsights.domain.enums.ErrorType
@@ -43,9 +42,8 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             val countQuery = mockk<JPAQuery<Long>>()
             val tuple1 = mockk<Tuple>()
             val tuple2 = mockk<Tuple>()
-            val readme1 = GithubRepositoryReadme(repoId = 1L, readmeSummary = "summary 1")
 
-            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme) } returns query
+            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme.readmeSummary) } returns query
             every { query.from(QGithubRepository.githubRepository) } returns query
             every { query.leftJoin(QGithubRepositoryReadme.githubRepositoryReadme) } returns query
             every { query.on(any<BooleanExpression>()) } returns query
@@ -55,10 +53,10 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             every { query.limit(20L) } returns query
             every { query.fetch() } returns listOf(tuple1, tuple2)
 
-            every { tuple1.get(QGithubRepository.githubRepository) } returns entity1
-            every { tuple1.get(QGithubRepositoryReadme.githubRepositoryReadme) } returns readme1
-            every { tuple2.get(QGithubRepository.githubRepository) } returns entity2
-            every { tuple2.get(QGithubRepositoryReadme.githubRepositoryReadme) } returns null
+            every { tuple1[QGithubRepository.githubRepository] } returns entity1
+            every { tuple1[QGithubRepositoryReadme.githubRepositoryReadme.readmeSummary] } returns "summary 1"
+            every { tuple2[QGithubRepository.githubRepository] } returns entity2
+            every { tuple2[QGithubRepositoryReadme.githubRepositoryReadme.readmeSummary] } returns null
 
             every { queryFactory.select(QGithubRepository.githubRepository.id.count()) } returns countQuery
             every { countQuery.from(QGithubRepository.githubRepository) } returns countQuery
@@ -79,7 +77,7 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             val countQuery = mockk<JPAQuery<Long>>()
             val tuple1 = mockk<Tuple>()
 
-            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme) } returns query
+            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme.readmeSummary) } returns query
             every { query.from(QGithubRepository.githubRepository) } returns query
             every { query.leftJoin(QGithubRepositoryReadme.githubRepositoryReadme) } returns query
             every { query.on(any<BooleanExpression>()) } returns query
@@ -89,8 +87,8 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             every { query.limit(20L) } returns query
             every { query.fetch() } returns listOf(tuple1)
 
-            every { tuple1.get(QGithubRepository.githubRepository) } returns entity1
-            every { tuple1.get(QGithubRepositoryReadme.githubRepositoryReadme) } returns null
+            every { tuple1[QGithubRepository.githubRepository] } returns entity1
+            every { tuple1[QGithubRepositoryReadme.githubRepositoryReadme.readmeSummary] } returns null
 
             every { queryFactory.select(QGithubRepository.githubRepository.id.count()) } returns countQuery
             every { countQuery.from(QGithubRepository.githubRepository) } returns countQuery
@@ -110,7 +108,7 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             val countQuery = mockk<JPAQuery<Long>>()
             val tuple1 = mockk<Tuple>()
 
-            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme) } returns query
+            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme.readmeSummary) } returns query
             every { query.from(QGithubRepository.githubRepository) } returns query
             every { query.leftJoin(QGithubRepositoryReadme.githubRepositoryReadme) } returns query
             every { query.on(any<BooleanExpression>()) } returns query
@@ -120,8 +118,8 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             every { query.limit(10L) } returns query
             every { query.fetch() } returns listOf(tuple1)
 
-            every { tuple1.get(QGithubRepository.githubRepository) } returns entity1
-            every { tuple1.get(QGithubRepositoryReadme.githubRepositoryReadme) } returns null
+            every { tuple1[QGithubRepository.githubRepository] } returns entity1
+            every { tuple1[QGithubRepositoryReadme.githubRepositoryReadme.readmeSummary] } returns null
 
             every { queryFactory.select(QGithubRepository.githubRepository.id.count()) } returns countQuery
             every { countQuery.from(QGithubRepository.githubRepository) } returns countQuery
@@ -140,7 +138,7 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             val countQuery = mockk<JPAQuery<Long>>()
             val tuple1 = mockk<Tuple>()
 
-            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme) } returns query
+            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme.readmeSummary) } returns query
             every { query.from(QGithubRepository.githubRepository) } returns query
             every { query.leftJoin(QGithubRepositoryReadme.githubRepositoryReadme) } returns query
             every { query.on(any<BooleanExpression>()) } returns query
@@ -150,8 +148,8 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             every { query.limit(10L) } returns query
             every { query.fetch() } returns listOf(tuple1)
 
-            every { tuple1.get(QGithubRepository.githubRepository) } returns entity1
-            every { tuple1.get(QGithubRepositoryReadme.githubRepositoryReadme) } returns null
+            every { tuple1[QGithubRepository.githubRepository] } returns entity1
+            every { tuple1[QGithubRepositoryReadme.githubRepositoryReadme.readmeSummary] } returns null
 
             every { queryFactory.select(QGithubRepository.githubRepository.id.count()) } returns countQuery
             every { countQuery.from(QGithubRepository.githubRepository) } returns countQuery
@@ -174,7 +172,7 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             val highDailyEntity = buildEntity(id = 1L, fullName = "owner/repo1", dailyDelta = 100L)
             val lowDailyEntity = buildEntity(id = 2L, fullName = "owner/repo2", dailyDelta = 10L)
 
-            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme) } returns query
+            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme.readmeSummary) } returns query
             every { query.from(QGithubRepository.githubRepository) } returns query
             every { query.leftJoin(QGithubRepositoryReadme.githubRepositoryReadme) } returns query
             every { query.on(any<BooleanExpression>()) } returns query
@@ -184,10 +182,10 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             every { query.limit(10L) } returns query
             every { query.fetch() } returns listOf(tuple1, tuple2)
 
-            every { tuple1.get(QGithubRepository.githubRepository) } returns highDailyEntity
-            every { tuple1.get(QGithubRepositoryReadme.githubRepositoryReadme) } returns null
-            every { tuple2.get(QGithubRepository.githubRepository) } returns lowDailyEntity
-            every { tuple2.get(QGithubRepositoryReadme.githubRepositoryReadme) } returns null
+            every { tuple1[QGithubRepository.githubRepository] } returns highDailyEntity
+            every { tuple1[QGithubRepositoryReadme.githubRepositoryReadme.readmeSummary] } returns null
+            every { tuple2[QGithubRepository.githubRepository] } returns lowDailyEntity
+            every { tuple2[QGithubRepositoryReadme.githubRepositoryReadme.readmeSummary] } returns null
 
             every { queryFactory.select(QGithubRepository.githubRepository.id.count()) } returns countQuery
             every { countQuery.from(QGithubRepository.githubRepository) } returns countQuery
@@ -207,7 +205,7 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             val query = mockk<JPAQuery<Tuple>>()
             val countQuery = mockk<JPAQuery<Long>>()
 
-            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme) } returns query
+            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme.readmeSummary) } returns query
             every { query.from(QGithubRepository.githubRepository) } returns query
             every { query.leftJoin(QGithubRepositoryReadme.githubRepositoryReadme) } returns query
             every { query.on(any<BooleanExpression>()) } returns query
@@ -233,7 +231,7 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             val query = mockk<JPAQuery<Tuple>>()
             val countQuery = mockk<JPAQuery<Long>>()
 
-            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme) } returns query
+            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme.readmeSummary) } returns query
             every { query.from(QGithubRepository.githubRepository) } returns query
             every { query.leftJoin(QGithubRepositoryReadme.githubRepositoryReadme) } returns query
             every { query.on(any<BooleanExpression>()) } returns query
@@ -264,7 +262,7 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             val query = mockk<JPAQuery<Tuple>>()
             val tuple = mockk<Tuple>()
 
-            every { queryFactory.select(repo, community, readme) } returns query
+            every { queryFactory.select(repo, community, readme.readmeSummary) } returns query
             every { query.from(repo) } returns query
             every { query.leftJoin(community) } returns query
             every { query.on(any<BooleanExpression>()) } returns query
@@ -272,9 +270,9 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             every { query.on(any<BooleanExpression>()) } returns query
             every { query.where(any<BooleanExpression>()) } returns query
             every { query.fetchOne() } returns tuple
-            every { tuple.get(repo) } returns entity1
-            every { tuple.get(community) } returns null
-            every { tuple.get(readme) } returns GithubRepositoryReadme(repoId = 1L, readmeSummary = "detailed summary")
+            every { tuple[repo] } returns entity1
+            every { tuple[community] } returns null
+            every { tuple[readme.readmeSummary] } returns "detailed summary"
 
             val result = repository.findById(1L)
 
@@ -289,7 +287,7 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             val readme = QGithubRepositoryReadme.githubRepositoryReadme
             val query = mockk<JPAQuery<Tuple>>()
 
-            every { queryFactory.select(repo, community, readme) } returns query
+            every { queryFactory.select(repo, community, readme.readmeSummary) } returns query
             every { query.from(repo) } returns query
             every { query.leftJoin(community) } returns query
             every { query.on(any<BooleanExpression>()) } returns query
@@ -308,21 +306,15 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
     context("findUnsummarized") {
 
         test("cursor 없이 호출하면 readmeSummarizedAt=null인 레포를 반환한다") {
-            val query = mockk<JPAQuery<Tuple>>()
-            val tuple1 = mockk<Tuple>()
-            val tuple2 = mockk<Tuple>()
+            val query = mockk<JPAQuery<GithubRepository>>()
 
-            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme) } returns query
-            every { query.from(QGithubRepository.githubRepository) } returns query
+            every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
             every { query.leftJoin(QGithubRepositoryReadme.githubRepositoryReadme) } returns query
             every { query.on(any<BooleanExpression>()) } returns query
             every { query.where(any<BooleanExpression>(), isNull<BooleanExpression>()) } returns query
             every { query.orderBy(any(), any()) } returns query
             every { query.limit(10L) } returns query
-            every { query.fetch() } returns listOf(tuple1, tuple2)
-
-            every { tuple1.get(QGithubRepository.githubRepository) } returns entity1
-            every { tuple2.get(QGithubRepository.githubRepository) } returns entity2
+            every { query.fetch() } returns listOf(entity1, entity2)
 
             val result = repository.findUnsummarized(pageSize = 10, afterStarCount = null, afterId = null)
 
@@ -330,19 +322,15 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
         }
 
         test("cursor를 지정하면 해당 cursor 이후 결과를 반환한다") {
-            val query = mockk<JPAQuery<Tuple>>()
-            val tuple2 = mockk<Tuple>()
+            val query = mockk<JPAQuery<GithubRepository>>()
 
-            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme) } returns query
-            every { query.from(QGithubRepository.githubRepository) } returns query
+            every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
             every { query.leftJoin(QGithubRepositoryReadme.githubRepositoryReadme) } returns query
             every { query.on(any<BooleanExpression>()) } returns query
             every { query.where(any<BooleanExpression>(), any<BooleanExpression>()) } returns query
             every { query.orderBy(any(), any()) } returns query
             every { query.limit(10L) } returns query
-            every { query.fetch() } returns listOf(tuple2)
-
-            every { tuple2.get(QGithubRepository.githubRepository) } returns entity2
+            every { query.fetch() } returns listOf(entity2)
 
             val result = repository.findUnsummarized(pageSize = 10, afterStarCount = 2000L, afterId = 1L)
 
@@ -352,10 +340,9 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
         }
 
         test("결과가 없으면 빈 리스트를 반환한다") {
-            val query = mockk<JPAQuery<Tuple>>()
+            val query = mockk<JPAQuery<GithubRepository>>()
 
-            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme) } returns query
-            every { query.from(QGithubRepository.githubRepository) } returns query
+            every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
             every { query.leftJoin(QGithubRepositoryReadme.githubRepositoryReadme) } returns query
             every { query.on(any<BooleanExpression>()) } returns query
             every { query.where(any<BooleanExpression>(), isNull<BooleanExpression>()) } returns query
@@ -369,10 +356,9 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
         }
 
         test("pageSize가 limit()에 정확히 전달된다") {
-            val query = mockk<JPAQuery<Tuple>>()
+            val query = mockk<JPAQuery<GithubRepository>>()
 
-            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme) } returns query
-            every { query.from(QGithubRepository.githubRepository) } returns query
+            every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
             every { query.leftJoin(QGithubRepositoryReadme.githubRepositoryReadme) } returns query
             every { query.on(any<BooleanExpression>()) } returns query
             every { query.where(any<BooleanExpression>(), isNull<BooleanExpression>()) } returns query
@@ -387,19 +373,15 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
 
         test("topics 쉼표 구분 문자열이 List로 올바르게 변환된다") {
             val entityWithTopics = buildEntity(id = 3L, fullName = "owner/repo3", topics = "kotlin,spring,batch")
-            val query = mockk<JPAQuery<Tuple>>()
-            val tuple3 = mockk<Tuple>()
+            val query = mockk<JPAQuery<GithubRepository>>()
 
-            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme) } returns query
-            every { query.from(QGithubRepository.githubRepository) } returns query
+            every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
             every { query.leftJoin(QGithubRepositoryReadme.githubRepositoryReadme) } returns query
             every { query.on(any<BooleanExpression>()) } returns query
             every { query.where(any<BooleanExpression>(), isNull<BooleanExpression>()) } returns query
             every { query.orderBy(any(), any()) } returns query
             every { query.limit(10L) } returns query
-            every { query.fetch() } returns listOf(tuple3)
-
-            every { tuple3.get(QGithubRepository.githubRepository) } returns entityWithTopics
+            every { query.fetch() } returns listOf(entityWithTopics)
 
             val result = repository.findUnsummarized(pageSize = 10, afterStarCount = null, afterId = null)
 
@@ -407,19 +389,15 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
         }
 
         test("retryAfter와 retryableErrorTypes 설정 시 결과를 반환한다") {
-            val query = mockk<JPAQuery<Tuple>>()
-            val tuple1 = mockk<Tuple>()
+            val query = mockk<JPAQuery<GithubRepository>>()
 
-            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme) } returns query
-            every { query.from(QGithubRepository.githubRepository) } returns query
+            every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
             every { query.leftJoin(QGithubRepositoryReadme.githubRepositoryReadme) } returns query
             every { query.on(any<BooleanExpression>()) } returns query
             every { query.where(any<BooleanExpression>(), isNull<BooleanExpression>()) } returns query
             every { query.orderBy(any(), any()) } returns query
             every { query.limit(10L) } returns query
-            every { query.fetch() } returns listOf(tuple1)
-
-            every { tuple1.get(QGithubRepository.githubRepository) } returns entity1
+            every { query.fetch() } returns listOf(entity1)
 
             val result = repository.findUnsummarized(
                 pageSize = 10,
@@ -433,19 +411,15 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
         }
 
         test("retryableErrorTypes가 빈 Set이면 retryAfter가 있어도 neverAttempted 조건만 사용한다") {
-            val query = mockk<JPAQuery<Tuple>>()
-            val tuple1 = mockk<Tuple>()
+            val query = mockk<JPAQuery<GithubRepository>>()
 
-            every { queryFactory.select(QGithubRepository.githubRepository, QGithubRepositoryReadme.githubRepositoryReadme) } returns query
-            every { query.from(QGithubRepository.githubRepository) } returns query
+            every { queryFactory.selectFrom(QGithubRepository.githubRepository) } returns query
             every { query.leftJoin(QGithubRepositoryReadme.githubRepositoryReadme) } returns query
             every { query.on(any<BooleanExpression>()) } returns query
             every { query.where(any<BooleanExpression>(), isNull<BooleanExpression>()) } returns query
             every { query.orderBy(any(), any()) } returns query
             every { query.limit(10L) } returns query
-            every { query.fetch() } returns listOf(tuple1)
-
-            every { tuple1.get(QGithubRepository.githubRepository) } returns entity1
+            every { query.fetch() } returns listOf(entity1)
 
             val result = repository.findUnsummarized(
                 pageSize = 10,
@@ -463,25 +437,23 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
 
         test("cursor 없이 호출하면 요약은 됐지만 아직 임베딩 안 된 레포를 반환한다") {
             val tupleQuery = mockk<JPAQuery<Tuple>>()
-            val readme1 = GithubRepositoryReadme(repoId = 1L, readmeSummary = "summary1")
-            val readme2 = GithubRepositoryReadme(repoId = 2L, readmeSummary = "summary2")
             val tuple1 = mockk<Tuple>()
             val tuple2 = mockk<Tuple>()
 
             val repo = QGithubRepository.githubRepository
             val readme = QGithubRepositoryReadme.githubRepositoryReadme
 
-            every { queryFactory.select(repo, readme) } returns tupleQuery
+            every { queryFactory.select(repo, readme.readmeSummary) } returns tupleQuery
             every { tupleQuery.from(repo) } returns tupleQuery
             every { tupleQuery.join(readme) } returns tupleQuery
             every { tupleQuery.on(any<BooleanExpression>()) } returns tupleQuery
             every { tupleQuery.where(any(), any(), any(), isNull()) } returns tupleQuery
             every { tupleQuery.orderBy(any(), any()) } returns tupleQuery
             every { tupleQuery.limit(10L) } returns tupleQuery
-            every { tuple1.get(repo) } returns entity1
-            every { tuple1.get(readme) } returns readme1
-            every { tuple2.get(repo) } returns entity2
-            every { tuple2.get(readme) } returns readme2
+            every { tuple1[repo] } returns entity1
+            every { tuple1[readme.readmeSummary] } returns "summary1"
+            every { tuple2[repo] } returns entity2
+            every { tuple2[readme.readmeSummary] } returns "summary2"
             every { tupleQuery.fetch() } returns listOf(tuple1, tuple2)
 
             val result = repository.findUnembedded(pageSize = 10, afterStarCount = null, afterId = null)
@@ -491,21 +463,20 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
 
         test("cursor를 지정하면 해당 cursor 이후 결과를 반환한다") {
             val tupleQuery = mockk<JPAQuery<Tuple>>()
-            val readme2 = GithubRepositoryReadme(repoId = 2L, readmeSummary = "summary2")
             val tuple2 = mockk<Tuple>()
 
             val repo = QGithubRepository.githubRepository
             val readme = QGithubRepositoryReadme.githubRepositoryReadme
 
-            every { queryFactory.select(repo, readme) } returns tupleQuery
+            every { queryFactory.select(repo, readme.readmeSummary) } returns tupleQuery
             every { tupleQuery.from(repo) } returns tupleQuery
             every { tupleQuery.join(readme) } returns tupleQuery
             every { tupleQuery.on(any<BooleanExpression>()) } returns tupleQuery
             every { tupleQuery.where(any(), any(), any(), any<BooleanExpression>()) } returns tupleQuery
             every { tupleQuery.orderBy(any(), any()) } returns tupleQuery
             every { tupleQuery.limit(10L) } returns tupleQuery
-            every { tuple2.get(repo) } returns entity2
-            every { tuple2.get(readme) } returns readme2
+            every { tuple2[repo] } returns entity2
+            every { tuple2[readme.readmeSummary] } returns "summary2"
             every { tupleQuery.fetch() } returns listOf(tuple2)
 
             val result = repository.findUnembedded(pageSize = 10, afterStarCount = 2000L, afterId = 1L)
@@ -519,7 +490,7 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             val repo = QGithubRepository.githubRepository
             val readme = QGithubRepositoryReadme.githubRepositoryReadme
 
-            every { queryFactory.select(repo, readme) } returns tupleQuery
+            every { queryFactory.select(repo, readme.readmeSummary) } returns tupleQuery
             every { tupleQuery.from(repo) } returns tupleQuery
             every { tupleQuery.join(readme) } returns tupleQuery
             every { tupleQuery.on(any<BooleanExpression>()) } returns tupleQuery
@@ -538,7 +509,7 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             val repo = QGithubRepository.githubRepository
             val readme = QGithubRepositoryReadme.githubRepositoryReadme
 
-            every { queryFactory.select(repo, readme) } returns tupleQuery
+            every { queryFactory.select(repo, readme.readmeSummary) } returns tupleQuery
             every { tupleQuery.from(repo) } returns tupleQuery
             every { tupleQuery.join(readme) } returns tupleQuery
             every { tupleQuery.on(any<BooleanExpression>()) } returns tupleQuery
@@ -554,13 +525,13 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
     }
 
     context("findRepositoriesByCursor") {
-        test("cursor를 사용하여 레포지토리를 조회한다") {
+        test("기본 조건으로 레포지토리를 조회한다") {
             val repo = QGithubRepository.githubRepository
             val readme = QGithubRepositoryReadme.githubRepositoryReadme
             val query = mockk<JPAQuery<Tuple>>()
             val tuple1 = mockk<Tuple>()
 
-            every { queryFactory.select(repo, readme) } returns query
+            every { queryFactory.select(repo, readme.readmeSummary) } returns query
             every { query.from(repo) } returns query
             every { query.leftJoin(readme) } returns query
             every { query.on(any<BooleanExpression>()) } returns query
@@ -568,8 +539,8 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             every { query.orderBy(any(), any()) } returns query
             every { query.limit(10L) } returns query
             every { query.fetch() } returns listOf(tuple1)
-            every { tuple1.get(repo) } returns entity1
-            every { tuple1.get(readme) } returns null
+            every { tuple1[repo] } returns entity1
+            every { tuple1[readme.readmeSummary] } returns null
 
             val result = repository.findRepositoriesByCursor(10, GithubSortType.STARS, null, null)
 
@@ -593,8 +564,8 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             every { query.orderBy(any(), any()) } returns query
             every { query.limit(10L) } returns query
             every { query.fetch() } returns listOf(tuple1)
-            every { tuple1.get(repo) } returns entity1
-            every { tuple1.get(community) } returns null
+            every { tuple1[repo] } returns entity1
+            every { tuple1[community] } returns null
 
             val result = repository.findForCommunityCollect(
                 10, null, null,
@@ -620,8 +591,8 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             every { query.orderBy(any()) } returns query
             every { query.limit(10L) } returns query
             every { query.fetch() } returns listOf(tuple1)
-            every { tuple1.get(repo) } returns entity1
-            every { tuple1.get(community) } returns null
+            every { tuple1[repo] } returns entity1
+            every { tuple1[community] } returns null
 
             val result = repository.findForCommunityAnalyze(10, null)
 
