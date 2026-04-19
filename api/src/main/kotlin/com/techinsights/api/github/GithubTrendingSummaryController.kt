@@ -20,10 +20,9 @@ class GithubTrendingSummaryController(
 
     @GetMapping("/summary")
     suspend fun getTrendingSummary(
-        @RequestParam(defaultValue = "STARS") sort: GithubSortType,
         @RequestParam(required = false) language: String?,
     ): ResponseEntity<GithubSummaryDto> = withContext(ioDispatcher) {
-        val summary = githubTrendingService.getSummary(sort, language)
+        val summary = githubTrendingService.getSummary(language)
         ResponseEntity.ok(summary)
     }
 }

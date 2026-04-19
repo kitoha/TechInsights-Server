@@ -22,10 +22,9 @@ class GithubTrendingSummaryControllerTest : FunSpec({
 
     test("요약 정보 조회 API는 정상적으로 요약 데이터를 반환한다") {
         val summary = GithubSummaryDto(100L, 50000L)
-        coEvery { githubTrendingService.getSummary(GithubSortType.STARS, "Java") } returns summary
+        coEvery { githubTrendingService.getSummary("Java") } returns summary
 
         val asyncResult = mockMvc.get("/api/v1/github/trending/summary") {
-            param("sort", "STARS")
             param("language", "Java")
             accept = MediaType.APPLICATION_JSON
         }.andReturn()

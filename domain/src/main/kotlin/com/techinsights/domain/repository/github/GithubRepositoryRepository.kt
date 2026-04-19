@@ -58,7 +58,6 @@ interface GithubRepositoryRepository {
     ): List<GithubRepositoryDto>
 
     fun countAndSumStars(
-        sortType: GithubSortType,
         language: String?,
     ): GithubSummaryDto
 }

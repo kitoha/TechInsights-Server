@@ -249,7 +249,7 @@ class GithubRepositoryRepositoryImpl(
     ): List<GithubRepositoryWithDistance> =
         githubRepositoryJpaRepository.findSimilarRepositories(targetVector, limit)
 
-    override fun countAndSumStars(sortType: GithubSortType, language: String?): GithubSummaryDto {
+    override fun countAndSumStars(language: String?): GithubSummaryDto {
         val repo = QGithubRepository.githubRepository
         val languageCondition = language?.let { repo.primaryLanguage.eq(it) }
         

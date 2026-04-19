@@ -167,12 +167,12 @@ class GithubTrendingServiceTest : FunSpec({
     test("레포지토리 요약 정보 조회") {
         val summary = GithubSummaryDto(100L, 50000L)
         every {
-            githubRepositoryRepository.countAndSumStars(GithubSortType.STARS, "Java")
+            githubRepositoryRepository.countAndSumStars("Java")
         } returns summary
 
-        val result = service.getSummary(GithubSortType.STARS, "Java")
+        val result = service.getSummary("Java")
 
         result shouldBe summary
-        verify(exactly = 1) { githubRepositoryRepository.countAndSumStars(GithubSortType.STARS, "Java") }
+        verify(exactly = 1) { githubRepositoryRepository.countAndSumStars("Java") }
     }
 })

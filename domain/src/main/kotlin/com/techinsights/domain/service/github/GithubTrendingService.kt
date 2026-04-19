@@ -21,8 +21,8 @@ class GithubTrendingService(
 
     @Cacheable(cacheNames = [CacheConfig.GITHUB_TRENDING])
     @Transactional(readOnly = true)
-    fun getSummary(sort: GithubSortType, language: String?): GithubSummaryDto {
-        return githubRepositoryRepository.countAndSumStars(sort, language)
+    fun getSummary(language: String?): GithubSummaryDto {
+        return githubRepositoryRepository.countAndSumStars(language)
     }
 
     @Cacheable(cacheNames = [CacheConfig.GITHUB_TRENDING])
