@@ -5,6 +5,7 @@ import com.querydsl.core.types.dsl.BooleanExpression
 import com.querydsl.jpa.impl.JPAQueryFactory
 import com.techinsights.domain.dto.github.GithubRepositoryDto
 import com.techinsights.domain.dto.github.GithubRepositoryCursor
+import com.techinsights.domain.dto.github.GithubSummaryDto
 import com.techinsights.domain.entity.github.QGithubRepository
 import com.techinsights.domain.entity.github.QGithubRepositoryCommunity
 import com.techinsights.domain.entity.github.QGithubRepositoryReadme
@@ -247,6 +248,21 @@ class GithubRepositoryRepositoryImpl(
         limit: Long,
     ): List<GithubRepositoryWithDistance> =
         githubRepositoryJpaRepository.findSimilarRepositories(targetVector, limit)
+
+    override fun countAndSumStars(language: String?): GithubSummaryDto {
+        val repo = QGithubRepository.githubRepository
+        val languageCondition = language?.let { repo.primaryLanguage.eq(it) }
+        
+        val tuple = queryFactory.select(repo.count(), repo.starCount.sum())
+            .from(repo)
+            .where(languageCondition)
+            .fetchOne()
+            
+        return GithubSummaryDto(
+            totalRepositories = tuple?.get(repo.count()) ?: 0L,
+            totalStars = tuple?.get(repo.starCount.sum()) ?: 0L
+        )
+    }
 
     private fun buildOrderSpecifiers(
         repo: QGithubRepository,

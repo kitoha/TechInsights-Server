@@ -633,6 +633,25 @@ class GithubRepositoryRepositoryImplTest : FunSpec({
             result.shouldBeEmpty()
         }
     }
+    context("countAndSumStars") {
+        test("countAndSumStars는 언어 필터가 있으면 조건에 맞는 개수와 스타 합계를 반환한다") {
+            val query = mockk<JPAQuery<Tuple>>()
+            val tuple = mockk<Tuple>()
+
+            every { queryFactory.select(QGithubRepository.githubRepository.count(), QGithubRepository.githubRepository.starCount.sum()) } returns query
+            every { query.from(QGithubRepository.githubRepository) } returns query
+            every { query.where(any<BooleanExpression>()) } returns query
+            every { query.fetchOne() } returns tuple
+
+            every { tuple.get(QGithubRepository.githubRepository.count()) } returns 100L
+            every { tuple.get(QGithubRepository.githubRepository.starCount.sum()) } returns 50000L
+
+            val result = repository.countAndSumStars("Java")
+
+            result.totalRepositories shouldBe 100L
+            result.totalStars shouldBe 50000L
+        }
+    }
 })
 
 

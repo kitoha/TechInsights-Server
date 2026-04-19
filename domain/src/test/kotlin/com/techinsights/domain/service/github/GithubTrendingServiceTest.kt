@@ -2,6 +2,7 @@ package com.techinsights.domain.service.github
 
 import com.techinsights.domain.dto.github.GithubRepositoryDto
 import com.techinsights.domain.dto.github.GithubRepositoryCursor
+import com.techinsights.domain.dto.github.GithubSummaryDto
 import com.techinsights.domain.enums.GithubSortType
 import com.techinsights.domain.exception.GithubRepositoryNotFoundException
 import com.techinsights.domain.repository.github.GithubRepositoryRepository
@@ -162,5 +163,16 @@ class GithubTrendingServiceTest : FunSpec({
         }
 
         verify(exactly = 1) { githubRepositoryRepository.findById(999L) }
+    }
+    test("레포지토리 요약 정보 조회") {
+        val summary = GithubSummaryDto(100L, 50000L)
+        every {
+            githubRepositoryRepository.countAndSumStars("Java")
+        } returns summary
+
+        val result = service.getSummary("Java")
+
+        result shouldBe summary
+        verify(exactly = 1) { githubRepositoryRepository.countAndSumStars("Java") }
     }
 })

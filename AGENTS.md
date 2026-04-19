@@ -65,6 +65,16 @@ Flyway migrations live in `domain/src/main/resources/db/migration/`.
 - **Resilience4j**: Circuit breaker and rate limiter are configured in `domain` and used in services calling external APIs.
 - **Vector search**: `pgvector` extension with HNSW index (see `V011__Add_Vector_Hnsw_Index.sql`). Embedding stored in `PostEmbedding` and `GithubRepository` entities.
 
+## Git Conventions
+
+- Commit messages must follow Conventional Commits: `<type>(<scope>): <subject>`
+- Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`
+- Subject: lowercase, imperative mood, no period
+
+## Kotlin Code Style
+
+- Never use fully qualified class names inline — always add an `import` statement.
+
 ## For module-specific guidance, see AGENTS.md in each module directory.
 
 ## Available Skills & Agents

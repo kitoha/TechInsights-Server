@@ -4,6 +4,7 @@ import com.techinsights.domain.config.cache.CacheConfig
 import com.techinsights.domain.dto.github.GithubRepositoryDto
 import com.techinsights.domain.dto.github.GithubRepositoryCursor
 import com.techinsights.domain.dto.github.GithubRepositoryCursorPage
+import com.techinsights.domain.dto.github.GithubSummaryDto
 import com.techinsights.domain.enums.GithubSortType
 import com.techinsights.domain.exception.GithubRepositoryNotFoundException
 import com.techinsights.domain.repository.github.GithubRepositoryRepository
@@ -13,7 +14,6 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
-
 @Service
 class GithubTrendingService(
     private val githubRepositoryRepository: GithubRepositoryRepository,
@@ -21,7 +21,14 @@ class GithubTrendingService(
 
     @Cacheable(cacheNames = [CacheConfig.GITHUB_TRENDING])
     @Transactional(readOnly = true)
+    fun getSummary(language: String?): GithubSummaryDto {
+        return githubRepositoryRepository.countAndSumStars(language)
+    }
+
+    @Cacheable(cacheNames = [CacheConfig.GITHUB_TRENDING])
+    @Transactional(readOnly = true)
     fun getRepositoriesByCursor(
+
         cursor: String?,
         size: Int,
         sort: GithubSortType,
