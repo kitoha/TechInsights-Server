@@ -30,15 +30,21 @@ class GithubRepositoryRepositoryImpl(
         cursor: GithubRepositoryCursor?,
     ): List<GithubRepositoryDto> {
         val repo = QGithubRepository.githubRepository
+        val readme = QGithubRepositoryReadme.githubRepositoryReadme
         val languageCondition = language?.let { repo.primaryLanguage.eq(it) }
         val cursorCondition = buildCursorCondition(repo, sortType, cursor)
 
-        return queryFactory.selectFrom(repo)
+        return queryFactory.select(repo, readme)
+            .from(repo)
+            .leftJoin(readme).on(readme.repoId.eq(repo.id))
             .where(languageCondition, cursorCondition)
             .orderBy(*buildOrderSpecifiers(repo, sortType))
             .limit(limit.toLong())
             .fetch()
-            .map { GithubRepositoryDto.fromEntity(it) }
+            .map { tuple ->
+                GithubRepositoryDto.fromEntity(tuple.get(repo)!!)
+                    .copy(readmeSummary = tuple.get(readme)?.readmeSummary)
+            }
     }
 
     override fun findRepositories(
@@ -47,16 +53,22 @@ class GithubRepositoryRepositoryImpl(
         language: String?,
     ): Page<GithubRepositoryDto> {
         val repo = QGithubRepository.githubRepository
+        val readme = QGithubRepositoryReadme.githubRepositoryReadme
 
         val languageCondition = language?.let { repo.primaryLanguage.eq(it) }
 
-        val results = queryFactory.selectFrom(repo)
+        val results = queryFactory.select(repo, readme)
+            .from(repo)
+            .leftJoin(readme).on(readme.repoId.eq(repo.id))
             .where(languageCondition)
             .orderBy(*buildOrderSpecifiers(repo, sortType))
             .offset(pageable.offset)
             .limit(pageable.pageSize.toLong())
             .fetch()
-            .map { GithubRepositoryDto.fromEntity(it) }
+            .map { tuple ->
+                GithubRepositoryDto.fromEntity(tuple.get(repo)!!)
+                    .copy(readmeSummary = tuple.get(readme)?.readmeSummary)
+            }
 
         val total = queryFactory.select(repo.id.count())
             .from(repo)
@@ -69,14 +81,17 @@ class GithubRepositoryRepositoryImpl(
     override fun findById(id: Long): GithubRepositoryDto? {
         val repo = QGithubRepository.githubRepository
         val community = QGithubRepositoryCommunity.githubRepositoryCommunity
+        val readme = QGithubRepositoryReadme.githubRepositoryReadme
 
-        return queryFactory.select(repo, community)
+        return queryFactory.select(repo, community, readme)
             .from(repo)
             .leftJoin(community).on(community.repoId.eq(repo.id))
+            .leftJoin(readme).on(readme.repoId.eq(repo.id))
             .where(repo.id.eq(id))
             .fetchOne()
             ?.let { tuple ->
                 GithubRepositoryDto.fromEntity(tuple.get(repo)!!).copy(
+                    readmeSummary = tuple.get(readme)?.readmeSummary,
                     communityStatus = tuple.get(community)?.communityStatus,
                     communitySentiment = tuple.get(community)?.communitySentiment,
                     communityInsights = tuple.get(community)?.communityInsights,
@@ -110,13 +125,14 @@ class GithubRepositoryRepositoryImpl(
 
         val mainCondition = retryCondition?.let { neverAttempted.or(it) } ?: neverAttempted
 
-        return queryFactory.selectFrom(repo)
+        return queryFactory.select(repo, readme)
+            .from(repo)
             .leftJoin(readme).on(readme.repoId.eq(repo.id))
             .where(mainCondition, cursorCondition)
             .orderBy(repo.starCount.desc(), repo.id.desc())
             .limit(pageSize.toLong())
             .fetch()
-            .map { GithubRepositoryDto.fromEntity(it) }
+            .map { tuple -> GithubRepositoryDto.fromEntity(tuple.get(repo)!!) }
     }
 
     override fun findUnembedded(

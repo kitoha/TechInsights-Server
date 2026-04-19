@@ -21,6 +21,7 @@ data class GithubRepositoryResponse(
     val dailyStarDelta: Long,
     val pushedAt: LocalDateTime,
     val fetchedAt: LocalDateTime,
+    val readmeSummary: String?,
     val communityStatus: CommunityStatus?,
     val communityMentionCount: Int?,
 ) {
@@ -41,6 +42,7 @@ data class GithubRepositoryResponse(
             dailyStarDelta = dto.dailyStarDelta,
             pushedAt = dto.pushedAt,
             fetchedAt = dto.fetchedAt,
+            readmeSummary = dto.readmeSummary,
             communityStatus = dto.communityStatus,
             communityMentionCount = dto.communityMentionCount,
         )

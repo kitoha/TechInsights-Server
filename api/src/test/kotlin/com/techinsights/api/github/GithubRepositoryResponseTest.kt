@@ -9,6 +9,7 @@ import java.time.LocalDateTime
 class GithubRepositoryResponseTest : FunSpec({
 
     fun buildDto(
+        readmeSummary: String? = null,
         communityStatus: CommunityStatus? = null,
         communityMentionCount: Int? = null,
     ): GithubRepositoryDto = GithubRepositoryDto(
@@ -27,10 +28,18 @@ class GithubRepositoryResponseTest : FunSpec({
         fetchedAt = LocalDateTime.of(2024, 6, 2, 0, 0),
         weeklyStarDelta = 0L,
         dailyStarDelta = 0L,
-        readmeSummary = null,
+        readmeSummary = readmeSummary,
         communityStatus = communityStatus,
         communityMentionCount = communityMentionCount,
     )
+
+    test("fromDto - readmeSummary가 DTO 값으로 매핑된다") {
+        val dto = buildDto(readmeSummary = "AI Summary Text")
+
+        val response = GithubRepositoryResponse.fromDto(dto)
+
+        response.readmeSummary shouldBe "AI Summary Text"
+    }
 
     test("fromDto - communityStatus가 DTO 값으로 매핑된다") {
         val dto = buildDto(communityStatus = CommunityStatus.COMPLETED)
