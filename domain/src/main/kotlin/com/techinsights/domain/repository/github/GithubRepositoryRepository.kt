@@ -2,6 +2,7 @@ package com.techinsights.domain.repository.github
 
 import com.techinsights.domain.dto.github.GithubRepositoryDto
 import com.techinsights.domain.dto.github.GithubRepositoryCursor
+import com.techinsights.domain.dto.github.GithubSummaryDto
 import com.techinsights.domain.enums.ErrorType
 import com.techinsights.domain.enums.GithubSortType
 import org.springframework.data.domain.Page
@@ -55,4 +56,9 @@ interface GithubRepositoryRepository {
         pageSize: Int,
         afterId: Long?,
     ): List<GithubRepositoryDto>
+
+    fun countAndSumStars(
+        sortType: GithubSortType,
+        language: String?,
+    ): GithubSummaryDto
 }
