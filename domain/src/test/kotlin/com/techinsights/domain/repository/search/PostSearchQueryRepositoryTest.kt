@@ -34,7 +34,7 @@ class PostSearchQueryRepositoryTest : FunSpec({
   beforeTest {
     clearMocks(jpaQueryFactory, tupleQuery, countQuery, mockTuple)
 
-    every { mockTuple.get(post) } returns mockPost
+    every { mockTuple[post] } returns mockPost
   }
 
   test("findForInstantSearch should execute query and return projections") {
@@ -44,7 +44,7 @@ class PostSearchQueryRepositoryTest : FunSpec({
     val orderScore = mockk<OrderSpecifier<Double>>()
 
     every { relevanceScore.desc() } returns orderScore
-    every { mockTuple.get(relevanceScore) } returns mockScore
+    every { mockTuple[relevanceScore] } returns mockScore
 
     every { jpaQueryFactory.select(post, relevanceScore) } returns tupleQuery
     every { tupleQuery.from(post) } returns tupleQuery
@@ -90,7 +90,7 @@ class PostSearchQueryRepositoryTest : FunSpec({
     every { tupleQuery.offset(offset) } returns tupleQuery
     every { tupleQuery.limit(limit) } returns tupleQuery
     every { tupleQuery.fetch() } returns listOf(mockTuple, mockTuple)
-    every { mockTuple.get(relevanceScore) } returns mockScore
+    every { mockTuple[relevanceScore] } returns mockScore
 
     val result =
       repository.findForFullSearch(condition, orderSpecifiers, relevanceScore, offset, limit)

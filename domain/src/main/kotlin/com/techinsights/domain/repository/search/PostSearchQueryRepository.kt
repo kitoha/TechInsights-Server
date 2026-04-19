@@ -22,7 +22,7 @@ class PostSearchQueryRepository(
     relevanceScore: NumberExpression<Double>,
     limit: Int
   ): List<PostSearchProjection> {
-    val results = jpaQueryFactory
+    return jpaQueryFactory
       .select(post, relevanceScore)
       .from(post)
       .join(post.company, company).fetchJoin()
@@ -36,13 +36,12 @@ class PostSearchQueryRepository(
       )
       .limit(limit.toLong())
       .fetch()
-
-    return results.map { tuple ->
-      PostSearchProjection(
-        post = tuple.get(post)!!,
-        relevanceScore = tuple.get(relevanceScore)!!
-      )
-    }
+      .map { tuple ->
+        PostSearchProjection(
+          post = tuple[post]!!,
+          relevanceScore = tuple[relevanceScore]!!
+        )
+      }
   }
 
   fun findForFullSearch(
@@ -52,7 +51,7 @@ class PostSearchQueryRepository(
     offset: Long,
     limit: Long
   ): List<PostSearchProjection> {
-    val results = jpaQueryFactory
+    return jpaQueryFactory
       .select(post, relevanceScore)
       .from(post)
       .join(post.company, company).fetchJoin()
@@ -64,15 +63,13 @@ class PostSearchQueryRepository(
       .offset(offset)
       .limit(limit)
       .fetch()
-
-    return results.map { tuple ->
-      PostSearchProjection(
-        post = tuple.get(post)!!,
-        relevanceScore = tuple.get(relevanceScore)!!
-      )
+      .map { tuple ->
+        PostSearchProjection(
+          post = tuple[post]!!,
+          relevanceScore = tuple[relevanceScore]!!
+        )
+      }
     }
-  }
-
   fun countByCondition(condition: BooleanExpression): Long {
     return jpaQueryFactory
       .select(post.count())
