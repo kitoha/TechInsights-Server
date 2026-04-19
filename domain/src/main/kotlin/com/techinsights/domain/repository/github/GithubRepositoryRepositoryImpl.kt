@@ -30,15 +30,21 @@ class GithubRepositoryRepositoryImpl(
         cursor: GithubRepositoryCursor?,
     ): List<GithubRepositoryDto> {
         val repo = QGithubRepository.githubRepository
+        val readme = QGithubRepositoryReadme.githubRepositoryReadme
         val languageCondition = language?.let { repo.primaryLanguage.eq(it) }
         val cursorCondition = buildCursorCondition(repo, sortType, cursor)
 
-        return queryFactory.selectFrom(repo)
+        return queryFactory.select(repo, readme.readmeSummary)
+            .from(repo)
+            .leftJoin(readme).on(readme.repoId.eq(repo.id))
             .where(languageCondition, cursorCondition)
             .orderBy(*buildOrderSpecifiers(repo, sortType))
             .limit(limit.toLong())
             .fetch()
-            .map { GithubRepositoryDto.fromEntity(it) }
+            .map { tuple ->
+                GithubRepositoryDto.fromEntity(tuple[repo]!!)
+                    .copy(readmeSummary = tuple[readme.readmeSummary])
+            }
     }
 
     override fun findRepositories(
@@ -47,16 +53,22 @@ class GithubRepositoryRepositoryImpl(
         language: String?,
     ): Page<GithubRepositoryDto> {
         val repo = QGithubRepository.githubRepository
+        val readme = QGithubRepositoryReadme.githubRepositoryReadme
 
         val languageCondition = language?.let { repo.primaryLanguage.eq(it) }
 
-        val results = queryFactory.selectFrom(repo)
+        val results = queryFactory.select(repo, readme.readmeSummary)
+            .from(repo)
+            .leftJoin(readme).on(readme.repoId.eq(repo.id))
             .where(languageCondition)
             .orderBy(*buildOrderSpecifiers(repo, sortType))
             .offset(pageable.offset)
             .limit(pageable.pageSize.toLong())
             .fetch()
-            .map { GithubRepositoryDto.fromEntity(it) }
+            .map { tuple ->
+                GithubRepositoryDto.fromEntity(tuple[repo]!!)
+                    .copy(readmeSummary = tuple[readme.readmeSummary])
+            }
 
         val total = queryFactory.select(repo.id.count())
             .from(repo)
@@ -69,20 +81,23 @@ class GithubRepositoryRepositoryImpl(
     override fun findById(id: Long): GithubRepositoryDto? {
         val repo = QGithubRepository.githubRepository
         val community = QGithubRepositoryCommunity.githubRepositoryCommunity
+        val readme = QGithubRepositoryReadme.githubRepositoryReadme
 
-        return queryFactory.select(repo, community)
+        return queryFactory.select(repo, community, readme.readmeSummary)
             .from(repo)
             .leftJoin(community).on(community.repoId.eq(repo.id))
+            .leftJoin(readme).on(readme.repoId.eq(repo.id))
             .where(repo.id.eq(id))
             .fetchOne()
             ?.let { tuple ->
-                GithubRepositoryDto.fromEntity(tuple.get(repo)!!).copy(
-                    communityStatus = tuple.get(community)?.communityStatus,
-                    communitySentiment = tuple.get(community)?.communitySentiment,
-                    communityInsights = tuple.get(community)?.communityInsights,
-                    communityCollectedAt = tuple.get(community)?.communityCollectedAt,
-                    communityMentionCount = tuple.get(community)?.communityMentionCount,
-                    communityHighlights = tuple.get(community)?.communityHighlights,
+                GithubRepositoryDto.fromEntity(tuple[repo]!!).copy(
+                    readmeSummary = tuple[readme.readmeSummary],
+                    communityStatus = tuple[community]?.communityStatus,
+                    communitySentiment = tuple[community]?.communitySentiment,
+                    communityInsights = tuple[community]?.communityInsights,
+                    communityCollectedAt = tuple[community]?.communityCollectedAt,
+                    communityMentionCount = tuple[community]?.communityMentionCount,
+                    communityHighlights = tuple[community]?.communityHighlights,
                 )
             }
     }
@@ -132,7 +147,7 @@ class GithubRepositoryRepositoryImpl(
                 .or(repo.starCount.eq(afterStarCount).and(repo.id.lt(afterId)))
         } else null
 
-        return queryFactory.select(repo, readme)
+        return queryFactory.select(repo, readme.readmeSummary)
             .from(repo)
             .join(readme).on(readme.repoId.eq(repo.id))
             .where(
@@ -145,8 +160,8 @@ class GithubRepositoryRepositoryImpl(
             .limit(pageSize.toLong())
             .fetch()
             .map { tuple ->
-                GithubRepositoryDto.fromEntity(tuple.get(repo)!!)
-                    .copy(readmeSummary = tuple.get(readme)?.readmeSummary)
+                GithubRepositoryDto.fromEntity(tuple[repo]!!)
+                    .copy(readmeSummary = tuple[readme.readmeSummary])
             }
     }
 
@@ -185,13 +200,13 @@ class GithubRepositoryRepositoryImpl(
             .limit(pageSize.toLong())
             .fetch()
             .map { tuple ->
-                GithubRepositoryDto.fromEntity(tuple.get(repo)!!).copy(
-                    communityStatus = tuple.get(community)?.communityStatus,
-                    communityCollectedAt = tuple.get(community)?.communityCollectedAt,
-                    communityMentionCount = tuple.get(community)?.communityMentionCount,
-                    communityRawMentionCount = tuple.get(community)?.communityRawMentionCount,
-                    communityUpdateCount = tuple.get(community)?.communityUpdateCount ?: 0,
-                    communityHighlights = tuple.get(community)?.communityHighlights,
+                GithubRepositoryDto.fromEntity(tuple[repo]!!).copy(
+                    communityStatus = tuple[community]?.communityStatus,
+                    communityCollectedAt = tuple[community]?.communityCollectedAt,
+                    communityMentionCount = tuple[community]?.communityMentionCount,
+                    communityRawMentionCount = tuple[community]?.communityRawMentionCount,
+                    communityUpdateCount = tuple[community]?.communityUpdateCount ?: 0,
+                    communityHighlights = tuple[community]?.communityHighlights,
                 )
             }
     }
@@ -216,13 +231,13 @@ class GithubRepositoryRepositoryImpl(
             .limit(pageSize.toLong())
             .fetch()
             .map { tuple ->
-                GithubRepositoryDto.fromEntity(tuple.get(repo)!!).copy(
-                    communityStatus = tuple.get(community)?.communityStatus,
-                    communityCollectedAt = tuple.get(community)?.communityCollectedAt,
-                    communityMentionCount = tuple.get(community)?.communityMentionCount,
-                    communityRawMentionCount = tuple.get(community)?.communityRawMentionCount,
-                    communityUpdateCount = tuple.get(community)?.communityUpdateCount ?: 0,
-                    communityHighlights = tuple.get(community)?.communityHighlights,
+                GithubRepositoryDto.fromEntity(tuple[repo]!!).copy(
+                    communityStatus = tuple[community]?.communityStatus,
+                    communityCollectedAt = tuple[community]?.communityCollectedAt,
+                    communityMentionCount = tuple[community]?.communityMentionCount,
+                    communityRawMentionCount = tuple[community]?.communityRawMentionCount,
+                    communityUpdateCount = tuple[community]?.communityUpdateCount ?: 0,
+                    communityHighlights = tuple[community]?.communityHighlights,
                 )
             }
     }

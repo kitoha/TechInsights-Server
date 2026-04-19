@@ -51,8 +51,8 @@ class GithubRepositoryRepositoryImplCommunityInsightTest : FunSpec({
         community: GithubRepositoryCommunity?,
     ): Tuple {
         val tuple = mockk<Tuple>()
-        every { tuple.get(QGithubRepository.githubRepository) } returns entity
-        every { tuple.get(QGithubRepositoryCommunity.githubRepositoryCommunity) } returns community
+        every { tuple[QGithubRepository.githubRepository] } returns entity
+        every { tuple[QGithubRepositoryCommunity.githubRepositoryCommunity] } returns community
         return tuple
     }
 
