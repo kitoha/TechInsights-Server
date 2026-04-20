@@ -2,6 +2,12 @@
 
 This file provides shared guidance for all AI coding assistants (Claude Code, Codex, Gemini, etc.) working in this repository.
 
+## How to Work
+
+- State assumptions before implementing; if multiple interpretations exist, ask.
+- If something is unclear, stop and ask — don't pick silently.
+- Every changed line must trace directly to the request — don't improve adjacent code.
+
 ## Module Structure
 
 Multi-module Gradle project with three modules:
