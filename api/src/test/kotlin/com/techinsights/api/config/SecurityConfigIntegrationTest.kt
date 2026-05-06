@@ -2,6 +2,7 @@ package com.techinsights.api.config
 
 import com.techinsights.api.auth.CustomOAuth2UserService
 import com.techinsights.api.auth.JwtAuthenticationFilter
+import com.techinsights.api.auth.OAuth2FailureHandler
 import com.techinsights.api.auth.OAuth2SuccessHandler
 import io.kotest.core.spec.style.FunSpec
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository
@@ -12,6 +13,7 @@ import org.springframework.mock.web.MockHttpServletRequest
 class SecurityConfigIntegrationTest : FunSpec({
     val customOAuth2UserService = mockk<CustomOAuth2UserService>(relaxed = true)
     val oAuth2SuccessHandler = mockk<OAuth2SuccessHandler>(relaxed = true)
+    val oAuth2FailureHandler = mockk<OAuth2FailureHandler>(relaxed = true)
     val jwtAuthenticationFilter = mockk<JwtAuthenticationFilter>(relaxed = true)
     val clientRegistrationRepository = mockk<ClientRegistrationRepository>(relaxed = true)
     val corsProperties = CorsProperties(allowedOrigins = listOf("http://localhost:3000"))
@@ -19,6 +21,7 @@ class SecurityConfigIntegrationTest : FunSpec({
     val securityConfig = SecurityConfig(
         customOAuth2UserService = customOAuth2UserService,
         oAuth2SuccessHandler = oAuth2SuccessHandler,
+        oAuth2FailureHandler = oAuth2FailureHandler,
         jwtAuthenticationFilter = jwtAuthenticationFilter,
         corsProperties = corsProperties,
         clientRegistrationRepository = clientRegistrationRepository

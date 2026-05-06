@@ -2,6 +2,7 @@ package com.techinsights.api.config
 
 import com.techinsights.api.auth.CustomOAuth2UserService
 import com.techinsights.api.auth.DeviceAwareOAuth2AuthorizationRequestResolver
+import com.techinsights.api.auth.OAuth2FailureHandler
 import com.techinsights.api.auth.OAuth2SuccessHandler
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -22,6 +23,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 class SecurityConfig(
     private val customOAuth2UserService: CustomOAuth2UserService,
     private val oAuth2SuccessHandler: OAuth2SuccessHandler,
+    private val oAuth2FailureHandler: OAuth2FailureHandler,
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
     private val corsProperties: CorsProperties,
     private val clientRegistrationRepository: ClientRegistrationRepository
@@ -69,6 +71,7 @@ class SecurityConfig(
                         userInfo.userService(customOAuth2UserService)
                     }
                     .successHandler(oAuth2SuccessHandler)
+                    .failureHandler(oAuth2FailureHandler)
             }
             .exceptionHandling { exception ->
                 exception.authenticationEntryPoint { _, response, _ ->

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.context.request.WebRequest
 import org.springframework.web.method.annotation.HandlerMethodValidationException
+import org.springframework.web.servlet.resource.NoResourceFoundException
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
@@ -222,6 +223,24 @@ class GlobalExceptionHandler {
                 ErrorResponse(
                     errorCode = "INVALID_PARAMETER",
                     message = e.message ?: "잘못된 요청입니다.",
+                    path = extractPath(request)
+                )
+            )
+    }
+
+    @ExceptionHandler(NoResourceFoundException::class)
+    fun handleNoResourceFound(
+        e: NoResourceFoundException,
+        request: WebRequest
+    ): ResponseEntity<ErrorResponse> {
+        logger.warn { "Resource not found: ${e.message}" }
+
+        return ResponseEntity
+            .status(HttpStatus.NOT_FOUND)
+            .body(
+                ErrorResponse(
+                    errorCode = "NOT_FOUND",
+                    message = "요청한 리소스를 찾을 수 없습니다.",
                     path = extractPath(request)
                 )
             )

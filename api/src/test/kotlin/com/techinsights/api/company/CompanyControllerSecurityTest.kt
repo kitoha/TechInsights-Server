@@ -3,6 +3,7 @@ package com.techinsights.api.company
 import com.techinsights.api.auth.CustomOAuth2UserService
 import com.techinsights.api.auth.CustomUserDetails
 import com.techinsights.api.auth.JwtAuthenticationFilter
+import com.techinsights.api.auth.OAuth2FailureHandler
 import com.techinsights.api.auth.OAuth2SuccessHandler
 import com.techinsights.api.config.CorsProperties
 import com.techinsights.api.config.SecurityConfig
@@ -65,6 +66,9 @@ class CompanyControllerSecurityTest(
 
     @MockitoBean
     private lateinit var oAuth2SuccessHandler: OAuth2SuccessHandler
+
+    @MockitoBean
+    private lateinit var oAuth2FailureHandler: OAuth2FailureHandler
 
     @MockitoBean
     private lateinit var jwtAuthenticationFilter: JwtAuthenticationFilter

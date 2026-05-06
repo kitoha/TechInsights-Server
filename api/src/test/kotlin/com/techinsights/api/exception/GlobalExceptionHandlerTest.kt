@@ -19,12 +19,14 @@ import io.mockk.every
 import io.mockk.mockk
 import org.springframework.context.MessageSourceResolvable
 import org.springframework.core.MethodParameter
+import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.validation.BindingResult
 import org.springframework.validation.FieldError
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.context.request.WebRequest
 import org.springframework.web.method.annotation.HandlerMethodValidationException
+import org.springframework.web.servlet.resource.NoResourceFoundException
 
 class GlobalExceptionHandlerTest : FunSpec({
 
@@ -442,6 +444,32 @@ class GlobalExceptionHandlerTest : FunSpec({
         // then
         response.statusCode shouldBe HttpStatus.INTERNAL_SERVER_ERROR
         response.body?.errorCode shouldBe "INTERNAL_SERVER_ERROR"
+    }
+
+    test("handleNoResourceFound should return 404 with NOT_FOUND error code") {
+        // given
+        val exception = NoResourceFoundException(HttpMethod.GET, "/login")
+
+        // when
+        val response = handler.handleNoResourceFound(exception, mockRequest)
+
+        // then
+        response.statusCode shouldBe HttpStatus.NOT_FOUND
+        response.body?.errorCode shouldBe "NOT_FOUND"
+        response.body?.message shouldBe "요청한 리소스를 찾을 수 없습니다."
+        response.body?.path shouldBe "/api/test"
+    }
+
+    test("handleNoResourceFound should not log as ERROR level (noise reduction)") {
+        // given: NoResourceFoundException은 404 케이스이므로 catch-all 핸들러에 도달하면 안 됨
+        val exception = NoResourceFoundException(HttpMethod.GET, "/some/path")
+
+        // when
+        val response = handler.handleNoResourceFound(exception, mockRequest)
+
+        // then: 전용 핸들러가 처리하므로 500이 아닌 404 반환
+        response.statusCode shouldBe HttpStatus.NOT_FOUND
+        response.statusCode shouldNotBe HttpStatus.INTERNAL_SERVER_ERROR
     }
 
     test("extractPath should remove 'uri=' prefix from request description") {
