@@ -3,6 +3,7 @@ package com.techinsights.api.auth
 import com.techinsights.api.props.AuthProperties
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import mu.KotlinLogging
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseCookie
 import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository
@@ -20,18 +21,24 @@ class CookieOAuth2AuthorizationRequestRepository(
     private val authProperties: AuthProperties
 ) : AuthorizationRequestRepository<OAuth2AuthorizationRequest> {
     private val oauth2Properties = authProperties.oauth2
+    private val log = KotlinLogging.logger {}
 
     override fun loadAuthorizationRequest(request: HttpServletRequest): OAuth2AuthorizationRequest? {
         val cookieValue = request.cookies
             ?.firstOrNull { it.name == oauth2Properties.authorizationRequestCookieName }
             ?.value
-            ?: return null
+            ?: return missingCookie(request)
 
-        val payload = verifyAndExtractPayload(cookieValue) ?: return null
+        val payload = verifyAndExtractPayload(cookieValue) ?: return invalidCookie(request)
 
         return runCatching {
             @Suppress("DEPRECATION")
             SerializationUtils.deserialize(Base64.getUrlDecoder().decode(payload)) as? OAuth2AuthorizationRequest
+        }.onFailure {
+            log.warn {
+                "OAuth2 authorization request cookie could not be deserialized: " +
+                    "uri=${request.requestURI}, exception=${it::class.simpleName}, message=${it.message}"
+            }
         }.getOrNull()
     }
 
@@ -88,6 +95,29 @@ class CookieOAuth2AuthorizationRequestRepository(
 
     private fun isSecureRequest(request: HttpServletRequest): Boolean {
         return request.isSecure || request.getHeader("X-Forwarded-Proto")?.equals("https", true) == true
+    }
+
+    private fun missingCookie(request: HttpServletRequest): OAuth2AuthorizationRequest? {
+        if (isOAuth2Callback(request)) {
+            val cookieNames = request.cookies?.joinToString(",") { it.name }.orEmpty()
+            log.warn {
+                "OAuth2 authorization request cookie is missing: " +
+                    "uri=${request.requestURI}, expected=${oauth2Properties.authorizationRequestCookieName}, " +
+                    "cookies=$cookieNames"
+            }
+        }
+        return null
+    }
+
+    private fun invalidCookie(request: HttpServletRequest): OAuth2AuthorizationRequest? {
+        log.warn {
+            "OAuth2 authorization request cookie signature is invalid: uri=${request.requestURI}"
+        }
+        return null
+    }
+
+    private fun isOAuth2Callback(request: HttpServletRequest): Boolean {
+        return request.requestURI.startsWith("/login/oauth2/code/")
     }
 
     private fun verifyAndExtractPayload(value: String): String? {
