@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component
 class OAuth2FailureHandler(
     private val authProperties: AuthProperties
 ) : SimpleUrlAuthenticationFailureHandler() {
-    private val logger = KotlinLogging.logger {}
+    private val log = KotlinLogging.logger {}
 
     override fun onAuthenticationFailure(
         request: HttpServletRequest,
@@ -21,13 +21,13 @@ class OAuth2FailureHandler(
         exception: AuthenticationException
     ) {
         if (exception is OAuth2AuthenticationException) {
-            logger.warn {
+            log.warn {
                 "OAuth2 login failed: errorCode=${exception.error.errorCode}, " +
                     "description=${exception.error.description}, uri=${request.requestURI}, " +
                     "message=${exception.message}"
             }
         } else {
-            logger.warn {
+            log.warn {
                 "OAuth2 login failed: exception=${exception::class.simpleName}, " +
                     "uri=${request.requestURI}, message=${exception.message}"
             }
