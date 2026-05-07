@@ -35,6 +35,9 @@ data class AuthProperties(
     }
 
     data class OAuth2(
-        val successRedirectUri: String = "/"
+        val successRedirectUri: String = "/",
+        val authorizationRequestCookieName: String = "ti_oauth2_auth_request",
+        val authorizationRequestCookieMaxAge: Duration = Duration.ofMinutes(5),
+        val authorizationRequestCookieSameSite: String = "Lax"
     )
 }

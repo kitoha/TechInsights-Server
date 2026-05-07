@@ -1,6 +1,7 @@
 package com.techinsights.api.config
 
 import com.techinsights.api.auth.CustomOAuth2UserService
+import com.techinsights.api.auth.CookieOAuth2AuthorizationRequestRepository
 import com.techinsights.api.auth.DeviceAwareOAuth2AuthorizationRequestResolver
 import com.techinsights.api.auth.OAuth2FailureHandler
 import com.techinsights.api.auth.OAuth2SuccessHandler
@@ -26,7 +27,8 @@ class SecurityConfig(
     private val oAuth2FailureHandler: OAuth2FailureHandler,
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
     private val corsProperties: CorsProperties,
-    private val clientRegistrationRepository: ClientRegistrationRepository
+    private val clientRegistrationRepository: ClientRegistrationRepository,
+    private val cookieOAuth2AuthorizationRequestRepository: CookieOAuth2AuthorizationRequestRepository
 ) {
 
     @Bean
@@ -66,6 +68,7 @@ class SecurityConfig(
                         endpoint.authorizationRequestResolver(
                             DeviceAwareOAuth2AuthorizationRequestResolver(clientRegistrationRepository)
                         )
+                        endpoint.authorizationRequestRepository(cookieOAuth2AuthorizationRequestRepository)
                     }
                     .userInfoEndpoint { userInfo ->
                         userInfo.userService(customOAuth2UserService)

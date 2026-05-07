@@ -1,6 +1,7 @@
 package com.techinsights.api.config
 
 import com.techinsights.api.auth.CustomOAuth2UserService
+import com.techinsights.api.auth.CookieOAuth2AuthorizationRequestRepository
 import com.techinsights.api.auth.JwtAuthenticationFilter
 import com.techinsights.api.auth.OAuth2FailureHandler
 import com.techinsights.api.auth.OAuth2SuccessHandler
@@ -16,6 +17,7 @@ class SecurityConfigIntegrationTest : FunSpec({
     val oAuth2FailureHandler = mockk<OAuth2FailureHandler>(relaxed = true)
     val jwtAuthenticationFilter = mockk<JwtAuthenticationFilter>(relaxed = true)
     val clientRegistrationRepository = mockk<ClientRegistrationRepository>(relaxed = true)
+    val cookieOAuth2AuthorizationRequestRepository = mockk<CookieOAuth2AuthorizationRequestRepository>(relaxed = true)
     val corsProperties = CorsProperties(allowedOrigins = listOf("http://localhost:3000"))
 
     val securityConfig = SecurityConfig(
@@ -24,7 +26,8 @@ class SecurityConfigIntegrationTest : FunSpec({
         oAuth2FailureHandler = oAuth2FailureHandler,
         jwtAuthenticationFilter = jwtAuthenticationFilter,
         corsProperties = corsProperties,
-        clientRegistrationRepository = clientRegistrationRepository
+        clientRegistrationRepository = clientRegistrationRepository,
+        cookieOAuth2AuthorizationRequestRepository = cookieOAuth2AuthorizationRequestRepository
     )
 
     test("CORS 설정이 올바르게 구성되어야 한다") {
