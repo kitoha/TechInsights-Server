@@ -1,6 +1,7 @@
 package com.techinsights.api.config
 
 import com.techinsights.api.auth.CustomOAuth2UserService
+import com.techinsights.api.auth.CookieOAuth2AuthorizationRequestRepository
 import com.techinsights.api.auth.JwtAuthenticationFilter
 import com.techinsights.api.auth.OAuth2FailureHandler
 import com.techinsights.api.auth.OAuth2SuccessHandler
@@ -64,6 +65,9 @@ class ActuatorSecurityTest(
 
     @MockitoBean
     private lateinit var jwtAuthenticationFilter: JwtAuthenticationFilter
+
+    @MockitoBean
+    private lateinit var cookieOAuth2AuthorizationRequestRepository: CookieOAuth2AuthorizationRequestRepository
 
     init {
         beforeTest {
