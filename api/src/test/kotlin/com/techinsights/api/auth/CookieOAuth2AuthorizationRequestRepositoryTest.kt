@@ -107,4 +107,40 @@ class CookieOAuth2AuthorizationRequestRepositoryTest : FunSpec({
         // then
         loaded shouldBe null
     }
+
+    test("authorizationRequestCookieDomain이 설정되면 Set-Cookie에 Domain 속성이 포함되어야 한다") {
+        // given
+        val propertiesWithDomain = AuthProperties(
+            jwt = AuthProperties.Jwt(
+                secretKey = Base64.getEncoder().encodeToString("this-is-a-very-secure-secret-key!!".toByteArray())
+            ),
+            oauth2 = AuthProperties.OAuth2(
+                authorizationRequestCookieName = cookieName,
+                authorizationRequestCookieDomain = "techinsights.shop"
+            )
+        )
+        val repositoryWithDomain = CookieOAuth2AuthorizationRequestRepository(propertiesWithDomain)
+        val request = MockHttpServletRequest()
+        val response = MockHttpServletResponse()
+
+        // when
+        repositoryWithDomain.saveAuthorizationRequest(authorizationRequest(), request, response)
+
+        // then
+        val setCookie = requireNotNull(response.getHeader("Set-Cookie"))
+        setCookie.contains("Domain=techinsights.shop") shouldBe true
+    }
+
+    test("authorizationRequestCookieDomain이 비어있으면 Set-Cookie에 Domain 속성이 없어야 한다") {
+        // given
+        val request = MockHttpServletRequest()
+        val response = MockHttpServletResponse()
+
+        // when
+        repository.saveAuthorizationRequest(authorizationRequest(), request, response)
+
+        // then
+        val setCookie = requireNotNull(response.getHeader("Set-Cookie"))
+        setCookie.contains("Domain=") shouldBe false
+    }
 })

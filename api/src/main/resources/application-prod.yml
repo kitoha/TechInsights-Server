@@ -27,3 +27,4 @@ auth:
     secret-key: ${JWT_SECRET_KEY}
   oauth2:
     success-redirect-uri: https://www.techinsights.shop/
+    authorization-request-cookie-domain: techinsights.shop

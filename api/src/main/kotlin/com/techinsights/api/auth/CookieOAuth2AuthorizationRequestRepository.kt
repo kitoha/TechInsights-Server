@@ -57,6 +57,9 @@ class CookieOAuth2AuthorizationRequestRepository(
             .encodeToString(SerializationUtils.serialize(authorizationRequest))
         val signedValue = "$encoded.${sign(encoded)}"
 
+        val secure = isSecureRequest(request)
+        val domain = oauth2Properties.authorizationRequestCookieDomain?.takeIf { it.isNotBlank() }
+
         response.addHeader(
             HttpHeaders.SET_COOKIE,
             cookieBuilder(request, signedValue)
@@ -64,6 +67,17 @@ class CookieOAuth2AuthorizationRequestRepository(
                 .build()
                 .toString()
         )
+
+        log.info {
+            "OAuth2 authorization request cookie issued: " +
+                "name=${oauth2Properties.authorizationRequestCookieName}, " +
+                "domain=${domain ?: "<host-only>"}, " +
+                "sameSite=${oauth2Properties.authorizationRequestCookieSameSite}, " +
+                "secure=$secure, " +
+                "host=${request.serverName}, " +
+                "forwardedHost=${request.getHeader("X-Forwarded-Host") ?: "-"}, " +
+                "forwardedProto=${request.getHeader("X-Forwarded-Proto") ?: "-"}"
+        }
     }
 
     override fun removeAuthorizationRequest(
@@ -86,11 +100,15 @@ class CookieOAuth2AuthorizationRequestRepository(
     }
 
     private fun cookieBuilder(request: HttpServletRequest, value: String): ResponseCookie.ResponseCookieBuilder {
-        return ResponseCookie.from(oauth2Properties.authorizationRequestCookieName, value)
+        val builder = ResponseCookie.from(oauth2Properties.authorizationRequestCookieName, value)
             .httpOnly(true)
             .secure(isSecureRequest(request))
             .sameSite(oauth2Properties.authorizationRequestCookieSameSite)
             .path("/")
+        oauth2Properties.authorizationRequestCookieDomain
+            ?.takeIf { it.isNotBlank() }
+            ?.let { builder.domain(it) }
+        return builder
     }
 
     private fun isSecureRequest(request: HttpServletRequest): Boolean {
@@ -103,7 +121,10 @@ class CookieOAuth2AuthorizationRequestRepository(
             log.warn {
                 "OAuth2 authorization request cookie is missing: " +
                     "uri=${request.requestURI}, expected=${oauth2Properties.authorizationRequestCookieName}, " +
-                    "cookies=$cookieNames"
+                    "cookies=[$cookieNames], " +
+                    "host=${request.serverName}, " +
+                    "forwardedHost=${request.getHeader("X-Forwarded-Host") ?: "-"}, " +
+                    "configuredDomain=${oauth2Properties.authorizationRequestCookieDomain ?: "<host-only>"}"
             }
         }
         return null
@@ -111,7 +132,10 @@ class CookieOAuth2AuthorizationRequestRepository(
 
     private fun invalidCookie(request: HttpServletRequest): OAuth2AuthorizationRequest? {
         log.warn {
-            "OAuth2 authorization request cookie signature is invalid: uri=${request.requestURI}"
+            "OAuth2 authorization request cookie signature is invalid: " +
+                "uri=${request.requestURI}, " +
+                "host=${request.serverName}, " +
+                "forwardedHost=${request.getHeader("X-Forwarded-Host") ?: "-"}"
         }
         return null
     }
