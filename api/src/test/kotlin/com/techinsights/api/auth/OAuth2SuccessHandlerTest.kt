@@ -77,4 +77,31 @@ class OAuth2SuccessHandlerTest : FunSpec({
         verify { tokenService.issueTokens(1L, "test@example.com", UserRole.USER, null) }
         verify(exactly = 0) { tokenService.issueTokens(1L, "test@example.com", UserRole.USER, "Mozilla/5.0") }
     }
+
+    test("cookieDomain이 설정되면 access/refresh 쿠키 모두 Domain 속성을 포함해야 한다") {
+        // given
+        val propsWithDomain = AuthProperties(
+            jwt = AuthProperties.Jwt(
+                secretKey = Base64.getEncoder().encodeToString("this-is-a-very-secure-secret-key!!".toByteArray()),
+                cookieDomain = "techinsights.shop"
+            ),
+            oauth2 = AuthProperties.OAuth2(successRedirectUri = "/dashboard")
+        )
+        val handlerWithDomain = OAuth2SuccessHandler(tokenService, propsWithDomain)
+        val request = MockHttpServletRequest()
+        val response = MockHttpServletResponse()
+        val auth = mockk<Authentication>()
+        val principal = CustomUserDetails(1L, "test@example.com", UserRole.USER, emptyMap())
+
+        every { auth.principal } returns principal
+        request.addParameter("state", "csrf-abc")
+        every { tokenService.issueTokens(any(), any(), any(), any()) } returns TokenResponse("at", "rt")
+
+        // when
+        handlerWithDomain.onAuthenticationSuccess(request, response, auth)
+
+        // then
+        val cookies = response.getHeaders("Set-Cookie")
+        cookies.count { it.contains("Domain=techinsights.shop") } shouldBe 2
+    }
 })

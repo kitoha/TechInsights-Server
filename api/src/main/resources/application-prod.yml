@@ -25,6 +25,7 @@ cors:
 auth:
   jwt:
     secret-key: ${JWT_SECRET_KEY}
+    cookie-domain: techinsights.shop
   oauth2:
     success-redirect-uri: https://www.techinsights.shop/
     authorization-request-cookie-domain: techinsights.shop

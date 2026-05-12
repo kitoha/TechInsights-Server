@@ -14,10 +14,11 @@ data class AuthProperties(
         val accessTokenExpiration: Duration = Duration.ofMinutes(30),
         val refreshTokenExpiration: Duration = Duration.ofDays(30),
         val issuer: String = "techinsights",
-        val accessTokenCookieName: String = "__Host-ti-at",
-        val refreshTokenCookieName: String = "__Host-ti-rt",
+        val accessTokenCookieName: String = "ti-at",
+        val refreshTokenCookieName: String = "ti-rt",
         val cookieSecure: Boolean = true,
-        val cookieSameSite: String = "Lax"
+        val cookieSameSite: String = "Lax",
+        val cookieDomain: String? = null
     ) {
         init {
             require(secretKey.isNotBlank()) { "Secret key must not be empty" }

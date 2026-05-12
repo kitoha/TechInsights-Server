@@ -38,14 +38,16 @@ class OAuth2SuccessHandler(
     }
 
     private fun addCookie(response: HttpServletResponse, name: String, value: String, maxAge: Long) {
-        val cookie = ResponseCookie.from(name, value)
+        val builder = ResponseCookie.from(name, value)
             .path("/")
             .httpOnly(true)
             .secure(authProperties.jwt.cookieSecure)
             .sameSite(authProperties.jwt.cookieSameSite)
             .maxAge(maxAge)
-            .build()
-        
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString())
+        authProperties.jwt.cookieDomain
+            ?.takeIf { it.isNotBlank() }
+            ?.let { builder.domain(it) }
+
+        response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString())
     }
 }

@@ -45,24 +45,30 @@ class AuthController(
     }
 
     private fun addCookie(response: HttpServletResponse, name: String, value: String, maxAge: Long) {
-        val cookie = ResponseCookie.from(name, value)
+        val builder = ResponseCookie.from(name, value)
             .path("/")
             .httpOnly(true)
             .secure(authProperties.jwt.cookieSecure)
             .sameSite(authProperties.jwt.cookieSameSite)
             .maxAge(maxAge)
-            .build()
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString())
+        applyDomain(builder)
+        response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString())
     }
 
     private fun clearCookie(response: HttpServletResponse, name: String) {
-        val cookie = ResponseCookie.from(name, "")
+        val builder = ResponseCookie.from(name, "")
             .path("/")
             .httpOnly(true)
             .secure(authProperties.jwt.cookieSecure)
             .sameSite(authProperties.jwt.cookieSameSite)
             .maxAge(0)
-            .build()
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString())
+        applyDomain(builder)
+        response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString())
+    }
+
+    private fun applyDomain(builder: ResponseCookie.ResponseCookieBuilder) {
+        authProperties.jwt.cookieDomain
+            ?.takeIf { it.isNotBlank() }
+            ?.let { builder.domain(it) }
     }
 }
