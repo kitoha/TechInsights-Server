@@ -84,8 +84,6 @@ Tech Insights는 최신 IT 기술 관련 회사들의 기술 블로그 게시글
 
 ![TechInsights AWS 아키텍처](./img/architecture/techinsights-aws.drawio.png)
 
-> 원본: [`img/architecture/techinsights-aws.drawio`](./img/architecture/techinsights-aws.drawio) — draw.io에서 열어 편집할 수 있습니다. PNG에도 다이어그램 데이터가 포함되어 있습니다.
-
 API Sever
 
 <img width="4920" height="1272" alt="Image" src="https://github.com/user-attachments/assets/39001247-3359-46c5-a12d-33dda77f3456" />
