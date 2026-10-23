@@ -81,7 +81,7 @@ class JwtPlugin(
     private fun validateToken(token: String, expectedType: String): Claims {
         val claims = validateToken(token)
         if (claims.get(TYPE_CLAIM, String::class.java) != expectedType) {
-            throw InvalidTokenException("토큰 유형이 올바르지 않습니다.")
+            throw WrongTokenTypeException()
         }
         return claims
     }
