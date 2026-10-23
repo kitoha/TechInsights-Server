@@ -18,3 +18,7 @@ CREATE INDEX IF NOT EXISTS idx_posts_content_trgm
 
 CREATE INDEX IF NOT EXISTS idx_company_name_trgm
     ON company USING gin (lower(company_name) gin_trgm_ops);
+
+-- 회사명 일치(company_id IN (...))를 posts의 BitmapOr 항으로 처리하기 위한 인덱스
+CREATE INDEX IF NOT EXISTS idx_posts_company_id
+    ON posts (company_id);

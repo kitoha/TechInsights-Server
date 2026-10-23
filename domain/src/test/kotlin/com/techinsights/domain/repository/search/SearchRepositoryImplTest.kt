@@ -161,10 +161,12 @@ class SearchRepositoryImplTest : FunSpec({
     val mockResultDto = mockk<PostSearchResultDto>()
 
     every { queryBuilder.buildRelevanceScore(request.query) } returns mockRelevanceScore
+    every { companySearchQueryRepository.findIdsByNameContaining(request.query) } returns listOf(7L, 9L)
     every {
       queryBuilder.buildSearchCondition(
         request.query,
-        request.companyId
+        request.companyId,
+        listOf(7L, 9L)
       )
     } returns mockCondition
     every {
@@ -201,7 +203,8 @@ class SearchRepositoryImplTest : FunSpec({
 
     verifyAll {
       queryBuilder.buildRelevanceScore(request.query)
-      queryBuilder.buildSearchCondition(request.query, request.companyId)
+      companySearchQueryRepository.findIdsByNameContaining(request.query)
+      queryBuilder.buildSearchCondition(request.query, request.companyId, listOf(7L, 9L))
       queryBuilder.buildOrderSpecifier(request.sortBy, mockRelevanceScore)
       postSearchQueryRepository.findForFullSearch(
         condition = mockCondition,

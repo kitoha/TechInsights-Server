@@ -19,11 +19,21 @@ class SearchQueryBuilder(
   private val post = QPost.post
   private val company = QCompany.company
 
-  fun buildSearchCondition(query: String, companyId: Long? = null): BooleanExpression {
-    val baseCondition = post.title.containsIgnoreCase(query)
+  /**
+   * 회사명 일치는 조인된 company.name LIKE 대신 미리 조회한 [matchedCompanyIds]로 매칭한다.
+   * 모든 OR 항이 posts의 인덱스(trigram, company_id)로 처리되도록 하기 위함이다.
+   */
+  fun buildSearchCondition(
+    query: String,
+    companyId: Long? = null,
+    matchedCompanyIds: Collection<Long> = emptyList()
+  ): BooleanExpression {
+    var baseCondition = post.title.containsIgnoreCase(query)
       .or(post.preview.containsIgnoreCase(query))
       .or(post.content.contains(query))
-      .or(company.name.containsIgnoreCase(query))
+    if (matchedCompanyIds.isNotEmpty()) {
+      baseCondition = baseCondition.or(post.company.id.`in`(matchedCompanyIds))
+    }
 
     return companyId?.let {
       baseCondition.and(post.company.id.eq(it))

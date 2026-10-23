@@ -31,4 +31,22 @@ class SearchQueryBuilderTest : FunSpec({
     test("같은 텍스트 점수라면 조회수가 많은 게시글이 높다") {
         (popularity(1_000) > popularity(10)) shouldBe true
     }
+
+    test("회사명 일치는 조인 LIKE가 아니라 일치한 회사 id 목록으로 매칭한다") {
+        val condition = queryBuilder.buildSearchCondition("toss", null, listOf(3L, 7L)).toString()
+
+        condition shouldContain "post.company.id in [3, 7]"
+        condition shouldNotContain "company.name"
+    }
+
+    test("일치한 회사가 없으면 회사 조건 없이 게시글 컬럼 조건만 사용한다") {
+        val condition = queryBuilder.buildSearchCondition("toss", null, emptyList()).toString()
+
+        condition shouldNotContain "post.company.id"
+        condition shouldContain "containsIc(post.title"
+    }
+
+    test("회사명 일치 점수는 기존처럼 유지된다") {
+        queryBuilder.buildRelevanceScore("toss").toString() shouldContain "company.name"
+    }
 })
