@@ -18,9 +18,11 @@ data class AuthProperties(
         val refreshTokenCookieName: String = "ti-rt",
         val cookieSecure: Boolean = true,
         val cookieSameSite: String = "Lax",
-        val cookieDomain: String? = null
+        val cookieDomain: String? = null,
+        val maxSessionsPerUser: Int = 10
     ) {
         init {
+            require(maxSessionsPerUser >= 1) { "maxSessionsPerUser must be at least 1" }
             require(secretKey.isNotBlank()) { "Secret key must not be empty" }
             require(secretKey.length >= 32) { "Secret key must be at least 32 characters" }
             require(isValidBase64(secretKey)) { "Secret key must be valid Base64" }
