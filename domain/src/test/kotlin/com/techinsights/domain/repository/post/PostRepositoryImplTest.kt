@@ -22,6 +22,7 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.mockk.*
+import jakarta.persistence.EntityManager
 import org.springframework.data.domain.PageRequest
 import java.time.LocalDateTime
 
@@ -29,7 +30,7 @@ class PostRepositoryImplTest : FunSpec({
 
   val postJpaRepository = mockk<PostJpaRepository>()
   val queryFactory = mockk<JPAQueryFactory>()
-  val repository = PostRepositoryImpl(postJpaRepository, queryFactory)
+  val repository = PostRepositoryImpl(postJpaRepository, queryFactory, mockk<EntityManager>())
 
   val company = Company(
     id = 1L,
