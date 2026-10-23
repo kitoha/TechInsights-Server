@@ -253,4 +253,78 @@ class PostLikeServiceTest : FunSpec({
         result.count shouldBe 5L
         result.liked shouldBe false
     }
+
+    test("like - 이미 좋아요한 경우 저장/카운트 증가 없이 끝난다 (멱등)") {
+        val postIdStr = Tsid.generate()
+        val postId = Tsid.decode(postIdStr)
+        val requester = Requester.Authenticated(100L, "127.0.0.1")
+        every { postRepository.existsById(any()) } returns true
+        every { postLikeRepository.findByPostIdAndUserId(postId, 100L) } returns mockk<PostLike>()
+
+        postLikeService.like(postIdStr, requester)
+
+        verify(exactly = 0) { postLikeSaveHelper.saveIfAbsent(any()) }
+        verify(exactly = 0) { postRepository.incrementLikeCount(any()) }
+    }
+
+    test("like - 좋아요가 없으면 저장하고 카운트를 올린다") {
+        val postIdStr = Tsid.generate()
+        val postId = Tsid.decode(postIdStr)
+        val requester = Requester.Anonymous("aid-1", "127.0.0.1")
+        every { postRepository.existsById(any()) } returns true
+        every { postLikeRepository.findAnonymousByPostIdAndAnonymousId(postId, "aid-1") } returns null
+        every { postLikeSaveHelper.saveIfAbsent(any()) } returns true
+        every { postRepository.incrementLikeCount(postId) } returns Unit
+
+        postLikeService.like(postIdStr, requester)
+
+        verify(exactly = 1) { postLikeSaveHelper.saveIfAbsent(any()) }
+        verify(exactly = 1) { postRepository.incrementLikeCount(postId) }
+    }
+
+    test("like - 동시 요청으로 저장이 충돌하면 카운트를 올리지 않는다") {
+        val postIdStr = Tsid.generate()
+        val postId = Tsid.decode(postIdStr)
+        val requester = Requester.Authenticated(100L, "127.0.0.1")
+        every { postRepository.existsById(any()) } returns true
+        every { postLikeRepository.findByPostIdAndUserId(postId, 100L) } returns null
+        every { postLikeSaveHelper.saveIfAbsent(any()) } returns false
+
+        postLikeService.like(postIdStr, requester)
+
+        verify(exactly = 0) { postRepository.incrementLikeCount(any()) }
+    }
+
+    test("like - 존재하지 않는 게시글이면 PostNotFoundException") {
+        every { postRepository.existsById(any()) } returns false
+
+        shouldThrow<PostNotFoundException> {
+            postLikeService.like(Tsid.generate(), Requester.Authenticated(100L, "127.0.0.1"))
+        }
+    }
+
+    test("unlike - 좋아요가 있으면 삭제하고 카운트를 내린다") {
+        val postIdStr = Tsid.generate()
+        val postId = Tsid.decode(postIdStr)
+        val requester = Requester.Anonymous("aid-1", "127.0.0.1")
+        every { postRepository.existsById(any()) } returns true
+        every { postLikeRepository.deleteAnonymousByPostIdAndAnonymousId(postId, "aid-1") } returns 1L
+        every { postRepository.decrementLikeCount(postId) } returns Unit
+
+        postLikeService.unlike(postIdStr, requester)
+
+        verify(exactly = 1) { postRepository.decrementLikeCount(postId) }
+    }
+
+    test("unlike - 좋아요가 없으면 카운트를 내리지 않는다 (멱등)") {
+        val postIdStr = Tsid.generate()
+        val postId = Tsid.decode(postIdStr)
+        val requester = Requester.Authenticated(100L, "127.0.0.1")
+        every { postRepository.existsById(any()) } returns true
+        every { postLikeRepository.deleteByPostIdAndUserId(postId, 100L) } returns 0L
+
+        postLikeService.unlike(postIdStr, requester)
+
+        verify(exactly = 0) { postRepository.decrementLikeCount(any()) }
+    }
 })
