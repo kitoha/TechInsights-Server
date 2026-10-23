@@ -7,6 +7,7 @@ import com.techinsights.domain.service.post.PostViewService
 import com.techinsights.domain.utils.Tsid
 import io.kotest.core.spec.style.FunSpec
 import io.mockk.*
+import jakarta.servlet.http.Cookie
 import kotlinx.coroutines.Dispatchers
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
@@ -185,6 +186,25 @@ class PostControllerTest : FunSpec() {
 
       verify(exactly = 1) { postViewService.recordView(postId, any(), userAgent) }
       verify(exactly = 1) { postViewService.trackAnonymousPostRead(any(), postId) }
+    }
+
+    test("POST /api/v1/posts/{postId}/view - 익명 사용자는 IP가 아닌 aid 쿠키로 조회/읽기 이력을 기록한다") {
+      // given
+      val postId = Tsid.encode(1L)
+      every { aidProperties.cookie } returns AidProperties.Cookie()
+      every { postViewService.recordView(postId, "aid-123", any()) } just Runs
+      every { postViewService.trackAnonymousPostRead("aid-123", postId) } just Runs
+
+      // when & then
+      mockMvc.post("/api/v1/posts/$postId/view") {
+        cookie(Cookie("aid", "aid-123"))
+        header("X-Real-IP", "203.0.113.7")
+      }.andExpect {
+        status { isOk() }
+      }
+
+      verify(exactly = 1) { postViewService.recordView(postId, "aid-123", any()) }
+      verify(exactly = 1) { postViewService.trackAnonymousPostRead("aid-123", postId) }
     }
 
     test("POST /api/v1/posts/{postId}/view - User-Agent 없이도 성공") {
