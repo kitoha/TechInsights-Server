@@ -47,7 +47,6 @@ dependencies {
   implementation(libs.javax.annotation.api)
   implementation(libs.kotlin.logging)
   implementation(libs.google.genai)
-  implementation(libs.bundles.aws)
 
   testImplementation(libs.kotlin.test.junit5)
   testImplementation(libs.bundles.kotest)
