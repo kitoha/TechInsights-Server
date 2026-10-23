@@ -42,4 +42,18 @@ class SqlFixtures(private val jdbc: JdbcTemplate) {
       )
     }
   }
+
+  fun insertUser(id: Long) {
+    jdbc.update(
+      "INSERT INTO users (id, email, name, provider_id) VALUES (?, ?, ?, ?)",
+      id, "user$id@example.com", "user-$id", "provider-$id"
+    )
+  }
+
+  fun insertPostBookmark(id: Long, postId: Long, userId: Long, createdAt: LocalDateTime) {
+    jdbc.update(
+      "INSERT INTO post_bookmarks (id, post_id, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+      id, postId, userId, createdAt, createdAt
+    )
+  }
 }
