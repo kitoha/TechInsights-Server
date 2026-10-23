@@ -4,6 +4,7 @@ import com.techinsights.domain.entity.user.User
 import com.techinsights.domain.enums.ProviderType
 import com.techinsights.domain.enums.UserRole
 import com.techinsights.domain.enums.UserStatus
+import com.techinsights.domain.exception.user.AccountDeactivatedException
 import com.techinsights.domain.exception.user.DuplicateNicknameException
 import com.techinsights.domain.exception.user.InvalidNicknameException
 import com.techinsights.domain.exception.user.UserNotFoundException
@@ -159,6 +160,7 @@ class UserServiceTest : FunSpec({
                 login()
             }
 
+            every { userRepository.isDeactivatedAccount(ProviderType.GOOGLE, "google-123") } returns false
             every { userRepository.upsertByProvider(any(), any(), any(), any(), any(), any(), any()) } returns Unit
             every {
                 userRepository.findByProviderAndProviderId(ProviderType.GOOGLE, "google-123")
@@ -189,6 +191,7 @@ class UserServiceTest : FunSpec({
         }
 
         test("upsert 후에도 사용자를 찾을 수 없으면 예외를 던진다") {
+            every { userRepository.isDeactivatedAccount(ProviderType.GOOGLE, "google-123") } returns false
             every { userRepository.upsertByProvider(any(), any(), any(), any(), any(), any(), any()) } returns Unit
             every {
                 userRepository.findByProviderAndProviderId(ProviderType.GOOGLE, "google-123")
@@ -201,6 +204,42 @@ class UserServiceTest : FunSpec({
                     name = "New Name",
                     profileImage = null
                 )
+            }
+        }
+
+        test("삭제되었거나 비활성인 계정이면 아무것도 쓰지 않고 AccountDeactivatedException 을 던진다") {
+            every { userRepository.isDeactivatedAccount(ProviderType.GOOGLE, "google-123") } returns true
+
+            shouldThrow<AccountDeactivatedException> {
+                userService.upsertGoogleOAuthUser("google-123", "new@example.com", "New Name", null)
+            }
+
+            verify(exactly = 0) { userRepository.upsertByProvider(any(), any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 0) { userRepository.save(any()) }
+        }
+
+        test("확인과 upsert 사이에 비활성화되어 upsert 가 행을 바꾸지 못한 경우에도 거부한다") {
+            val inactive = createTestUser().apply { status = UserStatus.INACTIVE }
+            every { userRepository.isDeactivatedAccount(ProviderType.GOOGLE, "google-123") } returns false
+            every { userRepository.upsertByProvider(any(), any(), any(), any(), any(), any(), any()) } returns Unit
+            every {
+                userRepository.findByProviderAndProviderId(ProviderType.GOOGLE, "google-123")
+            } returns Optional.of(inactive)
+
+            shouldThrow<AccountDeactivatedException> {
+                userService.upsertGoogleOAuthUser("google-123", "new@example.com", "New Name", null)
+            }
+        }
+
+        test("확인과 upsert 사이에 soft-delete 되어 재조회가 비면 AccountDeactivatedException 을 던진다 (IllegalStateException 아님)") {
+            every { userRepository.isDeactivatedAccount(ProviderType.GOOGLE, "google-123") } returnsMany listOf(false, true)
+            every { userRepository.upsertByProvider(any(), any(), any(), any(), any(), any(), any()) } returns Unit
+            every {
+                userRepository.findByProviderAndProviderId(ProviderType.GOOGLE, "google-123")
+            } returns Optional.empty()
+
+            shouldThrow<AccountDeactivatedException> {
+                userService.upsertGoogleOAuthUser("google-123", "new@example.com", "New Name", null)
             }
         }
     }
