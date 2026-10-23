@@ -11,9 +11,6 @@ import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.withContext
-import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.*
@@ -24,26 +21,25 @@ import org.springframework.web.bind.annotation.*
 class SearchController(
   private val searchService: SearchService,
   private val semanticSearchService: SemanticSearchService,
-  private val properties: SemanticSearchProperties,
-  @param:Qualifier("ioDispatcher") private val ioDispatcher: CoroutineDispatcher
+  private val properties: SemanticSearchProperties
 ) {
 
   @GetMapping("/instant")
-  suspend fun instantSearch(
+  fun instantSearch(
     @RequestParam @NotBlank(message = "query must not be blank") @Size(max = MAX_QUERY_LENGTH, message = "query must not exceed $MAX_QUERY_LENGTH characters") query: String
-  ): ResponseEntity<InstantSearchResponse> = withContext(ioDispatcher) {
+  ): ResponseEntity<InstantSearchResponse> {
     val response = searchService.instantSearch(query)
-    ResponseEntity.ok(response)
+    return ResponseEntity.ok(response)
   }
 
   @GetMapping
-  suspend fun fullSearch(
+  fun fullSearch(
     @RequestParam @NotBlank(message = "query must not be blank") query: String,
     @RequestParam(defaultValue = "0") @Min(0) page: Int,
     @RequestParam(defaultValue = "10") @Min(1) @Max(100) size: Int,
     @RequestParam(defaultValue = "RELEVANCE") sortBy: SearchSortType,
     @RequestParam(required = false) companyId: Long?
-  ): ResponseEntity<FullSearchResponse> = withContext(ioDispatcher) {
+  ): ResponseEntity<FullSearchResponse> {
     val request = SearchRequest(
       query = query,
       page = page,
@@ -53,15 +49,15 @@ class SearchController(
     )
 
     val response = searchService.fullSearch(request)
-    ResponseEntity.ok(response)
+    return ResponseEntity.ok(response)
   }
 
   @GetMapping("/semantic")
-  suspend fun semanticSearch(
+  fun semanticSearch(
     @RequestParam @NotBlank(message = "query must not be blank") @Size(max = MAX_QUERY_LENGTH) query: String,
     @RequestParam(required = false) @Min(1) size: Int?,
     @RequestParam(required = false) companyId: Long?
-  ): ResponseEntity<SemanticSearchResponse> = withContext(ioDispatcher) {
+  ): ResponseEntity<SemanticSearchResponse> {
     if (size != null && size > properties.maxSize) {
       throw IllegalArgumentException("size must not exceed maxSize(${properties.maxSize})")
     }
@@ -72,7 +68,7 @@ class SearchController(
     val results = semanticSearchService.search(query.trim(), resolvedSize, companyId)
     val processingTimeMs = System.currentTimeMillis() - startTime
 
-    ResponseEntity.ok(SemanticSearchResponse.of(query.trim(), results, processingTimeMs))
+    return ResponseEntity.ok(SemanticSearchResponse.of(query.trim(), results, processingTimeMs))
   }
 
   companion object {

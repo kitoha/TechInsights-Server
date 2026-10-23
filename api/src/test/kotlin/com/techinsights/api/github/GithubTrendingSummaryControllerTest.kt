@@ -9,7 +9,6 @@ import io.mockk.mockk
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
@@ -24,14 +23,12 @@ class GithubTrendingSummaryControllerTest : FunSpec({
         val summary = GithubSummaryDto(100L, 50000L)
         coEvery { githubTrendingService.getSummary("Java") } returns summary
 
-        val asyncResult = mockMvc.get("/api/v1/github/trending/summary") {
+        mockMvc.get("/api/v1/github/trending/summary") {
             param("language", "Java")
             accept = MediaType.APPLICATION_JSON
-        }.andReturn()
-
-        mockMvc.perform(asyncDispatch(asyncResult))
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.totalRepositories").value(100))
-            .andExpect(jsonPath("$.totalStars").value(50000))
+        }
+            .andExpect { match(status().isOk) }
+            .andExpect { match(jsonPath("$.totalRepositories").value(100)) }
+            .andExpect { match(jsonPath("$.totalStars").value(50000)) }
     }
 })
