@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable
 import java.time.LocalDateTime
 
 interface PostRepository {
+  /** Inserts NEW posts only; throws if an id already exists. Updates use targeted methods such as [updateSummaryResults]. */
   fun saveAll(posts: List<PostDto>): List<PostDto>
   fun updateSummaryResults(posts: List<PostDto>)
   fun insertAllIgnoringDuplicates(posts: List<PostDto>): Int
