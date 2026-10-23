@@ -1,5 +1,6 @@
 package com.techinsights.api.search
 
+import com.techinsights.api.exception.GlobalExceptionHandler
 import com.techinsights.domain.config.search.SemanticSearchProperties
 import com.techinsights.domain.dto.search.FullSearchResponse
 import com.techinsights.domain.dto.search.InstantSearchResponse
@@ -7,6 +8,7 @@ import com.techinsights.domain.dto.search.SearchRequest
 import com.techinsights.domain.enums.search.SearchSortType
 import com.techinsights.domain.service.search.SearchService
 import com.techinsights.domain.service.search.SemanticSearchService
+import com.techinsights.domain.utils.Tsid
 import io.kotest.core.spec.style.FunSpec
 import io.mockk.*
 import org.springframework.http.MediaType
@@ -30,7 +32,9 @@ class SearchControllerTest : FunSpec() {
                 semanticSearchService = semanticSearchService,
                 properties = properties
             )
-            mockMvc = MockMvcBuilders.standaloneSetup(controller).build()
+            mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(GlobalExceptionHandler())
+                .build()
         }
 
         test("GET /api/v1/search/instant - should return instant search results") {
@@ -193,7 +197,7 @@ class SearchControllerTest : FunSpec() {
             // when & then
             mockMvc.get("/api/v1/search") {
                 param("query", query)
-                param("companyId", companyId.toString())
+                param("companyId", Tsid.encode(companyId))
                 accept = MediaType.APPLICATION_JSON
             }.andExpect {
                 status { isOk() }
@@ -238,7 +242,7 @@ class SearchControllerTest : FunSpec() {
                 param("page", page.toString())
                 param("size", size.toString())
                 param("sortBy", sortBy.name)
-                param("companyId", companyId.toString())
+                param("companyId", Tsid.encode(companyId))
                 accept = MediaType.APPLICATION_JSON
             }.andExpect {
                 status { isOk() }
@@ -253,6 +257,46 @@ class SearchControllerTest : FunSpec() {
                     it.companyId == companyId
                 })
             }
+        }
+
+        test("GET /api/v1/search - TSID 가 아닌 companyId 는 400 INVALID_PARAMETER") {
+            mockMvc.get("/api/v1/search") {
+                param("query", "docker")
+                param("companyId", "123")
+                accept = MediaType.APPLICATION_JSON
+            }.andExpect {
+                status { isBadRequest() }
+                jsonPath("$.code") { value("INVALID_PARAMETER") }
+            }
+
+            verify(exactly = 0) { searchService.fullSearch(any()) }
+        }
+
+        test("GET /api/v1/search/semantic - companyId 는 TSID 로 받아 Long 으로 전달한다") {
+            every { semanticSearchService.search("docker", 10, 123456789012345678L) } returns emptyList()
+
+            mockMvc.get("/api/v1/search/semantic") {
+                param("query", "docker")
+                param("companyId", Tsid.encode(123456789012345678L))
+                accept = MediaType.APPLICATION_JSON
+            }.andExpect {
+                status { isOk() }
+            }
+
+            verify(exactly = 1) { semanticSearchService.search("docker", 10, 123456789012345678L) }
+        }
+
+        test("GET /api/v1/search/semantic - TSID 가 아닌 companyId 는 400 INVALID_PARAMETER") {
+            mockMvc.get("/api/v1/search/semantic") {
+                param("query", "docker")
+                param("companyId", "not-a-tsid")
+                accept = MediaType.APPLICATION_JSON
+            }.andExpect {
+                status { isBadRequest() }
+                jsonPath("$.code") { value("INVALID_PARAMETER") }
+            }
+
+            verify(exactly = 0) { semanticSearchService.search(any(), any(), any()) }
         }
 
         test("GET /api/v1/search - should handle special characters in query") {
