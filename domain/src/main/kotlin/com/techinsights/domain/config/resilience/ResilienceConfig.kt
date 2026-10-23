@@ -34,7 +34,6 @@ class ResilienceConfig(
     val defaultConfig = createRateLimiterConfig(rateLimiterProperties.crawler.standard)
 
     // 게시글 요약 관련 RateLimiter
-    registry.rateLimiter("geminiArticleSummarizer", geminiConfig)
     registry.rateLimiter("geminiBatchRpm", geminiBatchRpmConfig)
     registry.rateLimiter("geminiEmbedding", geminiEmbeddingConfig)
 
