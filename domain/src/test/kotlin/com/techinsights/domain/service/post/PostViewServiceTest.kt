@@ -4,6 +4,7 @@ import com.techinsights.domain.event.ViewCountIncrementEvent
 import com.techinsights.domain.repository.post.PostRepository
 import com.techinsights.domain.repository.post.PostViewRepository
 import com.techinsights.domain.repository.user.AnonymousUserReadHistoryRepository
+import com.techinsights.domain.repository.user.UserReadHistoryRepository
 import com.techinsights.domain.utils.Tsid
 import io.kotest.core.spec.style.FunSpec
 import io.mockk.*
@@ -14,11 +15,13 @@ class PostViewServiceTest : FunSpec({
   val postViewRepository = mockk<PostViewRepository>()
   val postRepository = mockk<PostRepository>()
   val anonymousUserReadHistoryRepository = mockk<AnonymousUserReadHistoryRepository>()
+  val userReadHistoryRepository = mockk<UserReadHistoryRepository>()
   val applicationEventPublisher = mockk<ApplicationEventPublisher>()
   val postViewService = PostViewService(
     postViewRepository,
     postRepository,
     anonymousUserReadHistoryRepository,
+    userReadHistoryRepository,
     applicationEventPublisher
   )
 
@@ -26,7 +29,10 @@ class PostViewServiceTest : FunSpec({
   val postId = Tsid.encode(1)
 
   beforeTest {
-    clearMocks(postViewRepository, postRepository, anonymousUserReadHistoryRepository, applicationEventPublisher)
+    clearMocks(
+      postViewRepository, postRepository, anonymousUserReadHistoryRepository, userReadHistoryRepository,
+      applicationEventPublisher
+    )
   }
 
   test("조회 기록 - 첫 방문자(aid)") {
@@ -93,5 +99,14 @@ class PostViewServiceTest : FunSpec({
     postViewService.trackAnonymousPostRead("anon-1", postId)
 
     verify(exactly = 1) { anonymousUserReadHistoryRepository.trackAnonymousPostRead("anon-1", postId) }
+  }
+
+  test("회원 최근 본 글 추적") {
+    every { userReadHistoryRepository.trackUserPostRead(7L, postId) } just Runs
+
+    postViewService.trackUserPostRead(7L, postId)
+
+    verify(exactly = 1) { userReadHistoryRepository.trackUserPostRead(7L, postId) }
+    verify(exactly = 0) { anonymousUserReadHistoryRepository.trackAnonymousPostRead(any(), any()) }
   }
 })
