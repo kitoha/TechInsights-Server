@@ -1,7 +1,7 @@
-package com.techinsights.domain.service.gemini
+package com.techinsights.domain.service.summary
 
-import com.techinsights.domain.dto.gemini.ArticleInput
-import com.techinsights.domain.dto.gemini.SummaryResultWithId
+import com.techinsights.domain.dto.summary.ArticleInput
+import com.techinsights.domain.dto.summary.SummaryResultWithId
 import org.springframework.stereotype.Component
 
 @Component

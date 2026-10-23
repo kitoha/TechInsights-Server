@@ -1,6 +1,6 @@
-package com.techinsights.domain.service.gemini
+package com.techinsights.domain.service.summary
 
-import com.techinsights.domain.dto.gemini.SummaryResult
+import com.techinsights.domain.dto.summary.SummaryResult
 import com.techinsights.domain.enums.GeminiModelType
 
 interface ArticleSummarizer {

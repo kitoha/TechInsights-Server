@@ -1,9 +1,9 @@
 package com.techinsights.batch.summary.service
 
-import com.techinsights.domain.dto.gemini.ArticleInput
-import com.techinsights.domain.dto.gemini.SummaryResultWithId
+import com.techinsights.domain.dto.summary.ArticleInput
+import com.techinsights.domain.dto.summary.SummaryResultWithId
 import com.techinsights.domain.enums.Category
-import com.techinsights.domain.service.gemini.BatchSummaryValidator
+import com.techinsights.domain.service.summary.BatchSummaryValidator
 import org.springframework.stereotype.Component
 
 @Component

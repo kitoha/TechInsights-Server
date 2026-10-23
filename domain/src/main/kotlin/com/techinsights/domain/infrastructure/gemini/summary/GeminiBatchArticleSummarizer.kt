@@ -2,13 +2,13 @@ package com.techinsights.domain.infrastructure.gemini.summary
 
 import com.techinsights.domain.infrastructure.gemini.parser.StreamingJsonParser
 import com.techinsights.domain.infrastructure.gemini.prompt.BatchPromptBuilder
-import com.techinsights.domain.service.gemini.BatchArticleSummarizer
+import com.techinsights.domain.service.summary.BatchArticleSummarizer
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.genai.Client
 import com.google.genai.types.GenerateContentConfig
 import com.techinsights.domain.infrastructure.gemini.GeminiProperties
-import com.techinsights.domain.dto.gemini.ArticleInput
-import com.techinsights.domain.dto.gemini.SummaryResultWithId
+import com.techinsights.domain.dto.summary.ArticleInput
+import com.techinsights.domain.dto.summary.SummaryResultWithId
 import com.techinsights.domain.enums.Category
 import com.techinsights.domain.enums.ErrorType
 import com.techinsights.domain.enums.GeminiModelType

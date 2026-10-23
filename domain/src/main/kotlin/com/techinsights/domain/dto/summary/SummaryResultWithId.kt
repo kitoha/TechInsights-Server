@@ -1,4 +1,4 @@
-package com.techinsights.domain.dto.gemini
+package com.techinsights.domain.dto.summary
 
 import com.techinsights.domain.enums.ErrorType
 

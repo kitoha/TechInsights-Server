@@ -1,7 +1,7 @@
 package com.techinsights.domain.infrastructure.gemini.parser
 
 import com.techinsights.domain.dto.community.CommunityAnalysisResult
-import com.techinsights.domain.dto.gemini.SummaryResultWithId
+import com.techinsights.domain.dto.summary.SummaryResultWithId
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe

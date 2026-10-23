@@ -5,7 +5,7 @@ import com.techinsights.batch.summary.dto.BatchRequest
 import com.techinsights.batch.summary.dto.BatchResult
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.enums.ErrorType
-import com.techinsights.domain.service.gemini.BatchArticleSummarizer
+import com.techinsights.domain.service.summary.BatchArticleSummarizer
 import io.github.resilience4j.circuitbreaker.CircuitBreaker
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
 import io.kotest.core.spec.style.FunSpec
