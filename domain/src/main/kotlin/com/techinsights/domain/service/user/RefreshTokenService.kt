@@ -1,6 +1,7 @@
 package com.techinsights.domain.service.user
 
 import com.techinsights.domain.dto.user.RefreshTokenDto
+import com.techinsights.domain.dto.user.RefreshTokenRotationResult
 import com.techinsights.domain.entity.user.RefreshToken
 import com.techinsights.domain.repository.user.RefreshTokenRepository
 import com.techinsights.domain.utils.Tsid
@@ -36,6 +37,33 @@ class RefreshTokenService(
             }
 
         return RefreshTokenDto.fromEntity(refreshTokenRepository.save(tokenEntity))
+    }
+
+    @Transactional
+    fun rotate(presentedHash: String, newHash: String, newExpiryAt: Instant): RefreshTokenRotationResult {
+        val current = refreshTokenRepository.findByHashForUpdate(presentedHash).orElse(null)
+        if (current != null) {
+            if (current.isExpired()) {
+                refreshTokenRepository.delete(current)
+                return RefreshTokenRotationResult.Expired
+            }
+            current.updateToken(newHash, newExpiryAt)
+            refreshTokenRepository.save(current)
+            return RefreshTokenRotationResult.Rotated
+        }
+
+        val rotatedAway = refreshTokenRepository.findByPreviousHashForUpdate(presentedHash).orElse(null)
+            ?: return RefreshTokenRotationResult.NotFound
+        if (!rotatedAway.isRecentlyRotated()) {
+            return RefreshTokenRotationResult.ReuseDetected
+        }
+        if (rotatedAway.isExpired()) {
+            refreshTokenRepository.delete(rotatedAway)
+            return RefreshTokenRotationResult.Expired
+        }
+        rotatedAway.updateToken(newHash, newExpiryAt)
+        refreshTokenRepository.save(rotatedAway)
+        return RefreshTokenRotationResult.Rotated
     }
 
     @Transactional(readOnly = true)

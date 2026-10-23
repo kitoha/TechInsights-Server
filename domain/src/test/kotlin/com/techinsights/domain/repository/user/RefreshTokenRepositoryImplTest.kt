@@ -54,4 +54,22 @@ class RefreshTokenRepositoryImplTest : FunSpec({
         result.id shouldBe 1L
         verify(exactly = 1) { jpaRepository.save(refreshToken) }
     }
+
+    test("해시값으로 잠금 조회할 수 있어야 한다") {
+        every { jpaRepository.findByTokenHashForUpdate("hash-123") } returns Optional.of(refreshToken)
+
+        val result = repository.findByHashForUpdate("hash-123")
+
+        result.get().userId shouldBe 100L
+        verify(exactly = 1) { jpaRepository.findByTokenHashForUpdate("hash-123") }
+    }
+
+    test("이전 해시값으로 잠금 조회할 수 있어야 한다") {
+        every { jpaRepository.findByPreviousTokenHashForUpdate("prev-123") } returns Optional.of(refreshToken)
+
+        val result = repository.findByPreviousHashForUpdate("prev-123")
+
+        result.get().userId shouldBe 100L
+        verify(exactly = 1) { jpaRepository.findByPreviousTokenHashForUpdate("prev-123") }
+    }
 })
