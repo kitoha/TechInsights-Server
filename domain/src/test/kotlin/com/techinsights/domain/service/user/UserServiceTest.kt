@@ -81,15 +81,25 @@ class UserServiceTest : FunSpec({
             
             every { userRepository.findById(1L) } returns Optional.of(user)
             every { nicknameValidator.validate(newNickname) } returns Unit
-            every { userRepository.existsByNickname(newNickname) } returns false
-            every { userRepository.save(any()) } answers { it.invocation.args[0] as User }
+            every { userRepository.existsByNicknameIgnoreCaseAndIdNot(newNickname, 1L) } returns false
+            every { userRepository.saveNickname(any()) } answers { it.invocation.args[0] as User }
 
             val result = userService.updateNickname(1L, newNickname)
 
             result.nickname shouldBe newNickname
             verify { nicknameValidator.validate(newNickname) }
-            verify { userRepository.existsByNickname(newNickname) }
-            verify { userRepository.save(any()) }
+            verify { userRepository.existsByNicknameIgnoreCaseAndIdNot(newNickname, 1L) }
+            verify { userRepository.saveNickname(any()) }
+        }
+
+        test("성공 - 대소문자만 바꾸는 변경은 본인을 중복으로 취급하지 않는다") {
+            val user = createTestUser("oldNickname")
+            every { userRepository.findById(1L) } returns Optional.of(user)
+            every { nicknameValidator.validate("OldNickname") } returns Unit
+            every { userRepository.existsByNicknameIgnoreCaseAndIdNot("OldNickname", 1L) } returns false
+            every { userRepository.saveNickname(any()) } answers { it.invocation.args[0] as User }
+
+            userService.updateNickname(1L, "OldNickname").nickname shouldBe "OldNickname"
         }
 
         test("스킵 - 기존 닉네임과 동일하면 검증 없이 즉시 반환한다") {
@@ -102,8 +112,8 @@ class UserServiceTest : FunSpec({
 
             result.nickname shouldBe currentNickname
             verify(exactly = 0) { nicknameValidator.validate(any()) }
-            verify(exactly = 0) { userRepository.existsByNickname(any()) }
-            verify(exactly = 0) { userRepository.save(any()) }
+            verify(exactly = 0) { userRepository.existsByNicknameIgnoreCaseAndIdNot(any(), any()) }
+            verify(exactly = 0) { userRepository.saveNickname(any()) }
         }
 
         test("실패 - 유효성 검증 실패 시 InvalidNicknameException이 발생한다") {
@@ -115,7 +125,7 @@ class UserServiceTest : FunSpec({
             shouldThrow<InvalidNicknameException> {
                 userService.updateNickname(1L, invalidNickname)
             }
-            verify(exactly = 0) { userRepository.existsByNickname(any()) }
+            verify(exactly = 0) { userRepository.existsByNicknameIgnoreCaseAndIdNot(any(), any()) }
         }
 
         test("실패 - 중복된 닉네임이면 DuplicateNicknameException이 발생한다") {
@@ -123,12 +133,12 @@ class UserServiceTest : FunSpec({
             val duplicateNickname = "alreadyTaken"
             every { userRepository.findById(1L) } returns Optional.of(user)
             every { nicknameValidator.validate(duplicateNickname) } returns Unit
-            every { userRepository.existsByNickname(duplicateNickname) } returns true
+            every { userRepository.existsByNicknameIgnoreCaseAndIdNot(duplicateNickname, 1L) } returns true
 
             shouldThrow<DuplicateNicknameException> {
                 userService.updateNickname(1L, duplicateNickname)
             }
-            verify(exactly = 0) { userRepository.save(any()) }
+            verify(exactly = 0) { userRepository.saveNickname(any()) }
         }
 
         test("실패 - 사용자가 존재하지 않으면 UserNotFoundException이 발생한다") {
