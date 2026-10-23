@@ -1,5 +1,6 @@
 package com.techinsights.api.search
 
+import com.techinsights.api.config.MAX_PAGE_SIZE
 import com.techinsights.domain.config.search.SemanticSearchProperties
 import com.techinsights.domain.dto.search.SearchRequest
 import com.techinsights.domain.enums.search.SearchSortType
@@ -34,7 +35,7 @@ class SearchController(
   fun fullSearch(
     @RequestParam @NotBlank(message = "query must not be blank") query: String,
     @RequestParam(defaultValue = "0") @Min(0) page: Int,
-    @RequestParam(defaultValue = "10") @Min(1) @Max(100) size: Int,
+    @RequestParam(defaultValue = "10") @Min(1) @Max(MAX_PAGE_SIZE) size: Int,
     @RequestParam(defaultValue = "RELEVANCE") sortBy: SearchSortType,
     @RequestParam(required = false) companyId: Long?
   ): ResponseEntity<FullSearchResponse> {
