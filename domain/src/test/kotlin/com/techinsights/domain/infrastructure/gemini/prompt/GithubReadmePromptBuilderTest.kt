@@ -1,4 +1,4 @@
-package com.techinsights.domain.service.gemini
+package com.techinsights.domain.infrastructure.gemini.prompt
 
 import com.techinsights.domain.dto.gemini.ArticleInput
 import io.kotest.core.spec.style.FunSpec

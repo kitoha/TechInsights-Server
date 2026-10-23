@@ -1,4 +1,4 @@
-package com.techinsights.domain.service.gemini
+package com.techinsights.domain.infrastructure.gemini.prompt
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.kotest.core.spec.style.FunSpec

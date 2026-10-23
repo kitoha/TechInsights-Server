@@ -1,4 +1,4 @@
-package com.techinsights.domain.service.embedding
+package com.techinsights.domain.infrastructure.gemini.embedding
 
 import com.google.genai.Client
 import com.google.genai.Models

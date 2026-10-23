@@ -1,4 +1,4 @@
-package com.techinsights.domain.config.gemini
+package com.techinsights.domain.infrastructure.gemini
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Configuration

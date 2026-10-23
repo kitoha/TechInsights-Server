@@ -1,5 +1,6 @@
-package com.techinsights.domain.service.embedding
+package com.techinsights.domain.infrastructure.gemini.embedding
 
+import com.techinsights.domain.service.embedding.EmbeddingService
 import com.google.genai.Client
 import com.google.genai.types.EmbedContentConfig
 import com.techinsights.domain.config.cache.CacheConfig

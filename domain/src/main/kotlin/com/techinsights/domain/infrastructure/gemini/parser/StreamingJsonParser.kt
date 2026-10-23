@@ -1,4 +1,4 @@
-package com.techinsights.domain.service.gemini
+package com.techinsights.domain.infrastructure.gemini.parser
 
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
