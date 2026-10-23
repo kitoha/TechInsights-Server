@@ -9,8 +9,6 @@ import org.springframework.data.repository.query.Param
 import java.util.Optional
 
 interface RefreshTokenJpaRepository : JpaRepository<RefreshToken, Long> {
-    fun findByTokenHash(tokenHash: String): Optional<RefreshToken>
-    fun findByPreviousTokenHash(previousTokenHash: String): Optional<RefreshToken>
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from RefreshToken r where r.tokenHash = :tokenHash")

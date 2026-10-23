@@ -26,16 +26,6 @@ class RefreshTokenRepositoryImplTest : FunSpec({
         clearAllMocks()
     }
 
-    test("해시값으로 리프레시 토큰을 찾을 수 있어야 한다") {
-        every { jpaRepository.findByTokenHash("hash-123") } returns Optional.of(refreshToken)
-
-        val result = repository.findByHash("hash-123")
-
-        result.isPresent shouldBe true
-        result.get().userId shouldBe 100L
-        verify(exactly = 1) { jpaRepository.findByTokenHash("hash-123") }
-    }
-
     test("사용자 ID와 기기 ID로 리프레시 토큰을 찾을 수 있어야 한다") {
         every { jpaRepository.findByUserIdAndDeviceId(100L, "device-1") } returns Optional.of(refreshToken)
 

@@ -60,20 +60,6 @@ class RefreshTokenService(
         return RefreshTokenRotationResult.Rotated
     }
 
-    @Transactional(readOnly = true)
-    fun findByHash(hash: String): RefreshTokenDto? {
-        return refreshTokenRepository.findByHash(hash)
-            .map(RefreshTokenDto::fromEntity)
-            .orElse(null)
-    }
-
-    @Transactional(readOnly = true)
-    fun findByPreviousHash(hash: String): RefreshTokenDto? {
-        return refreshTokenRepository.findByPreviousHash(hash)
-            .map(RefreshTokenDto::fromEntity)
-            .orElse(null)
-    }
-
     @Transactional
     fun deleteByHash(hash: String) {
         val session = refreshTokenRepository.findByHashForUpdate(hash).orElse(null)
