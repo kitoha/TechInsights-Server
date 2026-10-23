@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration
 import java.time.Duration
 
 @Configuration
-@EnableConfigurationProperties(RateLimiterProperties::class, CircuitBreakerProperties::class)
+@EnableConfigurationProperties(RateLimiterProperties::class, CircuitBreakerProperties::class, DailyQuotaProperties::class)
 class ResilienceConfig(
   private val rateLimiterProperties: RateLimiterProperties,
   private val circuitBreakerProperties: CircuitBreakerProperties
