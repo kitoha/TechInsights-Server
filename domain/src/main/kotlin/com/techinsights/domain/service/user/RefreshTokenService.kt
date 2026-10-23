@@ -27,6 +27,8 @@ class RefreshTokenService(
         expiryAt: Instant,
         maxSessions: Int
     ): RefreshTokenDto {
+        refreshTokenRepository.lockUserSessions(userId)
+
         deviceId?.let { refreshTokenRepository.findByUserAndDevice(userId, it).orElse(null) }
             ?.let { refreshTokenRepository.delete(it) }
 
@@ -44,6 +46,7 @@ class RefreshTokenService(
         refreshTokenRepository.findAllByUserIdOrderByLastUsedDesc(userId)
             .filter { it.id != session.id }
             .drop(maxSessions - 1)
+            .sortedBy { it.id }
             .forEach { refreshTokenRepository.delete(it) }
 
         return RefreshTokenDto.fromEntity(session)
