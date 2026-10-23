@@ -43,7 +43,7 @@ class CompanyController(
   }
 
   @DeleteMapping("/api/v1/companies/{companyId}")
-  fun deleteCompany(companyId: String): ResponseEntity<Boolean> {
+  fun deleteCompany(@PathVariable companyId: String): ResponseEntity<Boolean> {
     return ResponseEntity.ok(companyService.deleteCompany(companyId))
   }
 

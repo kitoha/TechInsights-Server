@@ -41,7 +41,8 @@ class SearchRepositoryImpl(
     }
 
     val relevanceScore = queryBuilder.buildRelevanceScore(request.query)
-    val searchCondition = queryBuilder.buildSearchCondition(request.query, request.companyId)
+    val matchedCompanyIds = companySearchQueryRepository.findIdsByNameContaining(request.query)
+    val searchCondition = queryBuilder.buildSearchCondition(request.query, request.companyId, matchedCompanyIds)
     val orderSpecifiers = queryBuilder.buildOrderSpecifier(request.sortBy, relevanceScore)
 
     val projections = postSearchQueryRepository.findForFullSearch(
@@ -73,6 +74,7 @@ class SearchRepositoryImpl(
     val relevanceScore = queryBuilder.buildRelevanceScore(query)
     val projections = postSearchQueryRepository.findForInstantSearch(
       query = query,
+      matchedCompanyIds = companySearchQueryRepository.findIdsByNameContaining(query),
       relevanceScore = relevanceScore,
       limit = limit
     )

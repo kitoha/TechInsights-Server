@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.techinsights.domain.service.quota.DailyQuota
+import com.techinsights.domain.service.quota.DailyQuotaService
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import kotlin.coroutines.CoroutineContext
@@ -29,13 +31,13 @@ class GeminiReadmeBatchSummarizer(
     private val mapper: ObjectMapper,
     rateLimiterRegistry: RateLimiterRegistry,
     circuitBreakerRegistry: CircuitBreakerRegistry,
+    private val dailyQuotaService: DailyQuotaService,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO,
 ) : GithubReadmeBatchSummarizer {
 
     private val log = LoggerFactory.getLogger(javaClass)
 
     private val rpmLimiter = rateLimiterRegistry.rateLimiter("geminiReadmeRpm")
-    private val rpdLimiter = rateLimiterRegistry.rateLimiter("geminiReadmeRpd")
     private val circuitBreaker = circuitBreakerRegistry.circuitBreaker("geminiBatch")
 
     override fun summarize(items: List<ArticleInput>): Flow<SummaryResultWithId> {
@@ -75,6 +77,13 @@ class GeminiReadmeBatchSummarizer(
         val prompt = promptBuilder.buildPrompt(items)
         val config = buildGeminiConfig(items.size)
 
+        if (!dailyQuotaService.tryReserve(DailyQuota.README_SUMMARY)) {
+            log.warn("Daily Gemini quota exhausted for README summary. repos=${items.map { it.id }}")
+            items.forEach { item ->
+                send(SummaryResultWithId(item.id, false, error = "Daily Gemini quota exhausted", errorType = ErrorType.RATE_LIMIT))
+            }
+            return@channelFlow
+        }
         acquireRateLimiterPermission()
 
         try {
@@ -154,7 +163,6 @@ class GeminiReadmeBatchSummarizer(
 
     private suspend fun acquireRateLimiterPermission() {
         withContext(ioDispatcher) {
-            rpdLimiter.acquirePermission()
             rpmLimiter.acquirePermission()
         }
     }
