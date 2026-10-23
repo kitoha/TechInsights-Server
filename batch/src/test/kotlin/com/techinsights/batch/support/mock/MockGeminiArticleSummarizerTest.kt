@@ -1,6 +1,5 @@
 package com.techinsights.batch.support.mock
 
-import com.techinsights.domain.enums.GeminiModelType
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -14,10 +13,9 @@ class MockGeminiArticleSummarizerTest : FunSpec({
     test("summarize should return valid SummaryResult") {
         // given
         val article = "This is a test article about Spring Boot and Kotlin development."
-        val modelType = GeminiModelType.GEMINI_2_5_FLASH_LITE
 
         // when
-        val result = mockSummarizer.summarize(article, modelType)
+        val result = mockSummarizer.summarize(article)
 
         // then
         result shouldNotBe null
@@ -29,10 +27,9 @@ class MockGeminiArticleSummarizerTest : FunSpec({
     test("summarize should include MOCK_SUMMARY prefix in summary") {
         // given
         val article = "Test article content"
-        val modelType = GeminiModelType.GEMINI_2_5_FLASH_LITE
 
         // when
-        val result = mockSummarizer.summarize(article, modelType)
+        val result = mockSummarizer.summarize(article)
 
         // then
         result.summary shouldStartWith "MOCK_SUMMARY:"
@@ -41,10 +38,9 @@ class MockGeminiArticleSummarizerTest : FunSpec({
     test("summarize should include MOCK_PREVIEW prefix in preview") {
         // given
         val article = "Another test article"
-        val modelType = GeminiModelType.GEMINI_2_5_FLASH_LITE
 
         // when
-        val result = mockSummarizer.summarize(article, modelType)
+        val result = mockSummarizer.summarize(article)
 
         // then
         result.preview shouldStartWith "MOCK_PREVIEW:"
@@ -53,10 +49,9 @@ class MockGeminiArticleSummarizerTest : FunSpec({
     test("summarize should truncate article to 100 characters in preview") {
         // given
         val longArticle = "A".repeat(200)
-        val modelType = GeminiModelType.GEMINI_2_5_FLASH_LITE
 
         // when
-        val result = mockSummarizer.summarize(longArticle, modelType)
+        val result = mockSummarizer.summarize(longArticle)
 
         // then
         result.preview shouldContain "A".repeat(100)
@@ -66,11 +61,10 @@ class MockGeminiArticleSummarizerTest : FunSpec({
     test("summarize should return one of the predefined categories") {
         // given
         val article = "Test article about backend development"
-        val modelType = GeminiModelType.GEMINI_2_5_FLASH_LITE
         val validCategories = listOf("FrontEnd", "BackEnd", "AI", "BigData", "Infra", "Architecture")
 
         // when
-        val result = mockSummarizer.summarize(article, modelType)
+        val result = mockSummarizer.summarize(article)
 
         // then
         result.categories.size shouldBe 1
@@ -80,10 +74,9 @@ class MockGeminiArticleSummarizerTest : FunSpec({
     test("summarize should include category in summary text") {
         // given
         val article = "Article about microservices"
-        val modelType = GeminiModelType.GEMINI_2_5_FLASH_LITE
 
         // when
-        val result = mockSummarizer.summarize(article, modelType)
+        val result = mockSummarizer.summarize(article)
 
         // then
         result.summary shouldContain result.categories[0]
@@ -93,10 +86,9 @@ class MockGeminiArticleSummarizerTest : FunSpec({
     test("summarize should handle short articles") {
         // given
         val shortArticle = "Short"
-        val modelType = GeminiModelType.GEMINI_2_5_FLASH_LITE
 
         // when
-        val result = mockSummarizer.summarize(shortArticle, modelType)
+        val result = mockSummarizer.summarize(shortArticle)
 
         // then
         result.preview shouldContain shortArticle
@@ -106,10 +98,9 @@ class MockGeminiArticleSummarizerTest : FunSpec({
     test("summarize should replace newlines with spaces in preview") {
         // given
         val articleWithNewlines = "Line 1\nLine 2\nLine 3\nLine 4"
-        val modelType = GeminiModelType.GEMINI_2_5_FLASH_LITE
 
         // when
-        val result = mockSummarizer.summarize(articleWithNewlines, modelType)
+        val result = mockSummarizer.summarize(articleWithNewlines)
 
         // then
         result.preview shouldContain " "
@@ -120,9 +111,9 @@ class MockGeminiArticleSummarizerTest : FunSpec({
         val article = "Test article for different models"
 
         // when
-        val result1 = mockSummarizer.summarize(article, GeminiModelType.GEMINI_2_5_FLASH_LITE)
-        val result2 = mockSummarizer.summarize(article, GeminiModelType.GEMINI_2_5_FLASH)
-        val result3 = mockSummarizer.summarize(article, GeminiModelType.GEMINI_EMBEDDING)
+        val result1 = mockSummarizer.summarize(article)
+        val result2 = mockSummarizer.summarize(article)
+        val result3 = mockSummarizer.summarize(article)
 
         // then
         result1 shouldNotBe null
@@ -136,10 +127,9 @@ class MockGeminiArticleSummarizerTest : FunSpec({
     test("summarize should handle empty article") {
         // given
         val emptyArticle = ""
-        val modelType = GeminiModelType.GEMINI_2_5_FLASH_LITE
 
         // when
-        val result = mockSummarizer.summarize(emptyArticle, modelType)
+        val result = mockSummarizer.summarize(emptyArticle)
 
         // then
         result.summary shouldNotBe null
@@ -150,10 +140,9 @@ class MockGeminiArticleSummarizerTest : FunSpec({
     test("summarize should handle very long articles") {
         // given
         val longArticle = "This is a very long article. ".repeat(1000)
-        val modelType = GeminiModelType.GEMINI_2_5_FLASH_LITE
 
         // when
-        val result = mockSummarizer.summarize(longArticle, modelType)
+        val result = mockSummarizer.summarize(longArticle)
 
         // then
         result shouldNotBe null
@@ -163,10 +152,9 @@ class MockGeminiArticleSummarizerTest : FunSpec({
     test("summarize should handle special characters") {
         // given
         val articleWithSpecialChars = "Article with special chars: !@#$%^&*()[]{}|<>?/~`"
-        val modelType = GeminiModelType.GEMINI_2_5_FLASH_LITE
 
         // when
-        val result = mockSummarizer.summarize(articleWithSpecialChars, modelType)
+        val result = mockSummarizer.summarize(articleWithSpecialChars)
 
         // then
         result shouldNotBe null
@@ -176,10 +164,9 @@ class MockGeminiArticleSummarizerTest : FunSpec({
     test("summarize should handle Korean text") {
         // given
         val koreanArticle = "한글로 작성된 기술 블로그 포스트입니다. 스프링 부트와 코틀린에 대한 내용을 다룹니다."
-        val modelType = GeminiModelType.GEMINI_2_5_FLASH_LITE
 
         // when
-        val result = mockSummarizer.summarize(koreanArticle, modelType)
+        val result = mockSummarizer.summarize(koreanArticle)
 
         // then
         result shouldNotBe null

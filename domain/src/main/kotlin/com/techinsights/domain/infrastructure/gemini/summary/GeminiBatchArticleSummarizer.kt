@@ -11,7 +11,7 @@ import com.techinsights.domain.dto.summary.ArticleInput
 import com.techinsights.domain.dto.summary.SummaryResultWithId
 import com.techinsights.domain.enums.Category
 import com.techinsights.domain.enums.ErrorType
-import com.techinsights.domain.enums.GeminiModelType
+import com.techinsights.domain.infrastructure.gemini.GeminiModelType
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry
 import kotlinx.coroutines.Dispatchers
@@ -44,16 +44,13 @@ class GeminiBatchArticleSummarizer(
     private val rpmLimiter = rateLimiterRegistry.rateLimiter("geminiBatchRpm")
     private val circuitBreaker = circuitBreakerRegistry.circuitBreaker("geminiBatch")
 
-    override fun summarizeBatch(
-        articles: List<ArticleInput>,
-        modelType: GeminiModelType
-    ): Flow<SummaryResultWithId> {
+    override fun summarizeBatch(articles: List<ArticleInput>): Flow<SummaryResultWithId> {
         return channelFlow {
             val results = mutableSetOf<String>()
             var lastErrorType: ErrorType? = null
             var lastErrorMessage: String? = null
             
-            callGeminiApi(articles, modelType).collect { result ->
+            callGeminiApi(articles).collect { result ->
                 if (result.id == "SYSTEM_ERROR_MARKER") {
                     lastErrorType = result.errorType
                     lastErrorMessage = result.error
@@ -85,10 +82,9 @@ class GeminiBatchArticleSummarizer(
     }
 
     private fun callGeminiApi(
-        articles: List<ArticleInput>,
-        modelType: GeminiModelType
+        articles: List<ArticleInput>
     ): Flow<SummaryResultWithId> = channelFlow {
-        val modelName = modelType.get()
+        val modelName = MODEL.get()
         val categories = Category.entries.map { it.name }
 
         val prompt = promptBuilder.buildPrompt(articles, categories)
@@ -160,5 +156,9 @@ class GeminiBatchArticleSummarizer(
         withContext(ioDispatcher) {
             limiter.acquirePermission()
         }
+    }
+
+    companion object {
+        private val MODEL = GeminiModelType.GEMINI_2_5_FLASH_LITE
     }
 }

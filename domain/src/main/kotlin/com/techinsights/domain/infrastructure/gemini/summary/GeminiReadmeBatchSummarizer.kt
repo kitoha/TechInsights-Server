@@ -10,7 +10,7 @@ import com.techinsights.domain.infrastructure.gemini.GeminiProperties
 import com.techinsights.domain.dto.summary.ArticleInput
 import com.techinsights.domain.dto.summary.SummaryResultWithId
 import com.techinsights.domain.enums.ErrorType
-import com.techinsights.domain.enums.GeminiModelType
+import com.techinsights.domain.infrastructure.gemini.GeminiModelType
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry
 import kotlinx.coroutines.Dispatchers

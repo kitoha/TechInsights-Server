@@ -8,7 +8,7 @@ import com.google.genai.types.GenerateContentConfig
 import com.techinsights.domain.infrastructure.gemini.GeminiProperties
 import com.techinsights.domain.dto.summary.SummaryResult
 import com.techinsights.domain.enums.Category
-import com.techinsights.domain.enums.GeminiModelType
+import com.techinsights.domain.infrastructure.gemini.GeminiModelType
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -26,13 +26,13 @@ class GeminiArticleSummarizer(
 
   private val rateLimiter = rateLimiterRegistry.rateLimiter("geminiArticleSummarizer")
 
-  override fun summarize(article: String, modelType: GeminiModelType): SummaryResult {
+  override fun summarize(article: String): SummaryResult {
     if (article.isBlank()) {
       log.warn("Article is blank, skipping summarization.")
       throw IllegalArgumentException("Article content cannot be blank.")
     }
 
-    val modelName = modelType.get()
+    val modelName = MODEL.get()
 
     val prompt  = promptTemplateEngine.buildPrompt(article, Category.entries.map { it.name })
     val schema  = promptTemplateEngine.buildSchema(Category.entries.map { it.name })
@@ -62,4 +62,7 @@ class GeminiArticleSummarizer(
     }
   }
 
+  companion object {
+    private val MODEL = GeminiModelType.GEMINI_2_5_FLASH_LITE
+  }
 }

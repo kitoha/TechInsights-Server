@@ -5,7 +5,7 @@ import com.google.genai.Client
 import com.google.genai.types.EmbedContentConfig
 import com.techinsights.domain.config.cache.CacheConfig
 import com.techinsights.domain.dto.embedding.EmbeddingRequest
-import com.techinsights.domain.enums.GeminiModelType
+import com.techinsights.domain.infrastructure.gemini.GeminiModelType
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry
 import org.springframework.cache.Cache
 import org.springframework.cache.CacheManager
@@ -24,9 +24,9 @@ class EmbeddingServiceImpl(
     "Cache ${CacheConfig.QUERY_EMBEDDING} is not registered"
   }
 
-  override fun generateEmbedding(request: EmbeddingRequest, modelType: GeminiModelType): List<Float> {
+  override fun generateEmbedding(request: EmbeddingRequest): List<Float> {
     return rateLimiter.executeSupplier {
-      val modelName = modelType.get()
+      val modelName = MODEL.get()
       val combinedInput = request.toPromptString()
 
       val embedContentConfig = buildEmbedConfig()
@@ -55,7 +55,7 @@ class EmbeddingServiceImpl(
     )
     return queryRateLimiter.executeSupplier {
       val response = geminiClient.models.embedContent(
-        GeminiModelType.GEMINI_EMBEDDING.get(),
+        MODEL.get(),
         request.toPromptString(),
         buildEmbedConfig()
       )
@@ -67,12 +67,11 @@ class EmbeddingServiceImpl(
     question.trim().replace(WHITESPACE, " ").lowercase()
 
   override fun generateEmbeddingBatch(
-    requests: List<EmbeddingRequest>,
-    modelType: GeminiModelType
+    requests: List<EmbeddingRequest>
   ): List<EmbeddingService.EmbeddingResult> {
     if (requests.isEmpty()) return emptyList()
 
-    val modelName = modelType.get()
+    val modelName = MODEL.get()
     val embedContentConfig = buildEmbedConfig()
 
     return requests.map { request ->
@@ -81,13 +80,12 @@ class EmbeddingServiceImpl(
   }
 
   override fun batchEmbedTexts(
-    promptStrings: List<String>,
-    modelType: GeminiModelType
+    promptStrings: List<String>
   ): List<List<Float>> {
     if (promptStrings.isEmpty()) return emptyList()
 
     return rateLimiter.executeSupplier {
-      val modelName = modelType.get()
+      val modelName = MODEL.get()
       val config = buildEmbedConfig()
       val response = geminiClient.models.embedContent(modelName, promptStrings, config)
       val embeddings = response.embeddings().orElse(emptyList())
@@ -144,6 +142,7 @@ class EmbeddingServiceImpl(
   }
 
   companion object {
+    private val MODEL = GeminiModelType.GEMINI_EMBEDDING
     private val WHITESPACE = Regex("\\s+")
   }
 }
