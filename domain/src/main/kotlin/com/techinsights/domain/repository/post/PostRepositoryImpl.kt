@@ -396,6 +396,15 @@ class PostRepositoryImpl(
   }
 
   @Transactional
+  override fun incrementViewCount(postId: Long) {
+    val post = QPost.post
+    queryFactory.update(post)
+      .set(post.viewCount, post.viewCount.add(1))
+      .where(post.id.eq(postId))
+      .execute()
+  }
+
+  @Transactional
   override fun incrementLikeCount(postId: Long) {
     val post = QPost.post
     val affected = queryFactory.update(post)

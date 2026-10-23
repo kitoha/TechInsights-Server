@@ -87,4 +87,14 @@ class PostRepositoryWriteTest(
     row["summary_failure_count"] shouldBe 3
     jdbc.queryForList("SELECT category FROM post_categories WHERE post_id = 1", String::class.java) shouldBe listOf("BackEnd")
   }
+
+  test("incrementViewCount adds one to the given post only") {
+    fixtures.insertPost(1L, viewCount = 5)
+    fixtures.insertPost(2L, viewCount = 5)
+
+    repository.incrementViewCount(1L)
+
+    jdbc.queryForObject("SELECT view_count FROM posts WHERE id = 1", Long::class.java) shouldBe 6L
+    jdbc.queryForObject("SELECT view_count FROM posts WHERE id = 2", Long::class.java) shouldBe 5L
+  }
 })

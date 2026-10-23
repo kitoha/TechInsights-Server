@@ -27,6 +27,7 @@ interface PostRepository {
   fun getPostsByCategory(pageable: Pageable, category: Category, companyId: String?, sort: PostSortType): Page<PostDto>
   fun updateEmbeddingStatusBulk(postIds: List<String>): Long
   fun incrementSummaryFailureCount(postId: String)
+  fun incrementViewCount(postId: Long)
   fun incrementLikeCount(postId: Long)
   fun decrementLikeCount(postId: Long)
   fun getLikeCount(postId: Long): Long
