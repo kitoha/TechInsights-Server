@@ -29,6 +29,10 @@ class RefreshTokenRepositoryImpl(
         jpaRepository.insertRetired(hash, familyId, retiredAt)
     }
 
+    override fun lockUserSessions(userId: Long) {
+        jpaRepository.lockUserSessions(userId)
+    }
+
     override fun findByUserAndDevice(userId: Long, deviceId: String?): Optional<RefreshToken> {
         return jpaRepository.findByUserIdAndDeviceId(userId, deviceId)
     }

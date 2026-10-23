@@ -11,6 +11,8 @@ interface RefreshTokenRepository {
     fun findByFamilyIdForUpdate(familyId: Long): Optional<RefreshToken>
     fun findRetiredByHash(hash: String): Optional<RetiredRefreshToken>
     fun retireHash(hash: String, familyId: Long, retiredAt: Instant)
+    /** 사용자별 세션 생성/정리를 직렬화한다 (트랜잭션 종료 시 해제). */
+    fun lockUserSessions(userId: Long)
     fun findByUserAndDevice(userId: Long, deviceId: String?): Optional<RefreshToken>
     fun findAllByUserIdOrderByLastUsedDesc(userId: Long): List<RefreshToken>
     fun delete(refreshToken: RefreshToken)

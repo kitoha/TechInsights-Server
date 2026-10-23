@@ -49,6 +49,9 @@ interface RefreshTokenJpaRepository : JpaRepository<RefreshToken, Long> {
     @Query(value = "DELETE FROM refresh_tokens WHERE expiry_at < :now", nativeQuery = true)
     fun deleteExpiredBefore(@Param("now") now: Instant): Int
 
+    @Query(value = "SELECT 1 FROM (SELECT pg_advisory_xact_lock(:userId)) AS locked", nativeQuery = true)
+    fun lockUserSessions(@Param("userId") userId: Long): Int
+
     fun findByUserIdOrderByUpdatedAtDesc(userId: Long): List<RefreshToken>
     fun deleteByUserId(userId: Long)
     fun findByUserIdAndDeviceId(userId: Long, deviceId: String?): Optional<RefreshToken>

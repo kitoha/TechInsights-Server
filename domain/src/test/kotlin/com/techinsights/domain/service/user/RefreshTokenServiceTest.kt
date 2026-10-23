@@ -199,6 +199,42 @@ class RefreshTokenServiceTest(
       retiredCount() shouldBe 0
     }
 
+    test("같은 사용자의 동시 로그인에서도 세션 상한을 넘지 않는다") {
+      insertUser(1)
+      val threads = 12
+      val ready = java.util.concurrent.CountDownLatch(threads)
+      val pool = java.util.concurrent.Executors.newFixedThreadPool(threads)
+      val futures = (1..threads).map { i ->
+        pool.submit {
+          ready.countDown()
+          ready.await()
+          login(1, "c$i", maxSessions = 3)
+        }
+      }
+      futures.forEach { it.get() }
+      pool.shutdown()
+
+      sessionCount(1) shouldBe 3
+    }
+
+    test("같은 기기로 동시에 로그인해도 세션은 하나만 남는다") {
+      insertUser(1)
+      val threads = 8
+      val ready = java.util.concurrent.CountDownLatch(threads)
+      val pool = java.util.concurrent.Executors.newFixedThreadPool(threads)
+      val futures = (1..threads).map { i ->
+        pool.submit {
+          ready.countDown()
+          ready.await()
+          login(1, "d$i", deviceId = "same-device")
+        }
+      }
+      futures.forEach { it.get() }
+      pool.shutdown()
+
+      sessionCount(1) shouldBe 1
+    }
+
     test("상한은 사용자별로 적용된다") {
       insertUser(1)
       insertUser(2)
