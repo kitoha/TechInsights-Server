@@ -2,6 +2,7 @@ package com.techinsights.api.exception
 
 import com.fasterxml.jackson.databind.json.JsonMapper
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ProblemDetail
@@ -42,9 +43,11 @@ object ProblemDetails {
         code: String,
         detail: String,
         path: String? = null,
-        errors: Map<String, Any>? = null
+        errors: Map<String, Any>? = null,
+        headers: HttpHeaders = HttpHeaders.EMPTY
     ): ResponseEntity<ProblemDetail> =
         ResponseEntity.status(status)
+            .headers(headers)
             .contentType(MediaType.APPLICATION_PROBLEM_JSON)
             .body(create(status, code, detail, path, errors))
 
