@@ -49,14 +49,14 @@ class PostLikeService(
     private fun findExistingLike(postId: Long, requester: Requester): PostLike? {
         return when (requester) {
             is Requester.Authenticated -> postLikeRepository.findByPostIdAndUserId(postId, requester.userId)
-            is Requester.Anonymous -> postLikeRepository.findAnonymousByPostIdAndIpAddress(postId, requester.ip)
+            is Requester.Anonymous -> postLikeRepository.findAnonymousByPostIdAndAnonymousId(postId, requester.identifier)
         }
     }
 
     private fun handleUnlike(postId: Long, requester: Requester) {
         val deleted = when (requester) {
             is Requester.Authenticated -> postLikeRepository.deleteByPostIdAndUserId(postId, requester.userId)
-            is Requester.Anonymous -> postLikeRepository.deleteAnonymousByPostIdAndIpAddress(postId, requester.ip)
+            is Requester.Anonymous -> postLikeRepository.deleteAnonymousByPostIdAndAnonymousId(postId, requester.identifier)
         }
 
         if (deleted > 0L) {
@@ -69,7 +69,8 @@ class PostLikeService(
             id = Tsid.generateLong(),
             postId = postId,
             userId = if (requester is Requester.Authenticated) requester.userId else null,
-            ipAddress = requester.ip
+            ipAddress = requester.ip,
+            anonymousId = if (requester is Requester.Anonymous) requester.identifier else null
         )
 
         val saved = postLikeSaveHelper.saveIfAbsent(newLike)

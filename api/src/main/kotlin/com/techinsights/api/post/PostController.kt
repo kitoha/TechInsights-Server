@@ -60,13 +60,13 @@ class PostController(
 
     val identifier = when (requester) {
       is Requester.Authenticated -> "U_${requester.userId}"
-      is Requester.Anonymous -> requester.ip
+      is Requester.Anonymous -> requester.identifier
     }
 
     postViewService.recordView(postId, identifier, userAgent)
 
     if (requester is Requester.Anonymous) {
-      postViewService.trackAnonymousPostRead(requester.ip, postId)
+      postViewService.trackAnonymousPostRead(requester.identifier, postId)
     }
 
     return ResponseEntity.ok().build()

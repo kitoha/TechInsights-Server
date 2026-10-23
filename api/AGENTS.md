@@ -25,7 +25,7 @@ class MyControllerTest : FunSpec({
 `Requester` is a sealed class resolved automatically as a controller method parameter — do not construct it manually.
 
 - `Requester.Authenticated` — logged-in user, carries `userId: Long`
-- `Requester.Anonymous` — guest, carries `anonymousId: String` (cookie or IP fallback)
+- `Requester.Anonymous` — guest, carries `anonymousId: String` (the `aid` cookie; `AidInterceptor` exposes the freshly issued aid on the first request). `identifier` is the only identity for read history, recommendations, likes and views. `ip` is for logging / rate limiting only and comes from nginx's single `X-Real-IP`.
 
 ## Cursor Pagination
 
