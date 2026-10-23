@@ -43,6 +43,35 @@ class PostRepositoryImpl(
   }
 
   @Transactional
+  override fun updateSummaryResults(posts: List<PostDto>) {
+    if (posts.isEmpty()) {
+      return
+    }
+
+    val post = QPost.post
+    val now = LocalDateTime.now()
+
+    posts.forEach { dto ->
+      val affected = queryFactory.update(post)
+        .set(post.content, dto.content)
+        .set(post.preview, dto.preview)
+        .set(post.isSummary, dto.isSummary)
+        .set(post.updatedAt, now)
+        .where(post.id.eq(Tsid.decode(dto.id)))
+        .execute()
+
+      if (affected == 0L) {
+        throw PostNotFoundException("Post with ID ${dto.id} not found")
+      }
+    }
+
+    val categoriesById = posts.associate { Tsid.decode(it.id) to it.categories }
+    postJpaRepository.findAllById(categoriesById.keys).forEach { entity ->
+      entity.updateCategories(categoriesById.getValue(entity.id))
+    }
+  }
+
+  @Transactional
   override fun insertAllIgnoringDuplicates(posts: List<PostDto>): Int {
     val now = LocalDateTime.now()
     return posts.sumOf { post ->
