@@ -1,7 +1,6 @@
 package com.techinsights.batch.github.embedding.writer
 
 import com.techinsights.batch.github.embedding.dto.GithubEmbeddingRequestDto
-import com.techinsights.domain.enums.GeminiModelType
 import com.techinsights.domain.service.embedding.EmbeddingService
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -23,7 +22,7 @@ class GithubReadmeEmbeddingWriterTest : FunSpec({
             GithubEmbeddingRequestDto(id = 1L, fullName = "owner/repo1", promptString = "prompt1"),
             GithubEmbeddingRequestDto(id = 2L, fullName = "owner/repo2", promptString = "prompt2"),
         )
-        every { embeddingService.batchEmbedTexts(any(), any()) } returns listOf(
+        every { embeddingService.batchEmbedTexts(any()) } returns listOf(
             listOf(0.1f, 0.2f),
             listOf(0.3f, 0.4f),
         )
@@ -32,9 +31,7 @@ class GithubReadmeEmbeddingWriterTest : FunSpec({
 
         verify(exactly = 1) {
             embeddingService.batchEmbedTexts(
-                listOf("prompt1", "prompt2"),
-                GeminiModelType.GEMINI_EMBEDDING,
-            )
+                listOf("prompt1", "prompt2"))
         }
     }
 
@@ -43,7 +40,7 @@ class GithubReadmeEmbeddingWriterTest : FunSpec({
             GithubEmbeddingRequestDto(id = 1L, fullName = "owner/repo1", promptString = "prompt1"),
             GithubEmbeddingRequestDto(id = 2L, fullName = "owner/repo2", promptString = "prompt2"),
         )
-        every { embeddingService.batchEmbedTexts(any(), any()) } returns listOf(
+        every { embeddingService.batchEmbedTexts(any()) } returns listOf(
             listOf(0.1f, 0.2f),
             listOf(0.3f, 0.4f),
         )
@@ -66,7 +63,7 @@ class GithubReadmeEmbeddingWriterTest : FunSpec({
 
     test("벡터를 pgvector 형식 문자열로 변환한다") {
         val item = GithubEmbeddingRequestDto(id = 1L, fullName = "owner/repo", promptString = "prompt")
-        every { embeddingService.batchEmbedTexts(any(), any()) } returns listOf(listOf(0.1f, 0.2f, 0.3f))
+        every { embeddingService.batchEmbedTexts(any()) } returns listOf(listOf(0.1f, 0.2f, 0.3f))
 
         writer.write(Chunk(listOf(item)))
 
@@ -87,7 +84,7 @@ class GithubReadmeEmbeddingWriterTest : FunSpec({
             GithubEmbeddingRequestDto(id = 1L, fullName = "owner/repo1", promptString = "prompt1"),
             GithubEmbeddingRequestDto(id = 2L, fullName = "owner/repo2", promptString = "prompt2"),
         )
-        every { embeddingService.batchEmbedTexts(any(), any()) } returns listOf(
+        every { embeddingService.batchEmbedTexts(any()) } returns listOf(
             listOf(0.1f, 0.2f),
             emptyList(),
         )
@@ -110,7 +107,7 @@ class GithubReadmeEmbeddingWriterTest : FunSpec({
     test("빈 청크는 API를 호출하지 않고 DB도 업데이트하지 않는다") {
         writer.write(Chunk(emptyList()))
 
-        verify(exactly = 0) { embeddingService.batchEmbedTexts(any(), any()) }
+        verify(exactly = 0) { embeddingService.batchEmbedTexts(any()) }
         verify(exactly = 0) { jdbcTemplate.batchUpdate(any<String>(), any<Array<MapSqlParameterSource>>()) }
     }
 
@@ -119,7 +116,7 @@ class GithubReadmeEmbeddingWriterTest : FunSpec({
             GithubEmbeddingRequestDto(id = 1L, fullName = "owner/repo1", promptString = "prompt1"),
             GithubEmbeddingRequestDto(id = 2L, fullName = "owner/repo2", promptString = "prompt2"),
         )
-        every { embeddingService.batchEmbedTexts(any(), any()) } returns listOf(emptyList(), emptyList())
+        every { embeddingService.batchEmbedTexts(any()) } returns listOf(emptyList(), emptyList())
 
         writer.write(Chunk(items))
 

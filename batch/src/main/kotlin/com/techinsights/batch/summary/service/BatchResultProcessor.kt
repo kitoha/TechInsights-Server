@@ -3,7 +3,7 @@ package com.techinsights.batch.summary.service
 import com.techinsights.batch.summary.dto.BatchFailure
 import com.techinsights.batch.summary.dto.BatchRequest
 import com.techinsights.batch.summary.dto.BatchResult
-import com.techinsights.domain.dto.gemini.BatchSummaryResponse
+import com.techinsights.domain.dto.summary.BatchSummaryResponse
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.enums.ErrorType
 import org.springframework.stereotype.Component

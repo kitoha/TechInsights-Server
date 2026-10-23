@@ -198,3 +198,4 @@ daily-quota:
     batch-summary: 20       # 게시글 요약 요청/일
     readme-summary: 20      # 독립 API 키 사용 시 전체 일일 한도 사용 가능
     community-analysis: 20  # 20 req/day × 10 repos = 200 repos/day
+    embedding: 1000         # 임베딩 HTTP 호출/일 (gemini-embedding-001 무료 티어 RPD, 공식 문서 미검증)

@@ -1,9 +1,9 @@
 package com.techinsights.batch.github.readme.writer
 
-import com.techinsights.domain.dto.gemini.ArticleInput
-import com.techinsights.domain.dto.gemini.SummaryResultWithId
+import com.techinsights.domain.dto.summary.ArticleInput
+import com.techinsights.domain.dto.summary.SummaryResultWithId
 import com.techinsights.domain.enums.ErrorType
-import com.techinsights.domain.service.gemini.GithubReadmeBatchSummarizer
+import com.techinsights.domain.service.summary.GithubReadmeBatchSummarizer
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.*

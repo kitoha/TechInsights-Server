@@ -26,5 +26,6 @@ class DailyQuotaServiceImpl(
     DailyQuota.BATCH_SUMMARY -> dailyQuotaProperties.limits.batchSummary
     DailyQuota.README_SUMMARY -> dailyQuotaProperties.limits.readmeSummary
     DailyQuota.COMMUNITY_ANALYSIS -> dailyQuotaProperties.limits.communityAnalysis
+    DailyQuota.EMBEDDING -> dailyQuotaProperties.limits.embedding
   }
 }

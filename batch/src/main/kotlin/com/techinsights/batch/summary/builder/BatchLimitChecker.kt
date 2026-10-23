@@ -1,7 +1,7 @@
 package com.techinsights.batch.summary.builder
 
 import com.techinsights.batch.summary.config.BatchBuildConfig
-import com.techinsights.domain.config.gemini.GeminiProperties
+import com.techinsights.domain.infrastructure.gemini.GeminiProperties
 import org.springframework.stereotype.Component
 
 @Component
