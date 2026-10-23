@@ -68,6 +68,7 @@ class JwtPlugin(
             .issuedAt(now)
             .expiration(expiration)
             .subject(userId.toString())
+            .id(UUID.randomUUID().toString())
             .claims(claims)
             .signWith(key)
             .compact()

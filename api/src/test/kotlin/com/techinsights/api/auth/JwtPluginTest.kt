@@ -132,4 +132,10 @@ class JwtPluginTest : FunSpec({
 
         shouldThrow<TokenTamperedException> { jwtPlugin.validateAccessToken(signedWithRawSecret) }
     }
+
+    test("같은 사용자의 리프레시 토큰은 같은 초에 발급되어도 서로 달라야 한다") {
+        val tokens = (1..20).map { jwtPlugin.generateRefreshToken(1L) }
+
+        tokens.toSet().size shouldBe tokens.size
+    }
 })
