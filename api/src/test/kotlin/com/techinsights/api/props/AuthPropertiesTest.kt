@@ -79,4 +79,17 @@ class AuthPropertiesTest {
             Base64.getDecoder().decode(validBase64Key)
         )
     }
+
+    @Test
+    fun `should default max sessions per user to 10`() {
+        assertThat(AuthProperties.Jwt(secretKey = validBase64Key).maxSessionsPerUser).isEqualTo(10)
+    }
+
+    @Test
+    fun `should reject max sessions per user below 1`() {
+        assertThatThrownBy {
+            AuthProperties.Jwt(secretKey = validBase64Key, maxSessionsPerUser = 0)
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("maxSessionsPerUser must be at least 1")
+    }
 }
