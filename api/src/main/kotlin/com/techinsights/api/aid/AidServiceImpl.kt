@@ -12,7 +12,7 @@ class AidServiceImpl(private val policy: CookiePolicy) : AidService {
   override fun read(
     req: HttpServletRequest,
     p: AidProperties
-  ): String? = req.cookies?.firstOrNull { it.name == p.cookie.name }?.value?.takeIf { it.isNotBlank() }
+  ): String? = req.cookies?.firstOrNull { it.name == p.cookie.name }?.value?.takeIf(AidFormat::isValid)
 
   override fun write(res: HttpServletResponse, req: HttpServletRequest, p: AidProperties, value: String) {
     val builder = ResponseCookie

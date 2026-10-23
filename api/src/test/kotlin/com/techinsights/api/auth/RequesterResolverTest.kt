@@ -65,7 +65,7 @@ class RequesterResolverTest : FunSpec({
         // given
         val webRequest = mockk<NativeWebRequest>()
         val httpRequest = mockk<HttpServletRequest>()
-        val cookie = Cookie("aid", "anon-uuid-123")
+        val cookie = Cookie("aid", "8f14e45f-ceea-467a-9575-1e6c2a9a3f10")
         val securityContext = mockk<SecurityContext>()
 
         mockkStatic(SecurityContextHolder::class)
@@ -83,7 +83,7 @@ class RequesterResolverTest : FunSpec({
 
         // then
         result.shouldBeInstanceOf<Requester.Anonymous>()
-        (result as Requester.Anonymous).anonymousId shouldBe "anon-uuid-123"
+        (result as Requester.Anonymous).anonymousId shouldBe "8f14e45f-ceea-467a-9575-1e6c2a9a3f10"
         result.ip shouldBe "127.0.0.1"
         result.carriedAidCookie shouldBe true
 
@@ -134,6 +134,29 @@ class RequesterResolverTest : FunSpec({
 
         (result as Requester.Anonymous).anonymousId shouldBe "127.0.0.1"
         result.carriedAidCookie shouldBe false
+
+        unmockkStatic(SecurityContextHolder::class)
+    }
+
+    test("aid 쿠키가 발급 형식이 아니면(U_ 접두사 위조 등) 무시하고 IP 로 식별한다") {
+        val webRequest = mockk<NativeWebRequest>()
+        val httpRequest = mockk<HttpServletRequest>()
+        val securityContext = mockk<SecurityContext>()
+
+        mockkStatic(SecurityContextHolder::class)
+        every { SecurityContextHolder.getContext() } returns securityContext
+        every { securityContext.authentication } returns null
+
+        every { webRequest.getNativeRequest(HttpServletRequest::class.java) } returns httpRequest
+        every { httpRequest.getHeader(any()) } returns null
+        every { httpRequest.remoteAddr } returns "127.0.0.1"
+        every { httpRequest.cookies } returns arrayOf(Cookie("aid", "U_42"))
+        every { httpRequest.getAttribute(AidInterceptor.AID_ATTRIBUTE) } returns null
+
+        val result = resolver.resolveArgument(mockk(), null, webRequest, null)
+
+        result.shouldBeInstanceOf<Requester.Anonymous>()
+        (result as Requester.Anonymous).anonymousId shouldBe "127.0.0.1"
 
         unmockkStatic(SecurityContextHolder::class)
     }
