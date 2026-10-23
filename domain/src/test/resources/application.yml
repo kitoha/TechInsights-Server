@@ -1,0 +1,13 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+  cloud:
+    aws:
+      parameterstore:
+        enabled: false
+      region:
+        static: ap-northeast-2

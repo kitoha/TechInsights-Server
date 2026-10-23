@@ -1,6 +1,7 @@
 package com.techinsights.api.auth
 
 import com.techinsights.api.props.AuthProperties
+import com.techinsights.domain.dto.user.RefreshTokenRotationResult
 import com.techinsights.domain.enums.UserRole
 import com.techinsights.domain.exception.user.UserNotFoundException
 import com.techinsights.domain.service.user.RefreshTokenService
@@ -35,37 +36,37 @@ class TokenService(
         return TokenResponse(accessToken, refreshTokenString)
     }
 
-    @Transactional
-    fun refresh(oldRefreshToken: String, deviceId: String?): TokenResponse {
-        val claims = jwtPlugin.validateToken(oldRefreshToken)
+    @Transactional(noRollbackFor = [TokenTamperedException::class, ExpiredTokenException::class])
+    fun refresh(oldRefreshToken: String): TokenResponse {
+        val claims = jwtPlugin.validateRefreshToken(oldRefreshToken)
         val userId = claims.get("userId", Long::class.javaObjectType)
-            ?: throw com.techinsights.api.auth.InvalidTokenException("유효하지 않은 토큰입니다.")
-        val refreshTokenHash = tokenHasher.hash(oldRefreshToken)
+            ?: throw InvalidTokenException("유효하지 않은 토큰입니다.")
 
         val user = try {
             userService.getAuthUserById(userId)
         } catch (_: UserNotFoundException) {
-            throw com.techinsights.api.auth.InvalidTokenException("사용자를 찾을 수 없습니다.")
+            throw InvalidTokenException("사용자를 찾을 수 없습니다.")
         }
 
-        val storedToken = refreshTokenService.findByHash(refreshTokenHash)
+        val accessToken = jwtPlugin.generateAccessToken(user.id, user.email, user.role)
+        val newRefreshToken = jwtPlugin.generateRefreshToken(user.id)
+        val expiryAt = Instant.now().plus(authProperties.jwt.refreshTokenExpiration)
 
-        if (storedToken == null) {
-            val rotatedToken = refreshTokenService.findByPreviousHash(refreshTokenHash)
-            if (rotatedToken != null && rotatedToken.isRecentlyRotated()) {
-                return issueTokens(user.id, user.email, user.role, deviceId)
+        val rotation = refreshTokenService.rotate(
+            presentedHash = tokenHasher.hash(oldRefreshToken),
+            newHash = tokenHasher.hash(newRefreshToken),
+            newExpiryAt = expiryAt
+        )
+
+        return when (rotation) {
+            RefreshTokenRotationResult.Rotated -> TokenResponse(accessToken, newRefreshToken)
+            RefreshTokenRotationResult.Expired -> throw ExpiredTokenException()
+            RefreshTokenRotationResult.NotFound -> throw InvalidTokenException("유효하지 않은 토큰입니다.")
+            RefreshTokenRotationResult.ReuseDetected -> {
+                refreshTokenService.deleteAllByUserId(userId)
+                throw TokenTamperedException("재사용된 토큰이 감지되었습니다. 모든 세션이 로그아웃됩니다.")
             }
-
-            refreshTokenService.deleteAllByUserId(userId)
-            throw com.techinsights.api.auth.TokenTamperedException("재사용된 토큰이 감지되었습니다. 모든 세션이 로그아웃됩니다.")
         }
-
-        if (storedToken.isExpired()) {
-            refreshTokenService.deleteByHash(refreshTokenHash)
-            throw com.techinsights.api.auth.ExpiredTokenException()
-        }
-        
-        return issueTokens(user.id, user.email, user.role, deviceId)
     }
 
     @Transactional

@@ -19,6 +19,7 @@ class PostSearchQueryRepository(
 
   fun findForInstantSearch(
     query: String,
+    matchedCompanyIds: Collection<Long>,
     relevanceScore: NumberExpression<Double>,
     limit: Int
   ): List<PostSearchProjection> {
@@ -27,7 +28,7 @@ class PostSearchQueryRepository(
       .from(post)
       .join(post.company, company).fetchJoin()
       .where(
-        buildInstantSearchCondition(query),
+        buildInstantSearchCondition(query, matchedCompanyIds),
         post.isSummary.isTrue
       )
       .orderBy(
@@ -95,9 +96,10 @@ class PostSearchQueryRepository(
       .fetchOne() ?: 0L
   }
 
-  private fun buildInstantSearchCondition(query: String): BooleanExpression {
-    return post.title.containsIgnoreCase(query)
+  private fun buildInstantSearchCondition(query: String, matchedCompanyIds: Collection<Long>): BooleanExpression {
+    val condition = post.title.containsIgnoreCase(query)
       .or(post.content.contains(query))
-      .or(company.name.containsIgnoreCase(query))
+    if (matchedCompanyIds.isEmpty()) return condition
+    return condition.or(post.company.id.`in`(matchedCompanyIds))
   }
 }

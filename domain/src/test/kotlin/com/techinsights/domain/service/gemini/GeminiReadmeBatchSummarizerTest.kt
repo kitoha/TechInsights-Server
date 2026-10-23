@@ -5,6 +5,9 @@ import com.google.genai.Client
 import com.techinsights.domain.config.gemini.GeminiProperties
 import com.techinsights.domain.dto.gemini.ArticleInput
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException
+import com.techinsights.domain.enums.ErrorType
+import com.techinsights.domain.service.quota.DailyQuota
+import com.techinsights.domain.service.quota.DailyQuotaService
 import io.github.resilience4j.circuitbreaker.CircuitBreaker
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
@@ -31,13 +34,13 @@ class GeminiReadmeBatchSummarizerTest : FunSpec({
     val rateLimiterRegistry = mockk<RateLimiterRegistry>()
     val circuitBreakerRegistry = mockk<CircuitBreakerRegistry>()
     val rpmLimiter = mockk<RateLimiter>(relaxed = true)
-    val rpdLimiter = mockk<RateLimiter>(relaxed = true)
+    val dailyQuotaService = mockk<DailyQuotaService>()
     val circuitBreaker = mockk<CircuitBreaker>()
 
     beforeTest {
         clearAllMocks()
         every { rateLimiterRegistry.rateLimiter("geminiReadmeRpm") } returns rpmLimiter
-        every { rateLimiterRegistry.rateLimiter("geminiReadmeRpd") } returns rpdLimiter
+        every { dailyQuotaService.tryReserve(any()) } returns true
         every { circuitBreakerRegistry.circuitBreaker("geminiBatch") } returns circuitBreaker
         every { geminiProperties.maxTokensPerRequest } returns 100_000
         every { geminiProperties.maxOutputTokens } returns 65_536
@@ -48,7 +51,7 @@ class GeminiReadmeBatchSummarizerTest : FunSpec({
     }
 
     test("summarize()는 빈 리스트에 대해 빈 Flow를 반환한다") {
-        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry)
+        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry, dailyQuotaService)
 
         val results = summarizer.summarize(emptyList()).toList()
 
@@ -58,7 +61,7 @@ class GeminiReadmeBatchSummarizerTest : FunSpec({
     test("summarize()는 Gemini API 예외 시 모든 아이템을 실패로 반환한다") {
         every { circuitBreaker.executeCallable<Any>(any()) } throws RuntimeException("Gemini API down")
 
-        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry)
+        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry, dailyQuotaService)
         val items = listOf(
             ArticleInput("owner/repo1", "repo1", "readme1"),
             ArticleInput("owner/repo2", "repo2", "readme2"),
@@ -74,7 +77,7 @@ class GeminiReadmeBatchSummarizerTest : FunSpec({
     test("summarize()는 Gemini 응답에서 누락된 ID를 실패로 보고한다") {
         every { circuitBreaker.executeCallable<Any>(any()) } returns listOf<Any>().iterator()
 
-        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry)
+        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry, dailyQuotaService)
         val items = listOf(ArticleInput("owner/repo1", "repo1", "readme1"))
 
         val results = summarizer.summarize(items).toList()
@@ -84,22 +87,36 @@ class GeminiReadmeBatchSummarizerTest : FunSpec({
         results[0].success.shouldBeFalse()
     }
 
-    test("summarize()는 RPM과 RPD rate limiter를 모두 획득한다") {
+    test("summarize()는 RPM limiter를 획득하고 일일 쿼터를 예약한다") {
         every { circuitBreaker.executeCallable<Any>(any()) } returns listOf<Any>().iterator()
 
-        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry)
+        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry, dailyQuotaService)
         val items = listOf(ArticleInput("owner/repo1", "repo1", "readme1"))
 
         summarizer.summarize(items).toList()
 
         verify(exactly = 1) { rpmLimiter.acquirePermission() }
-        verify(exactly = 1) { rpdLimiter.acquirePermission() }
+        verify(exactly = 1) { dailyQuotaService.tryReserve(DailyQuota.README_SUMMARY) }
+    }
+
+    test("summarize()는 일일 쿼터가 소진되면 Gemini를 호출하지 않고 모든 아이템을 RATE_LIMIT 실패로 반환한다") {
+        every { dailyQuotaService.tryReserve(DailyQuota.README_SUMMARY) } returns false
+
+        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry, dailyQuotaService)
+        val items = listOf(ArticleInput("owner/repo1", "repo1", "readme1"), ArticleInput("owner/repo2", "repo2", "readme2"))
+
+        val results = summarizer.summarize(items).toList()
+
+        results shouldHaveSize 2
+        results.all { !it.success && it.errorType == ErrorType.RATE_LIMIT } shouldBe true
+        verify(exactly = 0) { circuitBreaker.executeCallable<Any>(any()) }
+        verify(exactly = 0) { rpmLimiter.acquirePermission() }
     }
 
     test("summarize()는 아이템이 여러 개여도 Gemini 호출은 1회만 한다") {
         every { circuitBreaker.executeCallable<Any>(any()) } returns listOf<Any>().iterator()
 
-        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry)
+        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry, dailyQuotaService)
         val items = listOf(
             ArticleInput("owner/repo1", "repo1", "readme1"),
             ArticleInput("owner/repo2", "repo2", "readme2"),
@@ -109,14 +126,14 @@ class GeminiReadmeBatchSummarizerTest : FunSpec({
         summarizer.summarize(items).toList()
 
         verify(exactly = 1) { rpmLimiter.acquirePermission() }
-        verify(exactly = 1) { rpdLimiter.acquirePermission() }
+        verify(exactly = 1) { dailyQuotaService.tryReserve(DailyQuota.README_SUMMARY) }
         verify(exactly = 1) { circuitBreaker.executeCallable<Any>(any()) }
     }
 
     test("summarize()는 Circuit Breaker를 통해 Gemini API를 호출한다") {
         every { circuitBreaker.executeCallable<Any>(any()) } returns listOf<Any>().iterator()
 
-        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry)
+        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry, dailyQuotaService)
         val items = listOf(ArticleInput("owner/repo1", "repo1", "readme1"))
 
         summarizer.summarize(items).toList()
@@ -131,7 +148,7 @@ class GeminiReadmeBatchSummarizerTest : FunSpec({
         val openException = CallNotPermittedException.createCallNotPermittedException(circuitBreaker)
         every { circuitBreaker.executeCallable<Any>(any()) } throws openException
 
-        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry)
+        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry, dailyQuotaService)
         val items = listOf(
             ArticleInput("owner/repo1", "repo1", "readme1"),
             ArticleInput("owner/repo2", "repo2", "readme2"),
@@ -147,7 +164,7 @@ class GeminiReadmeBatchSummarizerTest : FunSpec({
     test("summarize()는 예외 발생 시 error 메시지가 비어있지 않다") {
         every { circuitBreaker.executeCallable<Any>(any()) } throws RuntimeException("timeout")
 
-        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry)
+        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry, dailyQuotaService)
         val items = listOf(ArticleInput("owner/repo1", "repo1", "readme1"))
 
         val results = summarizer.summarize(items).toList()
@@ -159,7 +176,7 @@ class GeminiReadmeBatchSummarizerTest : FunSpec({
     test("summarize()는 Gemini 빈 응답 시 누락 아이템 error 메시지가 비어있지 않다") {
         every { circuitBreaker.executeCallable<Any>(any()) } returns listOf<Any>().iterator()
 
-        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry)
+        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry, dailyQuotaService)
         val items = listOf(ArticleInput("owner/repo1", "repo1", "readme1"))
 
         val results = summarizer.summarize(items).toList()
@@ -169,19 +186,19 @@ class GeminiReadmeBatchSummarizerTest : FunSpec({
     }
 
     test("calculateOutputTokens — 150개 배치에서 잔여 예산이 항목 목표보다 작으면 잔여 예산을 사용한다") {
-        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry)
+        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry, dailyQuotaService)
 
         summarizer.calculateOutputTokens(150) shouldBe 25_000
     }
 
     test("calculateOutputTokens — 소수 배치에서 항목 목표가 잔여 예산보다 작으면 항목 목표를 사용한다") {
-        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry)
+        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry, dailyQuotaService)
 
         summarizer.calculateOutputTokens(10) shouldBe 2_000
     }
 
     test("calculateOutputTokens — 입력 추정이 예산 초과 시 최소값 1024를 반환한다") {
-        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry)
+        val summarizer = buildSummarizer(geminiClient, geminiProperties, promptBuilder, rateLimiterRegistry, circuitBreakerRegistry, dailyQuotaService)
 
         summarizer.calculateOutputTokens(300) shouldBe 1_024
     }
@@ -193,6 +210,7 @@ private fun buildSummarizer(
     promptBuilder: GithubReadmePromptBuilder,
     rateLimiterRegistry: RateLimiterRegistry,
     circuitBreakerRegistry: CircuitBreakerRegistry,
+    dailyQuotaService: DailyQuotaService,
 ) = GeminiReadmeBatchSummarizer(
     geminiClient = geminiClient,
     geminiProperties = geminiProperties,
@@ -200,5 +218,6 @@ private fun buildSummarizer(
     mapper = jacksonObjectMapper(),
     rateLimiterRegistry = rateLimiterRegistry,
     circuitBreakerRegistry = circuitBreakerRegistry,
+    dailyQuotaService = dailyQuotaService,
     ioDispatcher = Dispatchers.Unconfined,
 )

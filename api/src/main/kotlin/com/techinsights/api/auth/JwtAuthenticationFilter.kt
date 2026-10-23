@@ -25,7 +25,7 @@ class JwtAuthenticationFilter(
 
         if (token != null) {
             try {
-                val claims = jwtPlugin.validateToken(token)
+                val claims = jwtPlugin.validateAccessToken(token)
                 val userId = claims.get("userId", Long::class.javaObjectType)
                 val email = claims.get("email", String::class.java)
                 val roleStr = claims.get("role", String::class.java)
@@ -45,7 +45,7 @@ class JwtAuthenticationFilter(
                 )
 
                 SecurityContextHolder.getContext().authentication = authentication
-            } catch (e: AuthException) {
+            } catch (e: Exception) {
                 SecurityContextHolder.clearContext()
             }
         }

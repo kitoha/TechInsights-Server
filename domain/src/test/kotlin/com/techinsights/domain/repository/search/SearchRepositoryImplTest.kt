@@ -50,7 +50,7 @@ class SearchRepositoryImplTest : FunSpec({
     result.posts shouldBe emptyList()
 
     verify(exactly = 0) { companySearchQueryRepository.findByNameContaining(any(), any()) }
-    verify(exactly = 0) { postSearchQueryRepository.findForInstantSearch(any(), any(), any()) }
+    verify(exactly = 0) { postSearchQueryRepository.findForInstantSearch(any(), any(), any(), any()) }
   }
 
   test("instantSearch should return matched companies and posts") {
@@ -72,6 +72,7 @@ class SearchRepositoryImplTest : FunSpec({
 
     every { mockCompany.id } returns companyId
     every { queryBuilder.buildRelevanceScore(query) } returns mockRelevanceScore
+    every { companySearchQueryRepository.findIdsByNameContaining(query) } returns listOf(companyId)
     every { companySearchQueryRepository.findByNameContaining(query, limit) } returns listOf(
       mockCompany
     )
@@ -91,6 +92,7 @@ class SearchRepositoryImplTest : FunSpec({
     every {
       postSearchQueryRepository.findForInstantSearch(
         query,
+        listOf(companyId),
         mockRelevanceScore,
         limit
       )
@@ -107,8 +109,9 @@ class SearchRepositoryImplTest : FunSpec({
       queryBuilder.buildRelevanceScore(query)
       companySearchQueryRepository.findByNameContaining(query, limit)
       postSearchQueryRepository.countMatchedPostsByCompany(companyId, query)
+      companySearchQueryRepository.findIdsByNameContaining(query)
       resultMapper.toCompanyMatchDto(mockCompany, matchedPostCount, query)
-      postSearchQueryRepository.findForInstantSearch(query, mockRelevanceScore, limit)
+      postSearchQueryRepository.findForInstantSearch(query, listOf(companyId), mockRelevanceScore, limit)
       resultMapper.toPostMatchDto(mockPost, query)
     }
   }
@@ -161,10 +164,12 @@ class SearchRepositoryImplTest : FunSpec({
     val mockResultDto = mockk<PostSearchResultDto>()
 
     every { queryBuilder.buildRelevanceScore(request.query) } returns mockRelevanceScore
+    every { companySearchQueryRepository.findIdsByNameContaining(request.query) } returns listOf(7L, 9L)
     every {
       queryBuilder.buildSearchCondition(
         request.query,
-        request.companyId
+        request.companyId,
+        listOf(7L, 9L)
       )
     } returns mockCondition
     every {
@@ -201,7 +206,8 @@ class SearchRepositoryImplTest : FunSpec({
 
     verifyAll {
       queryBuilder.buildRelevanceScore(request.query)
-      queryBuilder.buildSearchCondition(request.query, request.companyId)
+      companySearchQueryRepository.findIdsByNameContaining(request.query)
+      queryBuilder.buildSearchCondition(request.query, request.companyId, listOf(7L, 9L))
       queryBuilder.buildOrderSpecifier(request.sortBy, mockRelevanceScore)
       postSearchQueryRepository.findForFullSearch(
         condition = mockCondition,
