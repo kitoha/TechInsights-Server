@@ -9,9 +9,14 @@ import com.techinsights.domain.config.cache.CacheConfig
 import com.techinsights.domain.config.resilience.CircuitBreakerProperties
 import com.techinsights.domain.config.resilience.RateLimiterProperties
 import com.techinsights.domain.config.resilience.ResilienceConfig
+import com.techinsights.domain.dto.embedding.EmbeddingRequest
+import com.techinsights.domain.service.embedding.EmbeddingService
+import com.techinsights.domain.service.quota.DailyQuota
+import com.techinsights.domain.service.quota.DailyQuotaService
 import io.github.resilience4j.ratelimiter.RequestNotPermitted
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
@@ -36,10 +41,17 @@ class EmbeddingServiceImplTest : FunSpec({
         return client
     }
 
-    fun service(models: Models, rateLimiterProperties: RateLimiterProperties = RateLimiterProperties()): EmbeddingServiceImpl {
+    fun service(
+        models: Models,
+        rateLimiterProperties: RateLimiterProperties = RateLimiterProperties(),
+        dailyQuotaService: DailyQuotaService = DailyQuotaService { true }
+    ): EmbeddingServiceImpl {
         val registry = ResilienceConfig(rateLimiterProperties, CircuitBreakerProperties()).rateLimiterRegistry()
-        return EmbeddingServiceImpl(clientWith(models), registry, CacheConfig().cacheManager())
+        return EmbeddingServiceImpl(clientWith(models), registry, CacheConfig().cacheManager(), dailyQuotaService)
     }
+
+    val exhaustedQuota = DailyQuotaService { false }
+    val request = EmbeddingRequest(content = "content", categories = listOf("AI"), companyName = "Company")
 
     test("같은 질문은 정규화 후 캐시되어 Gemini를 한 번만 호출한다") {
         val models = mockk<Models>()
@@ -100,5 +112,64 @@ class EmbeddingServiceImplTest : FunSpec({
         Thread.sleep(1_100)
 
         embeddingService.generateQuestionEmbedding("second") shouldBe vector
+    }
+
+    test("배치 임베딩은 HTTP 호출마다 EMBEDDING 일일 쿼터를 1건 예약한다") {
+        val models = mockk<Models>()
+        every { models.embedContent(any<String>(), any<String>(), any<EmbedContentConfig>()) } returns embeddingResponse()
+        val reserved = mutableListOf<DailyQuota>()
+        val embeddingService = service(models, dailyQuotaService = { reserved.add(it); true })
+
+        embeddingService.generateEmbeddingBatch(listOf(request, request, request))
+
+        reserved shouldBe List(3) { DailyQuota.EMBEDDING }
+    }
+
+    test("일일 쿼터가 소진되면 generateEmbeddingBatch는 Gemini를 호출하지 않고 실패 결과를 반환한다") {
+        val models = mockk<Models>()
+        val embeddingService = service(models, dailyQuotaService = exhaustedQuota)
+
+        val results = embeddingService.generateEmbeddingBatch(listOf(request, request))
+
+        results shouldHaveSize 2
+        results.all { !it.success && it.vector.isEmpty() && it.error == "Daily Gemini quota exhausted" } shouldBe true
+        verify(exactly = 0) { models.embedContent(any<String>(), any<String>(), any<EmbedContentConfig>()) }
+    }
+
+    test("일일 쿼터가 소진되면 batchEmbedTexts는 입력 수만큼 빈 벡터를 반환하고 호출하지 않는다") {
+        val models = mockk<Models>()
+        val embeddingService = service(models, dailyQuotaService = exhaustedQuota)
+
+        val vectors = embeddingService.batchEmbedTexts(listOf("a", "b", "c"))
+
+        vectors shouldBe List(3) { emptyList<Float>() }
+        verify(exactly = 0) { models.embedContent(any<String>(), any<List<String>>(), any<EmbedContentConfig>()) }
+    }
+
+    test("batchEmbedTexts는 청크 전체에 대해 쿼터를 1건만 예약한다") {
+        val models = mockk<Models>()
+        every { models.embedContent(any<String>(), any<List<String>>(), any<EmbedContentConfig>()) } returns embeddingResponse()
+        val reserved = mutableListOf<DailyQuota>()
+        val embeddingService = service(models, dailyQuotaService = { reserved.add(it); true })
+
+        embeddingService.batchEmbedTexts(listOf("a", "b", "c"))
+
+        reserved shouldBe listOf(DailyQuota.EMBEDDING)
+    }
+
+    test("일일 쿼터가 소진되면 generateEmbedding은 빈 벡터를 반환한다") {
+        val models = mockk<Models>()
+        val embeddingService = service(models, dailyQuotaService = exhaustedQuota)
+
+        embeddingService.generateEmbedding(request) shouldBe emptyList()
+        verify(exactly = 0) { models.embedContent(any<String>(), any<String>(), any<EmbedContentConfig>()) }
+    }
+
+    test("질문 임베딩(API 요청 경로)은 일일 쿼터를 사용하지 않는다") {
+        val models = mockk<Models>()
+        every { models.embedContent(any<String>(), any<String>(), any<EmbedContentConfig>()) } returns embeddingResponse()
+        val embeddingService = service(models, dailyQuotaService = exhaustedQuota)
+
+        embeddingService.generateQuestionEmbedding("kotlin") shouldBe vector
     }
 })

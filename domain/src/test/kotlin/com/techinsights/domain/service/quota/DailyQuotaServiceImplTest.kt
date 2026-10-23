@@ -70,6 +70,15 @@ class DailyQuotaServiceImplTest : FunSpec({
         verify { repository.tryIncrement(any(), "geminiCommunityRpd", 9) }
     }
 
+    test("EMBEDDING 쿼터는 설정된 한도와 geminiEmbeddingRpd 키를 사용한다") {
+        every { repository.tryIncrement(any(), any(), any()) } returns true
+        val limits = DailyQuotaProperties.Limits(embedding = 11)
+
+        service("2026-10-23T12:00:00Z", limits = limits).tryReserve(DailyQuota.EMBEDDING)
+
+        verify { repository.tryIncrement(any(), "geminiEmbeddingRpd", 11) }
+    }
+
     test("한도가 0 이하면 저장소를 호출하지 않고 false를 반환한다") {
         val limits = DailyQuotaProperties.Limits(batchSummary = 0)
 

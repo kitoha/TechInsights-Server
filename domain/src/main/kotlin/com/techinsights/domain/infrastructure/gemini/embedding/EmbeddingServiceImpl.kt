@@ -7,6 +7,9 @@ import com.techinsights.domain.config.cache.CacheConfig
 import com.techinsights.domain.dto.embedding.EmbeddingRequest
 import com.techinsights.domain.infrastructure.gemini.GeminiModelType
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry
+import mu.KotlinLogging
+import com.techinsights.domain.service.quota.DailyQuota
+import com.techinsights.domain.service.quota.DailyQuotaService
 import org.springframework.cache.Cache
 import org.springframework.cache.CacheManager
 import org.springframework.stereotype.Service
@@ -15,7 +18,8 @@ import org.springframework.stereotype.Service
 class EmbeddingServiceImpl(
   private val geminiClient: Client,
   rateLimiterRegistry: RateLimiterRegistry,
-  cacheManager: CacheManager
+  cacheManager: CacheManager,
+  private val dailyQuotaService: DailyQuotaService
 ) : EmbeddingService {
 
   private val rateLimiter = rateLimiterRegistry.rateLimiter("geminiEmbedding")
@@ -25,6 +29,10 @@ class EmbeddingServiceImpl(
   }
 
   override fun generateEmbedding(request: EmbeddingRequest): List<Float> {
+    if (!dailyQuotaService.tryReserve(DailyQuota.EMBEDDING)) {
+      log.warn { "Daily Gemini embedding quota exhausted" }
+      return emptyList()
+    }
     return rateLimiter.executeSupplier {
       val modelName = MODEL.get()
       val combinedInput = request.toPromptString()
@@ -84,6 +92,11 @@ class EmbeddingServiceImpl(
   ): List<List<Float>> {
     if (promptStrings.isEmpty()) return emptyList()
 
+    if (!dailyQuotaService.tryReserve(DailyQuota.EMBEDDING)) {
+      log.warn { "Daily Gemini embedding quota exhausted. texts=${promptStrings.size}" }
+      return promptStrings.map { emptyList() }
+    }
+
     return rateLimiter.executeSupplier {
       val modelName = MODEL.get()
       val config = buildEmbedConfig()
@@ -98,6 +111,14 @@ class EmbeddingServiceImpl(
     modelName: String,
     config: EmbedContentConfig
   ): EmbeddingService.EmbeddingResult {
+    if (!dailyQuotaService.tryReserve(DailyQuota.EMBEDDING)) {
+      return EmbeddingService.EmbeddingResult(
+        request = request,
+        vector = emptyList(),
+        success = false,
+        error = QUOTA_EXHAUSTED_ERROR
+      )
+    }
     return try {
       rateLimiter.executeSupplier {
         val combinedInput = request.toPromptString()
@@ -143,6 +164,8 @@ class EmbeddingServiceImpl(
 
   companion object {
     private val MODEL = GeminiModelType.GEMINI_EMBEDDING
+    private const val QUOTA_EXHAUSTED_ERROR = "Daily Gemini quota exhausted"
+    private val log = KotlinLogging.logger {}
     private val WHITESPACE = Regex("\\s+")
   }
 }
