@@ -14,11 +14,6 @@ data class RateLimiterProperties(
     refreshPeriodSeconds = 60,
     timeoutSeconds = 60
   ),
-  val geminiBatchRpd: LimiterConfig = LimiterConfig(
-    limitForPeriod = 20,
-    refreshPeriodSeconds = 86400,
-    timeoutSeconds = 1
-  ),
   val geminiEmbedding: LimiterConfig = LimiterConfig(
     limitForPeriod = 90,
     refreshPeriodSeconds = 60,
@@ -39,11 +34,6 @@ data class RateLimiterProperties(
     refreshPeriodSeconds = 60,
     timeoutSeconds = 60
   ),
-  val geminiReadmeRpd: LimiterConfig = LimiterConfig(
-    limitForPeriod = 20,
-    refreshPeriodSeconds = 86400,
-    timeoutSeconds = 1
-  ),
   val hnApi: LimiterConfig = LimiterConfig(
     limitForPeriod = 20,
     refreshPeriodSeconds = 60,
@@ -58,11 +48,6 @@ data class RateLimiterProperties(
     limitForPeriod = 2,
     refreshPeriodSeconds = 60,
     timeoutSeconds = 60
-  ),
-  val geminiCommunityRpd: LimiterConfig = LimiterConfig(
-    limitForPeriod = 20,
-    refreshPeriodSeconds = 86400,
-    timeoutSeconds = 1
   ),
   val crawler: CrawlerLimiterConfig = CrawlerLimiterConfig()
 ) {

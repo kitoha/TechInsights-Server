@@ -129,10 +129,6 @@ rate-limiter:
     limit-for-period: 5
     refresh-period-seconds: 60
     timeout-seconds: 60
-  gemini-batch-rpd:
-    limit-for-period: 20
-    refresh-period-seconds: 86400
-    timeout-seconds: 1
   gemini-embedding:
     limit-for-period: 90  # gemini-embedding-001 기본 90 RPM (무료 티어: 10 RPM으로 낮출 것)
     refresh-period-seconds: 60
@@ -141,10 +137,6 @@ rate-limiter:
     limit-for-period: 2       # TPM 제약: 250K TPM ÷ 100K tokens/req = 2.5 → 2 RPM 안전
     refresh-period-seconds: 60
     timeout-seconds: 60
-  gemini-readme-rpd:
-    limit-for-period: 20      # 독립 API 키 사용 시 전체 일일 한도 사용 가능
-    refresh-period-seconds: 86400
-    timeout-seconds: 1
   github:
     limit-for-period: 8       # 인증 없음: Search API 10 req/min 안전마진. GITHUB_TOKEN 있으면 25로 변경
     refresh-period-seconds: 60
@@ -161,10 +153,6 @@ rate-limiter:
     limit-for-period: 2       # TPM 250K ÷ 100K tokens/req = 2.5 → 2 RPM 안전
     refresh-period-seconds: 60
     timeout-seconds: 60
-  gemini-community-rpd:
-    limit-for-period: 20      # 20 req/day × 10 repos = 200 repos/day
-    refresh-period-seconds: 86400
-    timeout-seconds: 1
   crawler:
     ultra-safe:
       limit-for-period: 5
@@ -204,3 +192,9 @@ gemini:
   max-tokens-per-request: 100000    # 배치 요청당 총 토큰 예산 (TPM 250K ÷ 2 RPM = 125K, 안전 마진 100K)
   input-tokens-per-item: 500        # 항목당 입력 토큰 추정 (README 2000자 ≈ 500 토큰)
   output-tokens-per-item: 300       # 항목당 출력 목표 (한국어 요약 2문장 + JSON, 200→300 여유 마진)
+
+daily-quota:
+  limits:
+    batch-summary: 20       # 게시글 요약 요청/일
+    readme-summary: 20      # 독립 API 키 사용 시 전체 일일 한도 사용 가능
+    community-analysis: 20  # 20 req/day × 10 repos = 200 repos/day

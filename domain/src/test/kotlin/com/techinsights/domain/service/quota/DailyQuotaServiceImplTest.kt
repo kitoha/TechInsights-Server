@@ -1,7 +1,6 @@
 package com.techinsights.domain.service.quota
 
 import com.techinsights.domain.config.resilience.DailyQuotaProperties
-import com.techinsights.domain.config.resilience.RateLimiterProperties
 import com.techinsights.domain.repository.quota.DailyQuotaRepository
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -16,12 +15,14 @@ import java.time.ZoneOffset
 class DailyQuotaServiceImplTest : FunSpec({
 
     val repository = mockk<DailyQuotaRepository>()
-    val properties = RateLimiterProperties()
 
-    fun service(now: String, zone: String = "America/Los_Angeles") = DailyQuotaServiceImpl(
+    fun service(
+        now: String,
+        zone: String = "America/Los_Angeles",
+        limits: DailyQuotaProperties.Limits = DailyQuotaProperties.Limits()
+    ) = DailyQuotaServiceImpl(
         dailyQuotaRepository = repository,
-        rateLimiterProperties = properties,
-        dailyQuotaProperties = DailyQuotaProperties(zone = zone),
+        dailyQuotaProperties = DailyQuotaProperties(zone = zone, limits = limits),
         clock = Clock.fixed(Instant.parse(now), ZoneOffset.UTC)
     )
 
@@ -53,5 +54,25 @@ class DailyQuotaServiceImplTest : FunSpec({
         every { repository.tryIncrement(any(), any(), any()) } returns false
 
         service("2026-10-23T12:00:00Z").tryReserve(DailyQuota.BATCH_SUMMARY) shouldBe false
+    }
+
+    test("쿼터별 한도는 설정값을 사용한다") {
+        every { repository.tryIncrement(any(), any(), any()) } returns true
+        val limits = DailyQuotaProperties.Limits(batchSummary = 7, readmeSummary = 8, communityAnalysis = 9)
+        val quotaService = service("2026-10-23T12:00:00Z", limits = limits)
+
+        quotaService.tryReserve(DailyQuota.BATCH_SUMMARY)
+        quotaService.tryReserve(DailyQuota.README_SUMMARY)
+        quotaService.tryReserve(DailyQuota.COMMUNITY_ANALYSIS)
+
+        verify { repository.tryIncrement(any(), "geminiBatchRpd", 7) }
+        verify { repository.tryIncrement(any(), "geminiReadmeRpd", 8) }
+        verify { repository.tryIncrement(any(), "geminiCommunityRpd", 9) }
+    }
+
+    test("한도가 0 이하면 저장소를 호출하지 않고 false를 반환한다") {
+        val limits = DailyQuotaProperties.Limits(batchSummary = 0)
+
+        service("2026-10-23T12:00:00Z", limits = limits).tryReserve(DailyQuota.BATCH_SUMMARY) shouldBe false
     }
 })
