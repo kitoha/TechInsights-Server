@@ -20,5 +20,11 @@ interface UserRepository {
     )
     fun findById(id: Long): Optional<User>
     fun findByNickname(nickname: String): Optional<User>
-    fun existsByNickname(nickname: String): Boolean
+    /** Whether another active user already holds [nickname], ignoring case. */
+    fun existsByNicknameIgnoreCaseAndIdNot(nickname: String, userId: Long): Boolean
+    /**
+     * Saves and flushes so a nickname clash surfaces here.
+     * @throws DuplicateNicknameException only for a `uk_users_nickname_lower` violation
+     */
+    fun saveNickname(user: User): User
 }
