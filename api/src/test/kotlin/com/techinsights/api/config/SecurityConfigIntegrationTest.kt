@@ -1,5 +1,6 @@
 package com.techinsights.api.config
 
+import com.techinsights.api.auth.CsrfOriginFilter
 import com.techinsights.api.auth.CustomOAuth2UserService
 import com.techinsights.api.auth.CookieOAuth2AuthorizationRequestRepository
 import com.techinsights.api.auth.JwtAuthenticationFilter
@@ -16,6 +17,7 @@ class SecurityConfigIntegrationTest : FunSpec({
     val oAuth2SuccessHandler = mockk<OAuth2SuccessHandler>(relaxed = true)
     val oAuth2FailureHandler = mockk<OAuth2FailureHandler>(relaxed = true)
     val jwtAuthenticationFilter = mockk<JwtAuthenticationFilter>(relaxed = true)
+    val csrfOriginFilter = mockk<CsrfOriginFilter>(relaxed = true)
     val clientRegistrationRepository = mockk<ClientRegistrationRepository>(relaxed = true)
     val cookieOAuth2AuthorizationRequestRepository = mockk<CookieOAuth2AuthorizationRequestRepository>(relaxed = true)
     val corsProperties = CorsProperties(allowedOrigins = listOf("http://localhost:3000"))
@@ -25,6 +27,7 @@ class SecurityConfigIntegrationTest : FunSpec({
         oAuth2SuccessHandler = oAuth2SuccessHandler,
         oAuth2FailureHandler = oAuth2FailureHandler,
         jwtAuthenticationFilter = jwtAuthenticationFilter,
+        csrfOriginFilter = csrfOriginFilter,
         corsProperties = corsProperties,
         clientRegistrationRepository = clientRegistrationRepository,
         cookieOAuth2AuthorizationRequestRepository = cookieOAuth2AuthorizationRequestRepository
