@@ -1,6 +1,5 @@
 package com.techinsights.api.github
 
-import com.techinsights.domain.dto.github.GithubSummaryDto
 import com.techinsights.domain.enums.GithubSortType
 import com.techinsights.domain.service.github.GithubTrendingService
 import org.springframework.http.ResponseEntity
@@ -17,8 +16,8 @@ class GithubTrendingSummaryController(
     @GetMapping("/summary")
     fun getTrendingSummary(
         @RequestParam(required = false) language: String?,
-    ): ResponseEntity<GithubSummaryDto> {
+    ): ResponseEntity<GithubSummaryResponse> {
         val summary = githubTrendingService.getSummary(language)
-        return ResponseEntity.ok(summary)
+        return ResponseEntity.ok(GithubSummaryResponse.fromDto(summary))
     }
 }
