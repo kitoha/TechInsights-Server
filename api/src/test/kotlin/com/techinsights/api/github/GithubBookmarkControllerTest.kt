@@ -95,7 +95,7 @@ class GithubBookmarkControllerTest : FunSpec() {
                 accept = MediaType.APPLICATION_JSON
             }.andExpect {
                 status { isUnauthorized() }
-                jsonPath("$.errorCode") { value("UNAUTHORIZED") }
+                jsonPath("$.code") { value("UNAUTHORIZED") }
             }
 
             verify(exactly = 1) { githubBookmarkService.toggleBookmark(repoId, any<Requester.Anonymous>()) }
@@ -136,7 +136,7 @@ class GithubBookmarkControllerTest : FunSpec() {
                 accept = MediaType.APPLICATION_JSON
             }.andExpect {
                 status { isUnauthorized() }
-                jsonPath("$.errorCode") { value("UNAUTHORIZED") }
+                jsonPath("$.code") { value("UNAUTHORIZED") }
             }
         }
 
@@ -163,7 +163,7 @@ class GithubBookmarkControllerTest : FunSpec() {
                 accept = MediaType.APPLICATION_JSON
             }.andExpect {
                 status { isUnauthorized() }
-                jsonPath("$.errorCode") { value("UNAUTHORIZED") }
+                jsonPath("$.code") { value("UNAUTHORIZED") }
             }
         }
     }
