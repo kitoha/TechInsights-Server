@@ -22,7 +22,7 @@ class OAuth2FailureHandlerTest : FunSpec({
         oauth2 = AuthProperties.OAuth2(successRedirectUri = "https://www.techinsights.shop/")
     )
 
-    val handler = OAuth2FailureHandler(authProperties)
+    val handler = OAuth2FailureHandler(authProperties, AuthCookies(authProperties))
 
     test("OAuth2 인증 실패 시 프론트엔드로 error 파라미터와 함께 리다이렉트해야 한다") {
         // given
@@ -72,7 +72,7 @@ class OAuth2FailureHandlerTest : FunSpec({
             ),
             oauth2 = AuthProperties.OAuth2(successRedirectUri = "https://www.techinsights.shop/")
         )
-        val cookieHandler = OAuth2FailureHandler(cookieProperties)
+        val cookieHandler = OAuth2FailureHandler(cookieProperties, AuthCookies(cookieProperties))
 
         listOf("account_deactivated", "access_denied").forEach { errorCode ->
             test("$errorCode 실패 시 access/refresh 쿠키를 설정 때와 같은 속성으로 만료시킨다") {

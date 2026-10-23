@@ -20,7 +20,7 @@ class AuthControllerTest : FunSpec({
             cookieSecure = true
         )
     )
-    val controller = AuthController(tokenService, authProperties)
+    val controller = AuthController(tokenService, authProperties, AuthCookies(authProperties))
 
     beforeTest {
         clearMocks(tokenService)
@@ -88,7 +88,7 @@ class AuthControllerTest : FunSpec({
                 cookieDomain = "techinsights.shop"
             )
         )
-        val controllerWithDomain = AuthController(tokenService, authPropertiesWithDomain)
+        val controllerWithDomain = AuthController(tokenService, authPropertiesWithDomain, AuthCookies(authPropertiesWithDomain))
         val request = mockk<HttpServletRequest>()
         val response = mockk<HttpServletResponse>()
         val rtName = authPropertiesWithDomain.jwt.refreshTokenCookieName
@@ -114,7 +114,7 @@ class AuthControllerTest : FunSpec({
                 cookieDomain = "techinsights.shop"
             )
         )
-        val controllerWithDomain = AuthController(tokenService, authPropertiesWithDomain)
+        val controllerWithDomain = AuthController(tokenService, authPropertiesWithDomain, AuthCookies(authPropertiesWithDomain))
         val request = mockk<HttpServletRequest>()
         val response = mockk<HttpServletResponse>()
         val rtName = authPropertiesWithDomain.jwt.refreshTokenCookieName
