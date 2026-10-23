@@ -8,6 +8,7 @@ import com.techinsights.domain.enums.Category
 import com.techinsights.domain.repository.post.PostEmbeddingRepository
 import com.techinsights.domain.repository.post.PostRepository
 import com.techinsights.domain.service.embedding.EmbeddingService
+import com.techinsights.domain.utils.Tsid
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
@@ -34,14 +35,18 @@ class SemanticSearchServiceTest : FunSpec({
         properties = properties
     )
 
+    // realistic TSIDs: their encoded form contains letters, unlike small test ids
+    val tossId = 123456789012345678L
+    val kakaoId = 223456789012345678L
+
     val tossCompany = CompanyDto(
-        id = "1", name = "Toss", blogUrl = "https://toss.tech",
+        id = Tsid.encode(tossId), name = "Toss", blogUrl = "https://toss.tech",
         logoImageName = "toss.png", rssSupported = true,
         totalViewCount = 1000, postCount = 50
     )
 
     val kakaoCompany = CompanyDto(
-        id = "2", name = "Kakao", blogUrl = "https://kakao.tech",
+        id = Tsid.encode(kakaoId), name = "Kakao", blogUrl = "https://kakao.tech",
         logoImageName = "kakao.png", rssSupported = true,
         totalViewCount = 2000, postCount = 80
     )
@@ -141,7 +146,7 @@ class SemanticSearchServiceTest : FunSpec({
             every { embeddingService.generateQuestionEmbedding(any()) } returns questionVector
             every { postEmbeddingRepository.findSimilarPostsAll(any(), 15L) } returns emptyList()
 
-            service.search(query = "쿠버네티스", size = 5, companyId = 1L)
+            service.search(query = "쿠버네티스", size = 5, companyId = tossId)
 
             verify(exactly = 1) { postEmbeddingRepository.findSimilarPostsAll(any(), 15L) }
         }
@@ -154,10 +159,10 @@ class SemanticSearchServiceTest : FunSpec({
             every { postEmbeddingRepository.findSimilarPostsAll(any(), any()) } returns listOf(sampleEmbedding, otherEmbedding)
             every { postRepository.findAllByIdIn(any()) } returns listOf(samplePost, otherPost)
 
-            val results = service.search(query = "MSA", size = 10, companyId = 1L)
+            val results = service.search(query = "MSA", size = 10, companyId = tossId)
 
             results shouldHaveSize 1
-            results[0].post.company.id shouldBe "1"
+            results[0].post.company.id shouldBe Tsid.encode(tossId)
         }
 
         test("rank는 embedding 유사도 순서를 보존한다 (DB 반환 순서가 달라도)") {
@@ -179,7 +184,7 @@ class SemanticSearchServiceTest : FunSpec({
             results[1].post.id shouldBe "post-2"
         }
 
-        test("company.id가 숫자가 아니면 companyId 필터에서 제외된다") {
+        test("company.id가 다른 회사 id 이거나 TSID 가 아니면 companyId 필터에서 제외된다") {
             val invalidCompanyPost = samplePost.copy(
                 id = "post-2",
                 company = tossCompany.copy(id = "invalid-id")
@@ -190,7 +195,7 @@ class SemanticSearchServiceTest : FunSpec({
             every { postEmbeddingRepository.findSimilarPostsAll(any(), any()) } returns listOf(sampleEmbedding, invalidEmbedding)
             every { postRepository.findAllByIdIn(any()) } returns listOf(samplePost, invalidCompanyPost)
 
-            val results = service.search(query = "MSA", size = 10, companyId = 1L)
+            val results = service.search(query = "MSA", size = 10, companyId = tossId)
 
             results shouldHaveSize 1
             results[0].post.id shouldBe "post-1"
