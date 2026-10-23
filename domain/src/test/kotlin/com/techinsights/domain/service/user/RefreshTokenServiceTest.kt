@@ -178,8 +178,8 @@ class RefreshTokenServiceTest(
       login(1, "h0")
       rotate("h0", "h1")
       val threads = 6
-      val ready = java.util.concurrent.CountDownLatch(threads)
-      val pool = java.util.concurrent.Executors.newFixedThreadPool(threads)
+      val ready = CountDownLatch(threads)
+      val pool = Executors.newFixedThreadPool(threads)
       val results = (1..threads).map { i ->
         pool.submit<RefreshTokenRotationResult> {
           ready.countDown()
