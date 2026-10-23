@@ -20,6 +20,9 @@ java {
   }
 }
 
+// Boot 3.5.0 manages Testcontainers 1.21.0, whose docker-java is rejected by Docker Engine 29 (min API 1.44)
+extra["testcontainers.version"] = libs.versions.testcontainers.get()
+
 dependencies {
   api(libs.resilience4j.ratelimiter)
   api(libs.resilience4j.circuitbreaker)
@@ -44,12 +47,13 @@ dependencies {
   implementation(libs.javax.annotation.api)
   implementation(libs.kotlin.logging)
   implementation(libs.google.genai)
-  implementation(libs.bundles.aws)
 
   testImplementation(libs.kotlin.test.junit5)
   testImplementation(libs.bundles.kotest)
   testImplementation(libs.spring.boot.starter.test)
   testImplementation(libs.mockk)
+  testImplementation(libs.spring.boot.testcontainers)
+  testImplementation(libs.testcontainers.postgresql)
 }
 
 kotlin {
@@ -59,4 +63,8 @@ kotlin {
 tasks {
   bootJar { enabled = false }
   jar { enabled = true }
+  test {
+    // InlineFqnConventionTest scans the sources of every module, so they must invalidate the test task's up-to-date check
+    inputs.files(fileTree("../api/src"), fileTree("../batch/src")).withPropertyName("conventionScannedSources")
+  }
 }

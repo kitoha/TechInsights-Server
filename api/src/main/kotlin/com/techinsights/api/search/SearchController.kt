@@ -1,19 +1,16 @@
 package com.techinsights.api.search
 
+import com.techinsights.api.config.MAX_PAGE_SIZE
 import com.techinsights.domain.config.search.SemanticSearchProperties
-import com.techinsights.domain.dto.search.FullSearchResponse
-import com.techinsights.domain.dto.search.InstantSearchResponse
 import com.techinsights.domain.dto.search.SearchRequest
 import com.techinsights.domain.enums.search.SearchSortType
 import com.techinsights.domain.service.search.SearchService
 import com.techinsights.domain.service.search.SemanticSearchService
+import com.techinsights.domain.utils.Tsid
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.withContext
-import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.*
@@ -24,44 +21,43 @@ import org.springframework.web.bind.annotation.*
 class SearchController(
   private val searchService: SearchService,
   private val semanticSearchService: SemanticSearchService,
-  private val properties: SemanticSearchProperties,
-  @param:Qualifier("ioDispatcher") private val ioDispatcher: CoroutineDispatcher
+  private val properties: SemanticSearchProperties
 ) {
 
   @GetMapping("/instant")
-  suspend fun instantSearch(
+  fun instantSearch(
     @RequestParam @NotBlank(message = "query must not be blank") @Size(max = MAX_QUERY_LENGTH, message = "query must not exceed $MAX_QUERY_LENGTH characters") query: String
-  ): ResponseEntity<InstantSearchResponse> = withContext(ioDispatcher) {
+  ): ResponseEntity<InstantSearchResponse> {
     val response = searchService.instantSearch(query)
-    ResponseEntity.ok(response)
+    return ResponseEntity.ok(InstantSearchResponse.fromDto(response))
   }
 
   @GetMapping
-  suspend fun fullSearch(
+  fun fullSearch(
     @RequestParam @NotBlank(message = "query must not be blank") query: String,
     @RequestParam(defaultValue = "0") @Min(0) page: Int,
-    @RequestParam(defaultValue = "10") @Min(1) @Max(100) size: Int,
+    @RequestParam(defaultValue = "10") @Min(1) @Max(MAX_PAGE_SIZE) size: Int,
     @RequestParam(defaultValue = "RELEVANCE") sortBy: SearchSortType,
-    @RequestParam(required = false) companyId: Long?
-  ): ResponseEntity<FullSearchResponse> = withContext(ioDispatcher) {
+    @RequestParam(required = false) companyId: String?
+  ): ResponseEntity<FullSearchResponse> {
     val request = SearchRequest(
       query = query,
       page = page,
       size = size,
       sortBy = sortBy,
-      companyId = companyId
+      companyId = decodeCompanyId(companyId)
     )
 
     val response = searchService.fullSearch(request)
-    ResponseEntity.ok(response)
+    return ResponseEntity.ok(FullSearchResponse.fromDto(response))
   }
 
   @GetMapping("/semantic")
-  suspend fun semanticSearch(
+  fun semanticSearch(
     @RequestParam @NotBlank(message = "query must not be blank") @Size(max = MAX_QUERY_LENGTH) query: String,
     @RequestParam(required = false) @Min(1) size: Int?,
-    @RequestParam(required = false) companyId: Long?
-  ): ResponseEntity<SemanticSearchResponse> = withContext(ioDispatcher) {
+    @RequestParam(required = false) companyId: String?
+  ): ResponseEntity<SemanticSearchResponse> {
     if (size != null && size > properties.maxSize) {
       throw IllegalArgumentException("size must not exceed maxSize(${properties.maxSize})")
     }
@@ -69,10 +65,19 @@ class SearchController(
     val resolvedSize = size ?: properties.defaultSize
     val startTime = System.currentTimeMillis()
 
-    val results = semanticSearchService.search(query.trim(), resolvedSize, companyId)
+    val results = semanticSearchService.search(query.trim(), resolvedSize, decodeCompanyId(companyId))
     val processingTimeMs = System.currentTimeMillis() - startTime
 
-    ResponseEntity.ok(SemanticSearchResponse.of(query.trim(), results, processingTimeMs))
+    return ResponseEntity.ok(SemanticSearchResponse.of(query.trim(), results, processingTimeMs))
+  }
+
+  private fun decodeCompanyId(companyId: String?): Long? {
+    if (companyId == null) return null
+    return try {
+      Tsid.decode(companyId)
+    } catch (e: IllegalArgumentException) {
+      throw IllegalArgumentException("companyId is not a valid id", e)
+    }
   }
 
   companion object {

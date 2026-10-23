@@ -1,7 +1,6 @@
 package com.techinsights.api.search
 
 import com.techinsights.domain.dto.search.SemanticSearchResult
-import com.techinsights.domain.dto.search.PostSearchResultDto
 import com.techinsights.domain.dto.post.PostDto
 
 data class SemanticSearchResponse(
@@ -26,14 +25,14 @@ data class SemanticSearchResponse(
 
         private fun SemanticSearchResult.toApiResult(): SemanticPostResult {
             return SemanticPostResult(
-                post = post.toPostSearchResultDto(),
+                post = post.toPostSearchResultResponse(),
                 similarityScore = similarityScore,
                 rank = rank
             )
         }
 
-        private fun PostDto.toPostSearchResultDto(): PostSearchResultDto {
-            return PostSearchResultDto(
+        private fun PostDto.toPostSearchResultResponse(): PostSearchResultResponse {
+            return PostSearchResultResponse(
                 id = id,
                 title = title,
                 preview = preview,

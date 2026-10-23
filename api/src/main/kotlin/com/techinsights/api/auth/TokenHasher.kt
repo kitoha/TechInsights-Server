@@ -10,9 +10,13 @@ import javax.crypto.spec.SecretKeySpec
 class TokenHasher(
     private val authProperties: AuthProperties
 ) {
+    private val secretKeySpec = SecretKeySpec(
+        KeyPurpose.REFRESH_TOKEN_HASHING.deriveKey(authProperties.jwt.secretKeyBytes),
+        "HmacSHA256"
+    )
+
     fun hash(token: String): String {
         val mac = Mac.getInstance("HmacSHA256")
-        val secretKeySpec = SecretKeySpec(authProperties.jwt.secretKeyBytes, "HmacSHA256")
         mac.init(secretKeySpec)
         val digest = mac.doFinal(token.toByteArray())
         return Base64.getUrlEncoder().withoutPadding().encodeToString(digest)

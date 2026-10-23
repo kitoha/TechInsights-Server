@@ -5,7 +5,7 @@ import com.techinsights.batch.summary.dto.BatchRequest
 import com.techinsights.batch.summary.dto.BatchResult
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.enums.ErrorType
-import com.techinsights.domain.service.gemini.BatchArticleSummarizer
+import com.techinsights.domain.service.summary.BatchArticleSummarizer
 import io.github.resilience4j.circuitbreaker.CircuitBreaker
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
 import io.kotest.core.spec.style.FunSpec
@@ -54,7 +54,7 @@ class AsyncBatchSummarizationServiceTest : FunSpec({
             val request = BatchRequest("req-1", listOf(post), 100, 0)
             val expectedResult = mockk<BatchResult>()
 
-            coEvery { batchSummarizer.summarizeBatch(any(), any()) } returns emptyFlow()
+            coEvery { batchSummarizer.summarizeBatch(any()) } returns emptyFlow()
             every { resultProcessor.processBatchResponse(request, any(), any()) } returns expectedResult
 
             val results = service.processBatchesAsync(listOf(request))
@@ -70,7 +70,7 @@ class AsyncBatchSummarizationServiceTest : FunSpec({
             val request = BatchRequest("req-1", listOf(post), 100, 0)
             val expectedResult = mockk<BatchResult>()
 
-            coEvery { batchSummarizer.summarizeBatch(any(), any()) } throws RuntimeException("API Error") andThen emptyFlow()
+            coEvery { batchSummarizer.summarizeBatch(any()) } throws RuntimeException("API Error") andThen emptyFlow()
             
             every { errorClassifier.classify(any()) } returns ErrorType.API_ERROR
             every { retryPolicy.shouldRetry(ErrorType.API_ERROR, any()) } returnsMany listOf(true, false)
@@ -83,7 +83,7 @@ class AsyncBatchSummarizationServiceTest : FunSpec({
             results.size shouldBe 1
             results[0] shouldBe expectedResult
             
-            coVerify(atLeast = 2) { batchSummarizer.summarizeBatch(any(), any()) }
+            coVerify(atLeast = 2) { batchSummarizer.summarizeBatch(any()) }
         }
     }
 
@@ -93,7 +93,7 @@ class AsyncBatchSummarizationServiceTest : FunSpec({
             val request = BatchRequest("req-1", listOf(post), 100, 0)
             val failureResult = mockk<BatchResult>()
 
-            coEvery { batchSummarizer.summarizeBatch(any(), any()) } throws RuntimeException("API Error")
+            coEvery { batchSummarizer.summarizeBatch(any()) } throws RuntimeException("API Error")
             
             every { errorClassifier.classify(any()) } returns ErrorType.API_ERROR
             every { retryPolicy.shouldRetry(ErrorType.API_ERROR, 0) } returns true

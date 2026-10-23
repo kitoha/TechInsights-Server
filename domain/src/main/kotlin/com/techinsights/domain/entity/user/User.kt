@@ -5,6 +5,7 @@ import com.techinsights.domain.enums.ProviderType
 import com.techinsights.domain.enums.UserRole
 import com.techinsights.domain.enums.UserStatus
 import jakarta.persistence.*
+import org.hibernate.annotations.SQLRestriction
 import org.springframework.data.domain.Persistable
 import java.time.LocalDateTime
 
@@ -15,6 +16,7 @@ import java.time.LocalDateTime
         UniqueConstraint(name = "uk_users_provider_provider_id", columnNames = ["provider", "provider_id"])
     ]
 )
+@SQLRestriction("deleted_at IS NULL")
 class User(
     @Id
     val id: Long,
@@ -25,7 +27,8 @@ class User(
     @Column(name = "name", nullable = false)
     var name: String,
 
-    @Column(name = "nickname", unique = true)
+    // Uniqueness is enforced by the partial functional index uk_users_nickname_lower (lower(nickname), active users)
+    @Column(name = "nickname")
     var nickname: String,
 
     @Column(name = "provider", nullable = false)

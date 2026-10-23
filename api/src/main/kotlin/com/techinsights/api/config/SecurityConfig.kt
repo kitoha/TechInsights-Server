@@ -5,6 +5,8 @@ import com.techinsights.api.auth.CookieOAuth2AuthorizationRequestRepository
 import com.techinsights.api.auth.DeviceAwareOAuth2AuthorizationRequestResolver
 import com.techinsights.api.auth.OAuth2FailureHandler
 import com.techinsights.api.auth.OAuth2SuccessHandler
+import com.techinsights.api.auth.ProblemDetailAccessDeniedHandler
+import com.techinsights.api.auth.ProblemDetailAuthenticationEntryPoint
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -44,7 +46,12 @@ class SecurityConfig(
                 auth
                     .requestMatchers(HttpMethod.POST, "/api/v1/posts/*/bookmark").authenticated()
                     .requestMatchers(HttpMethod.POST, "/api/v1/github/*/bookmark").authenticated()
+                    .requestMatchers(HttpMethod.PUT, "/api/v1/posts/*/bookmark").authenticated()
+                    .requestMatchers(HttpMethod.DELETE, "/api/v1/posts/*/bookmark").authenticated()
+                    .requestMatchers(HttpMethod.PUT, "/api/v1/github/*/bookmark").authenticated()
+                    .requestMatchers(HttpMethod.DELETE, "/api/v1/github/*/bookmark").authenticated()
                     .requestMatchers("/api/v1/posts/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/v1/companies/summaries").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/v1/companies/**").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.PUT, "/api/v1/companies/**").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.PATCH, "/api/v1/companies/**").hasRole("ADMIN")
@@ -77,11 +84,8 @@ class SecurityConfig(
                     .failureHandler(oAuth2FailureHandler)
             }
             .exceptionHandling { exception ->
-                exception.authenticationEntryPoint { _, response, _ ->
-                    response.contentType = "application/json;charset=UTF-8"
-                    response.status = jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED
-                    response.writer.write("""{"status": false, "message": "Unauthorized"}""")
-                }
+                exception.authenticationEntryPoint(ProblemDetailAuthenticationEntryPoint())
+                exception.accessDeniedHandler(ProblemDetailAccessDeniedHandler())
             }
             .logout { it.disable() }
 

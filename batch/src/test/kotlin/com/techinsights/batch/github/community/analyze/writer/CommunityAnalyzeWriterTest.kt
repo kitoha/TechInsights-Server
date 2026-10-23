@@ -4,7 +4,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.techinsights.domain.dto.community.CommunityAnalysisInput
 import com.techinsights.domain.dto.community.CommunityAnalysisResult
 import com.techinsights.domain.dto.community.CommunityPost
-import com.techinsights.domain.service.gemini.CommunityAnalyzer
+import com.techinsights.domain.service.summary.CommunityAnalyzer
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.*

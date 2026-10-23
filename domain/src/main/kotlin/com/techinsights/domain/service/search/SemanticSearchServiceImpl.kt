@@ -1,12 +1,14 @@
 package com.techinsights.domain.service.search
 
 import com.techinsights.domain.config.search.SemanticSearchProperties
+import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.dto.search.SemanticSearchResult
 import com.techinsights.domain.repository.post.PostEmbeddingRepository
 import com.techinsights.domain.repository.post.PostRepository
 import com.techinsights.domain.service.embedding.EmbeddingService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import com.techinsights.domain.utils.Tsid
 
 @Service
 @Transactional(readOnly = true)
@@ -57,9 +59,9 @@ class SemanticSearchServiceImpl(
     private fun formatVectorString(vector: List<Float>): String =
         vector.joinToString(prefix = "[", postfix = "]")
 
-    private fun matchesCompany(post: com.techinsights.domain.dto.post.PostDto, companyId: Long?): Boolean {
+    private fun matchesCompany(post: PostDto, companyId: Long?): Boolean {
         if (companyId == null) return true
-        return post.company.id.toLongOrNull() == companyId
+        return post.company.id == Tsid.encode(companyId)
     }
 
     private fun toSimilarityScore(distance: Double): Double =

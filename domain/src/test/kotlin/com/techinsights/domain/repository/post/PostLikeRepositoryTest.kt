@@ -83,4 +83,21 @@ class PostLikeRepositoryTest : FunSpec({
         result shouldBe 1L
         verify(exactly = 1) { postLikeJpaRepository.deleteByPostIdAndIpAddress(postId, ipAddress) }
     }
+
+    test("findAnonymousByPostIdAndAnonymousId should delegate to JpaRepository") {
+        val postId = Tsid.generate().decode()
+        val postLike = mockk<PostLike>()
+
+        every { postLikeJpaRepository.findByPostIdAndAnonymousIdAndUserIdIsNull(postId, "aid-1") } returns postLike
+
+        postLikeRepository.findAnonymousByPostIdAndAnonymousId(postId, "aid-1") shouldBe postLike
+    }
+
+    test("deleteAnonymousByPostIdAndAnonymousId should delegate to JpaRepository and return count") {
+        val postId = Tsid.generate().decode()
+
+        every { postLikeJpaRepository.deleteByPostIdAndAnonymousIdAndUserIdIsNull(postId, "aid-1") } returns 1L
+
+        postLikeRepository.deleteAnonymousByPostIdAndAnonymousId(postId, "aid-1") shouldBe 1L
+    }
 })
