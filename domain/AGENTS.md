@@ -9,7 +9,11 @@ Business logic, JPA entities, repositories, Flyway migrations, QueryDSL.
 ./gradlew :domain:test --tests "com.techinsights.service.CompanyServiceTest"
 ```
 
-Tests use **Kotest `FunSpec`** (lambda body style) + **Mockk**. Repositories are mocked — no DB required.
+Tests use **Kotest `FunSpec`** (lambda body style) + **Mockk**.
+
+- Services: mock the repositories.
+- Repositories and migrations: extend `RepositoryTestSpec` (Testcontainers, real PostgreSQL + pgvector, real Flyway migrations, `ddl-auto=validate`; tables truncated before each test). Never mock `JPAQueryFactory` / `JPAQuery`.
+- Docker must be running for `./gradlew :domain:test`.
 
 ## Repository Pattern
 

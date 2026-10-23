@@ -21,6 +21,18 @@ class UserRepositoryImpl(
         return userJpaRepository.save(user)
     }
 
+    override fun upsertByProvider(
+        id: Long,
+        email: String,
+        name: String,
+        nickname: String,
+        provider: ProviderType,
+        providerId: String,
+        profileImage: String?
+    ) {
+        userJpaRepository.upsertByProvider(id, email, name, nickname, provider.name, providerId, profileImage)
+    }
+
     override fun findById(id: Long): Optional<User> {
         return userJpaRepository.findById(id)
     }

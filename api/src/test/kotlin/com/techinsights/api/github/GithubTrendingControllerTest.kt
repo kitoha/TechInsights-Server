@@ -10,23 +10,18 @@ import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import java.time.LocalDateTime
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class GithubTrendingControllerTest : FunSpec() {
 
     private lateinit var mockMvc: MockMvc
     private val githubTrendingService = mockk<GithubTrendingService>()
     private val githubSemanticSearchService = mockk<GithubSemanticSearchService>(relaxed = true)
-    private val dispatcher = UnconfinedTestDispatcher()
 
     init {
         beforeTest {
@@ -34,8 +29,7 @@ class GithubTrendingControllerTest : FunSpec() {
 
             val controller = GithubTrendingController(
                 githubTrendingService = githubTrendingService,
-                githubSemanticSearchService = githubSemanticSearchService,
-                ioDispatcher = dispatcher,
+                githubSemanticSearchService = githubSemanticSearchService
             )
             mockMvc = MockMvcBuilders.standaloneSetup(controller).build()
 
@@ -59,15 +53,12 @@ class GithubTrendingControllerTest : FunSpec() {
                 nextCursor = null,
             )
 
-            val asyncResult = mockMvc.get("/api/v1/github/trending") {
+            mockMvc.get("/api/v1/github/trending") {
                 accept = MediaType.APPLICATION_JSON
-            }.andReturn()
-
-            mockMvc.perform(asyncDispatch(asyncResult))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.size").value(20))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.hasNext").value(false))
-
+            }
+                .andExpect { match(MockMvcResultMatchers.status().isOk()) }
+                .andExpect { match(MockMvcResultMatchers.jsonPath("$.size").value(20)) }
+                .andExpect { match(MockMvcResultMatchers.jsonPath("$.hasNext").value(false)) }
             verify(exactly = 1) {
                 githubTrendingService.getRepositoriesByCursor(null, 20, GithubSortType.STARS, null)
             }
@@ -83,19 +74,16 @@ class GithubTrendingControllerTest : FunSpec() {
                 nextCursor = "next-cursor-token",
             )
 
-            val asyncResult = mockMvc.get("/api/v1/github/trending") {
+            mockMvc.get("/api/v1/github/trending") {
                 param("cursor", "cursor-token")
                 param("size", "10")
                 param("sort", "TRENDING")
                 param("language", "Kotlin")
                 accept = MediaType.APPLICATION_JSON
-            }.andReturn()
-
-            mockMvc.perform(asyncDispatch(asyncResult))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.hasNext").value(true))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.nextCursor").value("next-cursor-token"))
-
+            }
+                .andExpect { match(MockMvcResultMatchers.status().isOk()) }
+                .andExpect { match(MockMvcResultMatchers.jsonPath("$.hasNext").value(true)) }
+                .andExpect { match(MockMvcResultMatchers.jsonPath("$.nextCursor").value("next-cursor-token")) }
             verify(exactly = 1) {
                 githubTrendingService.getRepositoriesByCursor("cursor-token", 10, GithubSortType.TRENDING, "Kotlin")
             }
@@ -111,13 +99,11 @@ class GithubTrendingControllerTest : FunSpec() {
                 nextCursor = null,
             )
 
-            val asyncResult = mockMvc.get("/api/v1/github/trending") {
+            mockMvc.get("/api/v1/github/trending") {
                 accept = MediaType.APPLICATION_JSON
-            }.andReturn()
-
-            mockMvc.perform(asyncDispatch(asyncResult))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.content[0].dailyStarDelta").value(10))
+            }
+                .andExpect { match(MockMvcResultMatchers.status().isOk()) }
+                .andExpect { match(MockMvcResultMatchers.jsonPath("$.content[0].dailyStarDelta").value(10)) }
         }
     }
 

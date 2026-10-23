@@ -1,8 +1,8 @@
 package com.techinsights.batch.summary.service
 
-import com.techinsights.domain.dto.gemini.SummaryResultWithId
-import com.techinsights.domain.service.gemini.BatchSummaryValidator
-import com.techinsights.domain.service.gemini.BatchSummaryValidator.ValidationResult
+import com.techinsights.domain.dto.summary.SummaryResultWithId
+import com.techinsights.domain.service.summary.BatchSummaryValidator
+import com.techinsights.domain.service.summary.BatchSummaryValidator.ValidationResult
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every

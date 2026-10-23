@@ -1,14 +1,19 @@
 package com.techinsights.api.github
 
+import jakarta.validation.constraints.Max
+import jakarta.validation.constraints.Min
+import com.techinsights.api.config.MAX_PAGE_SIZE
 import com.techinsights.api.post.PageResponse
 import com.techinsights.domain.dto.auth.Requester
 import com.techinsights.domain.exception.UnauthorizedException
 import com.techinsights.domain.service.github.GithubBookmarkService
 import org.springframework.data.domain.PageRequest
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -18,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController
 class GithubBookmarkController(
     private val githubBookmarkService: GithubBookmarkService,
 ) {
+    @Deprecated("Not idempotent (a double click removes the bookmark). Use PUT/DELETE /{repoId}/bookmark.")
     @PostMapping("/{repoId}/bookmark")
     fun toggleBookmark(
         @PathVariable repoId: String,
@@ -27,10 +33,28 @@ class GithubBookmarkController(
         return ResponseEntity.ok(BookmarkResponse(bookmarked))
     }
 
+    @PutMapping("/{repoId}/bookmark")
+    fun addBookmark(
+        @PathVariable repoId: String,
+        requester: Requester,
+    ): ResponseEntity<BookmarkResponse> {
+        githubBookmarkService.addBookmark(repoId, requester)
+        return ResponseEntity.ok(BookmarkResponse(true))
+    }
+
+    @DeleteMapping("/{repoId}/bookmark")
+    fun removeBookmark(
+        @PathVariable repoId: String,
+        requester: Requester,
+    ): ResponseEntity<BookmarkResponse> {
+        githubBookmarkService.removeBookmark(repoId, requester)
+        return ResponseEntity.ok(BookmarkResponse(false))
+    }
+
     @GetMapping("/me/bookmarks")
     fun getMyBookmarks(
         @RequestParam(defaultValue = "0") page: Int,
-        @RequestParam(defaultValue = "20") size: Int,
+        @RequestParam(defaultValue = "20") @Min(1) @Max(MAX_PAGE_SIZE) size: Int,
         requester: Requester,
     ): ResponseEntity<PageResponse<GithubRepositoryResponse>> {
         val userId = when (requester) {

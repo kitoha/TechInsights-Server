@@ -7,6 +7,7 @@ import com.techinsights.domain.repository.post.PostRepository
 import com.techinsights.domain.service.embedding.EmbeddingService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import com.techinsights.domain.utils.Tsid
 
 @Service
 @Transactional(readOnly = true)
@@ -59,7 +60,7 @@ class SemanticSearchServiceImpl(
 
     private fun matchesCompany(post: com.techinsights.domain.dto.post.PostDto, companyId: Long?): Boolean {
         if (companyId == null) return true
-        return post.company.id.toLongOrNull() == companyId
+        return post.company.id == Tsid.encode(companyId)
     }
 
     private fun toSimilarityScore(distance: Double): Double =

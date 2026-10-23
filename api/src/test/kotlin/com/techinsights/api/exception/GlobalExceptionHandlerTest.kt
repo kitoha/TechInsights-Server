@@ -10,6 +10,10 @@ import com.techinsights.domain.exception.user.DuplicateNicknameException
 import com.techinsights.domain.exception.user.InvalidNicknameException
 import com.techinsights.domain.exception.user.UserNotFoundException
 import com.techinsights.domain.exception.PostNotFoundException
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException
+import io.github.resilience4j.circuitbreaker.CircuitBreaker
+import io.github.resilience4j.ratelimiter.RateLimiter
+import io.github.resilience4j.ratelimiter.RequestNotPermitted
 import jakarta.validation.ConstraintViolation
 import jakarta.validation.ConstraintViolationException
 import io.kotest.core.spec.style.FunSpec
@@ -21,12 +25,18 @@ import org.springframework.context.MessageSourceResolvable
 import org.springframework.core.MethodParameter
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
+import org.springframework.http.ProblemDetail
 import org.springframework.validation.BindingResult
 import org.springframework.validation.FieldError
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.context.request.WebRequest
 import org.springframework.web.method.annotation.HandlerMethodValidationException
 import org.springframework.web.servlet.resource.NoResourceFoundException
+
+private val ProblemDetail.code: Any? get() = properties?.get("code")
+private val ProblemDetail.errors: Map<*, *>? get() = properties?.get("errors") as Map<*, *>?
+private val ProblemDetail.timestamp: Any? get() = properties?.get("timestamp")
+private val ProblemDetail.path: String? get() = instance?.path
 
 class GlobalExceptionHandlerTest : FunSpec({
 
@@ -46,7 +56,7 @@ class GlobalExceptionHandlerTest : FunSpec({
 
         // then
         response.statusCode shouldBe HttpStatus.NOT_FOUND
-        response.body?.errorCode shouldBe "USER_001"
+        response.body?.code shouldBe "USER_001"
         response.body?.path shouldBe "/api/test"
     }
 
@@ -59,8 +69,8 @@ class GlobalExceptionHandlerTest : FunSpec({
 
         // then
         response.statusCode shouldBe HttpStatus.CONFLICT
-        response.body?.errorCode shouldBe "USER_002"
-        response.body?.message shouldBe "이미 사용 중인 닉네임입니다. (닉네임: testnick)"
+        response.body?.code shouldBe "USER_002"
+        response.body?.detail shouldBe "이미 사용 중인 닉네임입니다. (닉네임: testnick)"
     }
 
     test("handleUserException - INVALID_NICKNAME should return 400") {
@@ -72,8 +82,8 @@ class GlobalExceptionHandlerTest : FunSpec({
 
         // then
         response.statusCode shouldBe HttpStatus.BAD_REQUEST
-        response.body?.errorCode shouldBe "USER_003"
-        response.body?.message shouldBe "유효하지 않은 닉네임입니다. (닉네임: bad nick, 사유: 특수문자 포함)"
+        response.body?.code shouldBe "USER_003"
+        response.body?.detail shouldBe "유효하지 않은 닉네임입니다. (닉네임: bad nick, 사유: 특수문자 포함)"
     }
 
     test("handleAuthException - ExpiredTokenException should return 401") {
@@ -85,8 +95,8 @@ class GlobalExceptionHandlerTest : FunSpec({
 
         // then
         response.statusCode shouldBe HttpStatus.UNAUTHORIZED
-        response.body?.errorCode shouldBe "EXPIRED_TOKEN"
-        response.body?.message shouldBe "토큰이 만료되었습니다."
+        response.body?.code shouldBe "EXPIRED_TOKEN"
+        response.body?.detail shouldBe "토큰이 만료되었습니다."
         response.body?.path shouldBe "/api/test"
     }
 
@@ -99,8 +109,8 @@ class GlobalExceptionHandlerTest : FunSpec({
 
         // then
         response.statusCode shouldBe HttpStatus.UNAUTHORIZED
-        response.body?.errorCode shouldBe "INVALID_TOKEN"
-        response.body?.message shouldBe "잘못된 토큰 형식"
+        response.body?.code shouldBe "INVALID_TOKEN"
+        response.body?.detail shouldBe "잘못된 토큰 형식"
         response.body?.path shouldBe "/api/test"
     }
 
@@ -113,8 +123,8 @@ class GlobalExceptionHandlerTest : FunSpec({
 
         // then
         response.statusCode shouldBe HttpStatus.UNAUTHORIZED
-        response.body?.errorCode shouldBe "TOKEN_TAMPERED"
-        response.body?.message shouldBe "토큰이 변조되었습니다."
+        response.body?.code shouldBe "TOKEN_TAMPERED"
+        response.body?.detail shouldBe "토큰이 변조되었습니다."
     }
 
     test("handleAuthException - UnauthorizedException should return 401") {
@@ -126,8 +136,8 @@ class GlobalExceptionHandlerTest : FunSpec({
 
         // then
         response.statusCode shouldBe HttpStatus.UNAUTHORIZED
-        response.body?.errorCode shouldBe "UNAUTHORIZED"
-        response.body?.message shouldBe "인증이 필요한 서비스입니다."
+        response.body?.code shouldBe "UNAUTHORIZED"
+        response.body?.detail shouldBe "인증이 필요한 서비스입니다."
     }
 
     test("handleUnauthorizedException - domain.UnauthorizedException 기본 메시지로 401 반환") {
@@ -139,8 +149,8 @@ class GlobalExceptionHandlerTest : FunSpec({
 
         // then
         response.statusCode shouldBe HttpStatus.UNAUTHORIZED
-        response.body?.errorCode shouldBe "UNAUTHORIZED"
-        response.body?.message shouldBe "인증이 필요합니다."
+        response.body?.code shouldBe "UNAUTHORIZED"
+        response.body?.detail shouldBe "인증이 필요합니다."
         response.body?.path shouldBe "/api/test"
     }
 
@@ -153,8 +163,8 @@ class GlobalExceptionHandlerTest : FunSpec({
 
         // then
         response.statusCode shouldBe HttpStatus.UNAUTHORIZED
-        response.body?.errorCode shouldBe "UNAUTHORIZED"
-        response.body?.message shouldBe "로그인이 필요한 서비스입니다."
+        response.body?.code shouldBe "UNAUTHORIZED"
+        response.body?.detail shouldBe "로그인이 필요한 서비스입니다."
         response.body?.path shouldBe "/api/test"
     }
 
@@ -168,10 +178,10 @@ class GlobalExceptionHandlerTest : FunSpec({
         // then
         response.statusCode shouldBe HttpStatus.NOT_FOUND
         response.body shouldNotBe null
-        response.body?.errorCode shouldBe "POST_NOT_FOUND"
-        response.body?.message shouldBe "게시글을 찾을 수 없습니다."
+        response.body?.code shouldBe "POST_NOT_FOUND"
+        response.body?.detail shouldBe "게시글을 찾을 수 없습니다."
         response.body?.path shouldBe "/api/test"
-        response.body?.details shouldBe null
+        response.body?.errors shouldBe null
     }
 
     test("handlePostNotFound should not expose internal exception message") {
@@ -183,8 +193,8 @@ class GlobalExceptionHandlerTest : FunSpec({
         val response = handler.handlePostNotFound(exception, mockRequest)
 
         // then
-        response.body?.message shouldBe "게시글을 찾을 수 없습니다."
-        response.body?.message shouldNotBe internalMessage
+        response.body?.detail shouldBe "게시글을 찾을 수 없습니다."
+        response.body?.detail shouldNotBe internalMessage
     }
 
     test("handleCompanyNotFound should return 404 with COMPANY_NOT_FOUND error code") {
@@ -197,10 +207,10 @@ class GlobalExceptionHandlerTest : FunSpec({
         // then
         response.statusCode shouldBe HttpStatus.NOT_FOUND
         response.body shouldNotBe null
-        response.body?.errorCode shouldBe "COMPANY_NOT_FOUND"
-        response.body?.message shouldBe "회사 정보를 찾을 수 없습니다."
+        response.body?.code shouldBe "COMPANY_NOT_FOUND"
+        response.body?.detail shouldBe "회사 정보를 찾을 수 없습니다."
         response.body?.path shouldBe "/api/test"
-        response.body?.details shouldBe null
+        response.body?.errors shouldBe null
     }
 
     test("handleCompanyNotFound should not expose internal exception message") {
@@ -212,8 +222,8 @@ class GlobalExceptionHandlerTest : FunSpec({
         val response = handler.handleCompanyNotFound(exception, mockRequest)
 
         // then
-        response.body?.message shouldBe "회사 정보를 찾을 수 없습니다."
-        response.body?.message shouldNotBe internalMessage
+        response.body?.detail shouldBe "회사 정보를 찾을 수 없습니다."
+        response.body?.detail shouldNotBe internalMessage
     }
 
     test("handleValidationException should return 400 with field errors in details") {
@@ -235,12 +245,12 @@ class GlobalExceptionHandlerTest : FunSpec({
         // then
         response.statusCode shouldBe HttpStatus.BAD_REQUEST
         response.body shouldNotBe null
-        response.body?.errorCode shouldBe "INVALID_PARAMETER"
-        response.body?.message shouldBe "입력값이 올바르지 않습니다."
+        response.body?.code shouldBe "INVALID_PARAMETER"
+        response.body?.detail shouldBe "입력값이 올바르지 않습니다."
         response.body?.path shouldBe "/api/test"
-        response.body?.details shouldNotBe null
-        response.body?.details?.get("email") shouldBe "must be valid email"
-        response.body?.details?.get("name") shouldBe "must not be blank"
+        response.body?.errors shouldNotBe null
+        response.body?.errors?.get("email") shouldBe "must be valid email"
+        response.body?.errors?.get("name") shouldBe "must not be blank"
     }
 
     test("handleValidationException should handle null default message") {
@@ -260,7 +270,7 @@ class GlobalExceptionHandlerTest : FunSpec({
 
         // then
         response.statusCode shouldBe HttpStatus.BAD_REQUEST
-        response.body?.details?.get("field1") shouldBe "Invalid value"
+        response.body?.errors?.get("field1") shouldBe "Invalid value"
     }
 
     test("handleValidationException should handle empty field errors") {
@@ -277,9 +287,9 @@ class GlobalExceptionHandlerTest : FunSpec({
 
         // then
         response.statusCode shouldBe HttpStatus.BAD_REQUEST
-        response.body?.errorCode shouldBe "INVALID_PARAMETER"
-        response.body?.details shouldNotBe null
-        response.body?.details?.isEmpty() shouldBe true
+        response.body?.code shouldBe "INVALID_PARAMETER"
+        response.body?.errors shouldNotBe null
+        response.body?.errors?.isEmpty() shouldBe true
     }
 
     test("handleConstraintViolation should return 400 with violation details") {
@@ -294,10 +304,10 @@ class GlobalExceptionHandlerTest : FunSpec({
 
         // then
         response.statusCode shouldBe HttpStatus.BAD_REQUEST
-        response.body?.errorCode shouldBe "INVALID_PARAMETER"
-        response.body?.message shouldBe "입력값이 올바르지 않습니다."
+        response.body?.code shouldBe "INVALID_PARAMETER"
+        response.body?.detail shouldBe "입력값이 올바르지 않습니다."
         response.body?.path shouldBe "/api/test"
-        response.body?.details?.get("fullSearch.page") shouldBe "must be greater than or equal to 0"
+        response.body?.errors?.get("fullSearch.page") shouldBe "must be greater than or equal to 0"
     }
 
     test("handleHandlerMethodValidation should return 400 with parameter violation details") {
@@ -321,10 +331,10 @@ class GlobalExceptionHandlerTest : FunSpec({
 
         // then
         response.statusCode shouldBe HttpStatus.BAD_REQUEST
-        response.body?.errorCode shouldBe "INVALID_PARAMETER"
-        response.body?.message shouldBe "입력값이 올바르지 않습니다."
+        response.body?.code shouldBe "INVALID_PARAMETER"
+        response.body?.detail shouldBe "입력값이 올바르지 않습니다."
         response.body?.path shouldBe "/api/test"
-        response.body?.details?.get("query") shouldBe "must not be blank"
+        response.body?.errors?.get("query") shouldBe "must not be blank"
     }
 
     test("handleHandlerMethodValidation should use fallback message when defaultMessage is null") {
@@ -348,7 +358,7 @@ class GlobalExceptionHandlerTest : FunSpec({
 
         // then
         response.statusCode shouldBe HttpStatus.BAD_REQUEST
-        response.body?.details?.get("size") shouldBe "Invalid value"
+        response.body?.errors?.get("size") shouldBe "Invalid value"
     }
 
     test("handleIllegalArgument should return 400 with INVALID_PARAMETER error code") {
@@ -361,10 +371,10 @@ class GlobalExceptionHandlerTest : FunSpec({
         // then
         response.statusCode shouldBe HttpStatus.BAD_REQUEST
         response.body shouldNotBe null
-        response.body?.errorCode shouldBe "INVALID_PARAMETER"
-        response.body?.message shouldBe "Invalid parameter value"
+        response.body?.code shouldBe "INVALID_PARAMETER"
+        response.body?.detail shouldBe "Invalid parameter value"
         response.body?.path shouldBe "/api/test"
-        response.body?.details shouldBe null
+        response.body?.errors shouldBe null
     }
 
     test("handleIllegalArgument should use default message when exception message is null") {
@@ -376,7 +386,7 @@ class GlobalExceptionHandlerTest : FunSpec({
 
         // then
         response.statusCode shouldBe HttpStatus.BAD_REQUEST
-        response.body?.message shouldBe "잘못된 요청입니다."
+        response.body?.detail shouldBe "잘못된 요청입니다."
     }
 
     test("handleIllegalArgument should preserve exception message") {
@@ -388,7 +398,7 @@ class GlobalExceptionHandlerTest : FunSpec({
         val response = handler.handleIllegalArgument(exception, mockRequest)
 
         // then
-        response.body?.message shouldBe customMessage
+        response.body?.detail shouldBe customMessage
     }
 
     test("handleGenericException should return 500 with INTERNAL_SERVER_ERROR") {
@@ -401,10 +411,10 @@ class GlobalExceptionHandlerTest : FunSpec({
         // then
         response.statusCode shouldBe HttpStatus.INTERNAL_SERVER_ERROR
         response.body shouldNotBe null
-        response.body?.errorCode shouldBe "INTERNAL_SERVER_ERROR"
-        response.body?.message shouldBe "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+        response.body?.code shouldBe "INTERNAL_SERVER_ERROR"
+        response.body?.detail shouldBe "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
         response.body?.path shouldBe "/api/test"
-        response.body?.details shouldBe null
+        response.body?.errors shouldBe null
     }
 
     test("handleGenericException should not expose internal exception message") {
@@ -416,8 +426,8 @@ class GlobalExceptionHandlerTest : FunSpec({
         val response = handler.handleGenericException(exception, mockRequest)
 
         // then
-        response.body?.message shouldBe "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
-        response.body?.message shouldNotBe internalError
+        response.body?.detail shouldBe "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+        response.body?.detail shouldNotBe internalError
     }
 
     test("handleGenericException should handle NullPointerException") {
@@ -429,8 +439,8 @@ class GlobalExceptionHandlerTest : FunSpec({
 
         // then
         response.statusCode shouldBe HttpStatus.INTERNAL_SERVER_ERROR
-        response.body?.errorCode shouldBe "INTERNAL_SERVER_ERROR"
-        response.body?.message shouldBe "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+        response.body?.code shouldBe "INTERNAL_SERVER_ERROR"
+        response.body?.detail shouldBe "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
     }
 
     test("handleGenericException should handle custom RuntimeException") {
@@ -443,7 +453,7 @@ class GlobalExceptionHandlerTest : FunSpec({
 
         // then
         response.statusCode shouldBe HttpStatus.INTERNAL_SERVER_ERROR
-        response.body?.errorCode shouldBe "INTERNAL_SERVER_ERROR"
+        response.body?.code shouldBe "INTERNAL_SERVER_ERROR"
     }
 
     test("handleNoResourceFound should return 404 with NOT_FOUND error code") {
@@ -455,8 +465,8 @@ class GlobalExceptionHandlerTest : FunSpec({
 
         // then
         response.statusCode shouldBe HttpStatus.NOT_FOUND
-        response.body?.errorCode shouldBe "NOT_FOUND"
-        response.body?.message shouldBe "요청한 리소스를 찾을 수 없습니다."
+        response.body?.code shouldBe "NOT_FOUND"
+        response.body?.detail shouldBe "요청한 리소스를 찾을 수 없습니다."
         response.body?.path shouldBe "/api/test"
     }
 
@@ -538,11 +548,11 @@ class GlobalExceptionHandlerTest : FunSpec({
         val response = handler.handleValidationException(exception, mockRequest)
 
         // then
-        response.body?.details?.size shouldBe 4
-        response.body?.details?.get("email") shouldBe "invalid email format"
-        response.body?.details?.get("password") shouldBe "too short"
-        response.body?.details?.get("username") shouldBe "already exists"
-        response.body?.details?.get("age") shouldBe "must be positive"
+        response.body?.errors?.size shouldBe 4
+        response.body?.errors?.get("email") shouldBe "invalid email format"
+        response.body?.errors?.get("password") shouldBe "too short"
+        response.body?.errors?.get("username") shouldBe "already exists"
+        response.body?.errors?.get("age") shouldBe "must be positive"
     }
 
     test("exception handlers should work with different request paths") {
@@ -564,5 +574,31 @@ class GlobalExceptionHandlerTest : FunSpec({
             // then
             response.body?.path shouldBe path.removePrefix("uri=")
         }
+    }
+
+    test("handleRequestNotPermitted should return 429") {
+        // given
+        val exception = RequestNotPermitted.createRequestNotPermitted(RateLimiter.ofDefaults("test"))
+
+        // when
+        val response = handler.handleRequestNotPermitted(exception, mockRequest)
+
+        // then
+        response.statusCode shouldBe HttpStatus.TOO_MANY_REQUESTS
+        response.body?.code shouldBe "TOO_MANY_REQUESTS"
+        response.body?.path shouldBe "/api/test"
+    }
+
+    test("handleCallNotPermitted should return 503") {
+        // given
+        val exception = CallNotPermittedException.createCallNotPermittedException(CircuitBreaker.ofDefaults("test"))
+
+        // when
+        val response = handler.handleCallNotPermitted(exception, mockRequest)
+
+        // then
+        response.statusCode shouldBe HttpStatus.SERVICE_UNAVAILABLE
+        response.body?.code shouldBe "SERVICE_UNAVAILABLE"
+        response.body?.path shouldBe "/api/test"
     }
 })

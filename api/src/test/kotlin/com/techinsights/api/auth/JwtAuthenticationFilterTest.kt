@@ -11,7 +11,12 @@ import jakarta.servlet.http.Cookie
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
 import org.springframework.security.core.context.SecurityContextHolder
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import io.jsonwebtoken.Claims
+import org.slf4j.LoggerFactory
 import java.util.Base64
 
 class JwtAuthenticationFilterTest : FunSpec({
@@ -43,7 +48,7 @@ class JwtAuthenticationFilterTest : FunSpec({
         every { claims.get("role", String::class.java) } returns UserRole.USER.name
         every { claims.subject } returns "1"
 
-        every { jwtPlugin.validateToken("valid-at") } returns claims
+        every { jwtPlugin.validateAccessToken("valid-at") } returns claims
         every { chain.doFilter(any(), any()) } just Runs
 
         // when
@@ -54,6 +59,28 @@ class JwtAuthenticationFilterTest : FunSpec({
         auth shouldNotBe null
         (auth?.principal as CustomUserDetails).userId shouldBe 1L
         verify { chain.doFilter(any(), any()) }
+    }
+
+    test("거부된 토큰의 사유 코드를 request attribute로 남긴다") {
+        val request = MockHttpServletRequest()
+        val chain = mockk<FilterChain>()
+        request.setCookies(Cookie("at", "expired-at"))
+        every { jwtPlugin.validateAccessToken("expired-at") } throws ExpiredTokenException()
+        every { chain.doFilter(any(), any()) } just Runs
+
+        filter.doFilter(request, MockHttpServletResponse(), chain)
+
+        request.getAttribute(JwtAuthenticationFilter.AUTH_ERROR_CODE_ATTRIBUTE) shouldBe "EXPIRED_TOKEN"
+    }
+
+    test("토큰이 없으면 사유 코드 attribute를 남기지 않는다") {
+        val request = MockHttpServletRequest()
+        val chain = mockk<FilterChain>()
+        every { chain.doFilter(any(), any()) } just Runs
+
+        filter.doFilter(request, MockHttpServletResponse(), chain)
+
+        request.getAttribute(JwtAuthenticationFilter.AUTH_ERROR_CODE_ATTRIBUTE) shouldBe null
     }
 
     test("Access Token 쿠키가 없으면 인증 정보를 설정하지 않아야 한다") {
@@ -70,5 +97,106 @@ class JwtAuthenticationFilterTest : FunSpec({
         // then
         SecurityContextHolder.getContext().authentication shouldBe null
         verify { chain.doFilter(any(), any()) }
+    }
+
+    test("리프레시 토큰이 Access Token 쿠키에 담겨 있으면 인증하지 않고 요청을 통과시켜야 한다") {
+        val request = MockHttpServletRequest()
+        val response = MockHttpServletResponse()
+        val chain = mockk<FilterChain>()
+        request.setCookies(Cookie("at", "refresh-in-at"))
+        every { jwtPlugin.validateAccessToken("refresh-in-at") } throws InvalidTokenException("토큰 유형이 올바르지 않습니다.")
+        every { chain.doFilter(any(), any()) } just Runs
+
+        filter.doFilter(request, response, chain)
+
+        SecurityContextHolder.getContext().authentication shouldBe null
+        verify { chain.doFilter(any(), any()) }
+    }
+
+    test("role 클레임이 없는 토큰은 예외 없이 인증하지 않아야 한다") {
+        val request = MockHttpServletRequest()
+        val response = MockHttpServletResponse()
+        val chain = mockk<FilterChain>()
+        request.setCookies(Cookie("at", "no-role"))
+        val claims = mockk<Claims>()
+        every { claims.get("userId", Long::class.javaObjectType) } returns 1L
+        every { claims.get("email", String::class.java) } returns null
+        every { claims.get("role", String::class.java) } returns null
+        every { jwtPlugin.validateAccessToken("no-role") } returns claims
+        every { chain.doFilter(any(), any()) } just Runs
+
+        filter.doFilter(request, response, chain)
+
+        SecurityContextHolder.getContext().authentication shouldBe null
+        verify { chain.doFilter(any(), any()) }
+    }
+
+    test("알 수 없는 role 값을 가진 토큰은 예외 없이 인증하지 않아야 한다") {
+        val request = MockHttpServletRequest()
+        val response = MockHttpServletResponse()
+        val chain = mockk<FilterChain>()
+        request.setCookies(Cookie("at", "bad-role"))
+        val claims = mockk<Claims>()
+        every { claims.get("userId", Long::class.javaObjectType) } returns 1L
+        every { claims.get("email", String::class.java) } returns "test@example.com"
+        every { claims.get("role", String::class.java) } returns "SUPERUSER"
+        every { jwtPlugin.validateAccessToken("bad-role") } returns claims
+        every { chain.doFilter(any(), any()) } just Runs
+
+        filter.doFilter(request, response, chain)
+
+        SecurityContextHolder.getContext().authentication shouldBe null
+        verify { chain.doFilter(any(), any()) }
+    }
+
+    context("실패 로깅") {
+        val logger = LoggerFactory.getLogger(JwtAuthenticationFilter::class.java) as Logger
+        val appender = ListAppender<ILoggingEvent>()
+        val previousLevel = logger.level
+
+        beforeTest {
+            appender.list.clear()
+            appender.start()
+            logger.addAppender(appender)
+            logger.level = Level.DEBUG
+        }
+        afterTest {
+            logger.detachAppender(appender)
+            logger.level = previousLevel
+        }
+
+        fun filterWith(token: String, failure: Throwable) {
+            val request = MockHttpServletRequest()
+            request.setCookies(Cookie("at", token))
+            val chain = mockk<FilterChain>()
+            every { jwtPlugin.validateAccessToken(token) } throws failure
+            every { chain.doFilter(any(), any()) } just Runs
+            filter.doFilter(request, MockHttpServletResponse(), chain)
+        }
+
+        mapOf(
+            ExpiredTokenException() to "expired",
+            TokenTamperedException() to "bad_signature",
+            WrongTokenTypeException() to "wrong_typ",
+            InvalidTokenException("형식에 맞지 않는 토큰입니다.") to "malformed"
+        ).forEach { (failure, category) ->
+            test("${failure::class.simpleName}는 $category 카테고리로 DEBUG 로깅되고 토큰 내용은 남기지 않아야 한다") {
+                filterWith("secret.token.value", failure)
+
+                val event = appender.list.single()
+                event.level shouldBe Level.DEBUG
+                event.formattedMessage.contains("category=$category") shouldBe true
+                event.formattedMessage.contains("secret.token.value") shouldBe false
+            }
+        }
+
+        test("예상하지 못한 예외는 WARN으로 로깅되고 토큰 내용은 남기지 않아야 한다") {
+            filterWith("secret.token.value", IllegalStateException("boom secret.token.value"))
+
+            val event = appender.list.single()
+            event.level shouldBe Level.WARN
+            event.formattedMessage.contains("IllegalStateException") shouldBe true
+            event.formattedMessage.contains("secret.token.value") shouldBe false
+        }
     }
 })

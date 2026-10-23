@@ -2,16 +2,17 @@ package com.techinsights.api.auth
 
 import com.techinsights.api.props.AuthProperties
 import com.techinsights.domain.dto.user.AuthUserDto
-import com.techinsights.domain.dto.user.RefreshTokenDto
+import com.techinsights.domain.dto.user.RefreshTokenRotationResult
 import com.techinsights.domain.enums.UserRole
+import com.techinsights.domain.enums.UserStatus
 import com.techinsights.domain.service.user.RefreshTokenService
 import com.techinsights.domain.service.user.UserService
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.*
 import io.jsonwebtoken.Claims
-import java.time.Instant
-import java.time.LocalDateTime
+import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
 import java.util.Base64
 
@@ -41,7 +42,7 @@ class TokenServiceTest : FunSpec({
         
         every { jwtPlugin.generateAccessToken(userId, email, role) } returns "access-token"
         every { jwtPlugin.generateRefreshToken(userId) } returns "refresh-token"
-        every { refreshTokenService.upsertToken(userId, deviceId, any(), any()) } returns mockk()
+        every { refreshTokenService.startSession(userId, deviceId, any(), any(), 10) } returns mockk()
 
         // when
         val response = tokenService.issueTokens(userId, email, role, deviceId)
@@ -49,75 +50,119 @@ class TokenServiceTest : FunSpec({
         // then
         response.accessToken shouldBe "access-token"
         response.refreshToken shouldBe "refresh-token"
-        verify { refreshTokenService.upsertToken(userId, deviceId, any(), any()) }
+        verify { refreshTokenService.startSession(userId, deviceId, any(), any(), 10) }
     }
 
-    test("유효한 리프레시 토큰으로 갱신 시 새로운 토큰 쌍이 발급되어야 한다 (RTR)") {
-        // given
-        val oldRt = "old-rt"
-        val userId = 1L
-        val existingToken = RefreshTokenDto(
-            userId = userId,
-            tokenHash = tokenHasher.hash(oldRt),
-            previousTokenHash = null,
-            deviceId = "dev",
-            expiryAt = Instant.now().plusSeconds(3600),
-            updatedAt = LocalDateTime.now()
-        )
-        val user = AuthUserDto(id = userId, email = "test@example.com", role = UserRole.USER)
-        
+    val userId = 1L
+    val user = AuthUserDto(id = userId, email = "test@example.com", role = UserRole.USER, status = UserStatus.ACTIVE)
+
+    fun givenValidRefreshToken(token: String) {
         val claims = mockk<Claims>()
         every { claims.get("userId", Long::class.javaObjectType) } returns userId
-
-        every { jwtPlugin.validateToken(oldRt) } returns claims
-        every { refreshTokenService.findByHash(tokenHasher.hash(oldRt)) } returns existingToken
-        every { userService.getAuthUserById(userId) } returns user
-        
+        every { jwtPlugin.validateRefreshToken(token) } returns claims
+        every { userService.findAuthUserById(userId) } returns user
         every { jwtPlugin.generateAccessToken(any(), any(), any()) } returns "new-at"
         every { jwtPlugin.generateRefreshToken(userId) } returns "new-rt"
-        every { refreshTokenService.upsertToken(userId, "dev", any(), any()) } returns mockk()
+    }
+
+    test("유효한 리프레시 토큰으로 갱신 시 제시된 해시의 행이 회전되고 새로운 토큰 쌍이 발급되어야 한다 (RTR)") {
+        // given
+        givenValidRefreshToken("old-rt")
+        every {
+            refreshTokenService.rotate(tokenHasher.hash("old-rt"), tokenHasher.hash("new-rt"), any())
+        } returns RefreshTokenRotationResult.Rotated
 
         // when
-        val response = tokenService.refresh(oldRt, "dev")
+        val response = tokenService.refresh("old-rt")
 
         // then
         response.accessToken shouldBe "new-at"
         response.refreshToken shouldBe "new-rt"
-        verify { refreshTokenService.upsertToken(userId, "dev", any(), any()) }
+        verify(exactly = 0) { refreshTokenService.startSession(any(), any(), any(), any(), any()) }
+        verify(exactly = 0) { refreshTokenService.deleteAllByUserId(any()) }
     }
 
-    test("짧은 유예 기간(Leeway) 내에 이전 토큰으로 갱신 시도 시 race condition으로 판단하고 세션을 유지해야 한다") {
-        // given
-        val oldRt = "old-rt"
-        val userId = 1L
-        val deviceId = "device-1"
-        val existingToken = RefreshTokenDto(
-            userId = userId,
-            tokenHash = tokenHasher.hash("current-rt"),
-            previousTokenHash = tokenHasher.hash(oldRt),
-            deviceId = deviceId,
-            expiryAt = Instant.now().plusSeconds(3600),
-            updatedAt = LocalDateTime.now()
-        )
-        val user = AuthUserDto(id = userId, email = "test@example.com", role = UserRole.USER)
-        val claims = mockk<Claims>()
-        every { claims.get("userId", Long::class.javaObjectType) } returns userId
+    test("유예 기간 내 직전 토큰으로 요청해도 회전에 성공하면 세션을 유지해야 한다") {
+        givenValidRefreshToken("old-rt")
+        every { refreshTokenService.rotate(any(), any(), any()) } returns RefreshTokenRotationResult.Rotated
 
-        every { jwtPlugin.validateToken(oldRt) } returns claims
-        every { refreshTokenService.findByHash(tokenHasher.hash(oldRt)) } returns null
-        every { refreshTokenService.findByPreviousHash(tokenHasher.hash(oldRt)) } returns existingToken
+        val response = tokenService.refresh("old-rt")
 
-        every { userService.getAuthUserById(userId) } returns user
-        every { jwtPlugin.generateAccessToken(any(), any(), any()) } returns "new-at"
-        every { jwtPlugin.generateRefreshToken(userId) } returns "new-rt"
-        every { refreshTokenService.upsertToken(any(), any(), any(), any()) } returns mockk()
-
-        // when
-        val response = tokenService.refresh(oldRt, deviceId)
-
-        // then
-        response.accessToken shouldBe "new-at"
         response.refreshToken shouldBe "new-rt"
         verify(exactly = 0) { refreshTokenService.deleteAllByUserId(any()) }
+    }
+
+    test("폐기된 토큰이 재사용되면 TokenTamperedException이 발생하고 사용자의 모든 세션을 폐기하지는 않아야 한다 (패밀리 폐기는 회전 내부에서 처리)") {
+        givenValidRefreshToken("old-rt")
+        every { refreshTokenService.rotate(any(), any(), any()) } returns RefreshTokenRotationResult.ReuseDetected
+
+        shouldThrow<TokenTamperedException> { tokenService.refresh("old-rt") }
+
+        verify(exactly = 0) { refreshTokenService.deleteAllByUserId(any()) }
+    }
+
+    test("저장된 적 없는 해시는 세션 폐기 없이 InvalidTokenException이 발생해야 한다") {
+        givenValidRefreshToken("unknown-rt")
+        every { refreshTokenService.rotate(any(), any(), any()) } returns RefreshTokenRotationResult.NotFound
+
+        shouldThrow<InvalidTokenException> { tokenService.refresh("unknown-rt") }
+
+        verify(exactly = 0) { refreshTokenService.deleteAllByUserId(any()) }
+    }
+
+    test("만료된 리프레시 토큰은 ExpiredTokenException이 발생해야 한다") {
+        givenValidRefreshToken("old-rt")
+        every { refreshTokenService.rotate(any(), any(), any()) } returns RefreshTokenRotationResult.Expired
+
+        shouldThrow<ExpiredTokenException> { tokenService.refresh("old-rt") }
+
+        verify(exactly = 0) { refreshTokenService.deleteAllByUserId(any()) }
+    }
+
+    test("액세스 토큰 등 유형이 다른 토큰은 해시 조회나 세션 폐기 없이 InvalidTokenException이 발생해야 한다") {
+        every { jwtPlugin.validateRefreshToken("access-token") } throws InvalidTokenException("토큰 유형이 올바르지 않습니다.")
+
+        shouldThrow<InvalidTokenException> { tokenService.refresh("access-token") }
+
+        verify(exactly = 0) { refreshTokenService.rotate(any(), any(), any()) }
+        verify(exactly = 0) { refreshTokenService.deleteAllByUserId(any()) }
+    }
+
+    test("사용자를 찾을 수 없으면 해당 사용자의 리프레시 토큰을 모두 삭제하고 InvalidTokenException이 발생해야 한다") {
+        val claims = mockk<Claims>()
+        every { claims.get("userId", Long::class.javaObjectType) } returns userId
+        every { jwtPlugin.validateRefreshToken("old-rt") } returns claims
+        every { userService.findAuthUserById(userId) } returns null
+        every { refreshTokenService.deleteAllByUserId(userId) } just Runs
+
+        shouldThrow<InvalidTokenException> { tokenService.refresh("old-rt") }
+
+        verify(exactly = 1) { refreshTokenService.deleteAllByUserId(userId) }
+        verify(exactly = 0) { refreshTokenService.rotate(any(), any(), any()) }
+    }
+
+    UserStatus.entries.filter { it != UserStatus.ACTIVE }.forEach { status ->
+        test("상태가 $status 인 사용자는 토큰을 모두 삭제하고 InvalidTokenException이 발생해야 한다") {
+            val claims = mockk<Claims>()
+            every { claims.get("userId", Long::class.javaObjectType) } returns userId
+            every { jwtPlugin.validateRefreshToken("old-rt") } returns claims
+            every { userService.findAuthUserById(userId) } returns user.copy(status = status)
+            every { refreshTokenService.deleteAllByUserId(userId) } just Runs
+
+            shouldThrow<InvalidTokenException> { tokenService.refresh("old-rt") }
+
+            verify(exactly = 1) { refreshTokenService.deleteAllByUserId(userId) }
+            verify(exactly = 0) { refreshTokenService.rotate(any(), any(), any()) }
+            verify(exactly = 0) { jwtPlugin.generateAccessToken(any(), any(), any()) }
+        }
+    }
+
+    test("재사용 감지·비활성 사용자로 인한 토큰 삭제와 만료 토큰 삭제는 예외가 발생해도 롤백되지 않아야 한다") {
+        val noRollbackFor = TokenService::class.java
+            .getMethod("refresh", String::class.java)
+            .getAnnotation(Transactional::class.java)
+            .noRollbackFor
+
+        noRollbackFor.toSet() shouldBe setOf(TokenTamperedException::class, ExpiredTokenException::class, InvalidTokenException::class)
     }
 })

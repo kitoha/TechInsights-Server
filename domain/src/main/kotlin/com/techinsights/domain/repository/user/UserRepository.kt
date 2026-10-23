@@ -8,6 +8,16 @@ interface UserRepository {
     fun findByEmail(email: String): Optional<User>
     fun findByProviderAndProviderId(provider: ProviderType, providerId: String): Optional<User>
     fun save(user: User): User
+    /** Creates the user, or refreshes email/name/profileImage/lastLoginAt of the existing (provider, providerId) row, atomically. */
+    fun upsertByProvider(
+        id: Long,
+        email: String,
+        name: String,
+        nickname: String,
+        provider: ProviderType,
+        providerId: String,
+        profileImage: String?
+    )
     fun findById(id: Long): Optional<User>
     fun findByNickname(nickname: String): Optional<User>
     fun existsByNickname(nickname: String): Boolean
