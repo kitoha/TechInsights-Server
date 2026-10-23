@@ -50,11 +50,6 @@ class UserService(
             .orElse(null)
     }
 
-    fun getAuthUserById(userId: Long): AuthUserDto {
-        val user = getUserById(userId)
-        return AuthUserDto.fromEntity(user)
-    }
-
     /**
      * 닉네임 변경
      * @param userId 사용자 ID
