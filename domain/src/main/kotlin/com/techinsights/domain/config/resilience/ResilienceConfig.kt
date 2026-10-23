@@ -24,6 +24,7 @@ class ResilienceConfig(
     val geminiBatchRpmConfig = createRateLimiterConfig(rateLimiterProperties.geminiBatchRpm)
     val geminiBatchRpdConfig = createRateLimiterConfig(rateLimiterProperties.geminiBatchRpd)
     val geminiEmbeddingConfig = createRateLimiterConfig(rateLimiterProperties.geminiEmbedding)
+    val geminiQueryEmbeddingConfig = createRateLimiterConfig(rateLimiterProperties.geminiQueryEmbedding)
     val githubConfig = createRateLimiterConfig(rateLimiterProperties.github)
     val geminiReadmeRpmConfig = createRateLimiterConfig(rateLimiterProperties.geminiReadmeRpm)
     val geminiReadmeRpdConfig = createRateLimiterConfig(rateLimiterProperties.geminiReadmeRpd)
@@ -40,6 +41,9 @@ class ResilienceConfig(
     registry.rateLimiter("geminiBatchRpm", geminiBatchRpmConfig)
     registry.rateLimiter("geminiBatchRpd", geminiBatchRpdConfig)
     registry.rateLimiter("geminiEmbedding", geminiEmbeddingConfig)
+
+    // 요청 경로(검색 API) 임베딩 RateLimiter: 대기 없이 즉시 거절
+    registry.rateLimiter("geminiQueryEmbedding", geminiQueryEmbeddingConfig)
 
     // GitHub API RateLimiter
     registry.rateLimiter("githubApi", githubConfig)

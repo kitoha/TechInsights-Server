@@ -24,6 +24,11 @@ data class RateLimiterProperties(
     refreshPeriodSeconds = 60,
     timeoutSeconds = 30
   ),
+  val geminiQueryEmbedding: LimiterConfig = LimiterConfig(
+    limitForPeriod = 60,
+    refreshPeriodSeconds = 60,
+    timeoutSeconds = 0
+  ),
   val github: LimiterConfig = LimiterConfig(
     limitForPeriod = 25,
     refreshPeriodSeconds = 60,
