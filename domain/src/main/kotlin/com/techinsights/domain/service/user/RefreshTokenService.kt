@@ -74,11 +74,14 @@ class RefreshTokenService(
         return rotateSession(session, newHash, newExpiryAt, now)
     }
 
+    /**
+     * Logout. Presenting the current token ends the session; presenting a retired token of a session
+     * (inside or outside grace) is treated like reuse and revokes that session (family).
+     */
     @Transactional
     fun deleteByHash(hash: String) {
         val session = refreshTokenRepository.findByHashForUpdate(hash).orElse(null)
             ?: refreshTokenRepository.findRetiredByHash(hash).orElse(null)
-                ?.takeIf { !it.retiredAt.isBefore(Instant.now().minus(GRACE_PERIOD)) }
                 ?.let { refreshTokenRepository.findByFamilyIdForUpdate(it.familyId).orElse(null) }
         session?.let { refreshTokenRepository.delete(it) }
     }

@@ -325,13 +325,24 @@ class RefreshTokenServiceTest(
       sessionCount(1) shouldBe 0
     }
 
-    test("유예 시간이 지난 폐기 해시로는 세션을 종료하지 않는다") {
+    test("유예 시간이 지난 폐기 해시로 로그아웃하면 재사용으로 보고 해당 패밀리를 폐기한다") {
+      insertUser(1)
+      login(1, "a0", deviceId = "dev-a")
+      login(1, "b0", deviceId = "dev-b")
+      rotate("a0", "a1")
+      ageRetired("a0", 120)
+
+      inTx { service.deleteByHash("a0") }
+
+      currentHash(1) shouldBe listOf("b0")
+      retiredCount() shouldBe 0
+    }
+
+    test("알 수 없는 해시로 로그아웃하면 아무 세션도 지우지 않는다") {
       insertUser(1)
       login(1, "h0")
-      rotate("h0", "h1")
-      ageRetired("h0", 120)
 
-      inTx { service.deleteByHash("h0") }
+      inTx { service.deleteByHash("never-issued") }
 
       sessionCount(1) shouldBe 1
     }
