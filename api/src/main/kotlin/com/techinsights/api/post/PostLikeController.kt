@@ -21,6 +21,7 @@ class PostLikeController(
         return ResponseEntity.ok(LikeStatusResponse(result.count, result.liked))
     }
 
+    @Deprecated("Not idempotent (a double click unlikes). Use PUT/DELETE /{postId}/like.")
     @PostMapping("/{postId}/like")
     fun toggleLike(
         @PathVariable postId: String,
@@ -33,6 +34,24 @@ class PostLikeController(
 
         val liked = postLikeService.toggleLike(postId, requester)
         return ResponseEntity.ok(LikeResponse(liked))
+    }
+
+    @PutMapping("/{postId}/like")
+    fun like(
+        @PathVariable postId: String,
+        requester: Requester
+    ): ResponseEntity<LikeResponse> {
+        postLikeService.like(postId, requester)
+        return ResponseEntity.ok(LikeResponse(true))
+    }
+
+    @DeleteMapping("/{postId}/like")
+    fun unlike(
+        @PathVariable postId: String,
+        requester: Requester
+    ): ResponseEntity<LikeResponse> {
+        postLikeService.unlike(postId, requester)
+        return ResponseEntity.ok(LikeResponse(false))
     }
 
     data class LikeResponse(val liked: Boolean)

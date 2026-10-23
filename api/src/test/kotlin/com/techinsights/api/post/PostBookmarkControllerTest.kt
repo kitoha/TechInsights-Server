@@ -16,6 +16,8 @@ import io.kotest.core.spec.style.FunSpec
 import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.Runs
+import io.mockk.just
 import io.mockk.verify
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
@@ -25,6 +27,8 @@ import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.springframework.test.web.servlet.delete
+import org.springframework.test.web.servlet.put
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import java.time.LocalDateTime
 
@@ -101,6 +105,47 @@ class PostBookmarkControllerTest : FunSpec() {
             }
 
             verify(exactly = 1) { postBookmarkService.toggleBookmark(postId, any<Requester.Anonymous>()) }
+        }
+
+        test("PUT /api/v1/posts/{id}/bookmark - 인증된 사용자 - 멱등 북마크 설정") {
+            val id = Tsid.generate()
+            val userDetails = CustomUserDetails(userId = 1L, email = "test@example.com", role = UserRole.USER)
+            SecurityContextHolder.getContext().authentication =
+                UsernamePasswordAuthenticationToken(userDetails, null, userDetails.authorities)
+            every { postBookmarkService.addBookmark(id, any<Requester.Authenticated>()) } just Runs
+
+            mockMvc.put("/api/v1/posts/$id/bookmark") { accept = MediaType.APPLICATION_JSON }.andExpect {
+                status { isOk() }
+                jsonPath("$.bookmarked") { value(true) }
+            }
+
+            verify(exactly = 1) { postBookmarkService.addBookmark(id, any<Requester.Authenticated>()) }
+            verify(exactly = 0) { postBookmarkService.toggleBookmark(any(), any()) }
+        }
+
+        test("DELETE /api/v1/posts/{id}/bookmark - 인증된 사용자 - 멱등 북마크 해제") {
+            val id = Tsid.generate()
+            val userDetails = CustomUserDetails(userId = 1L, email = "test@example.com", role = UserRole.USER)
+            SecurityContextHolder.getContext().authentication =
+                UsernamePasswordAuthenticationToken(userDetails, null, userDetails.authorities)
+            every { postBookmarkService.removeBookmark(id, any<Requester.Authenticated>()) } just Runs
+
+            mockMvc.delete("/api/v1/posts/$id/bookmark") { accept = MediaType.APPLICATION_JSON }.andExpect {
+                status { isOk() }
+                jsonPath("$.bookmarked") { value(false) }
+            }
+
+            verify(exactly = 1) { postBookmarkService.removeBookmark(id, any<Requester.Authenticated>()) }
+        }
+
+        test("PUT /api/v1/posts/{id}/bookmark - 익명 사용자 요청 시 401 반환") {
+            val id = Tsid.generate()
+            every { postBookmarkService.addBookmark(id, any<Requester.Anonymous>()) } throws UnauthorizedException()
+
+            mockMvc.put("/api/v1/posts/$id/bookmark") { accept = MediaType.APPLICATION_JSON }.andExpect {
+                status { isUnauthorized() }
+                jsonPath("$.code") { value("UNAUTHORIZED") }
+            }
         }
 
         test("GET /api/v1/posts/me/bookmarks - 인증된 사용자 - 북마크 목록 반환") {

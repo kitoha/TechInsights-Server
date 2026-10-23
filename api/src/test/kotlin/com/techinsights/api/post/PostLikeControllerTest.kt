@@ -18,6 +18,8 @@ import com.techinsights.domain.dto.post.LikeStatusResult
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.springframework.test.web.servlet.delete
+import org.springframework.test.web.servlet.put
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 
 class PostLikeControllerTest : FunSpec() {
@@ -137,6 +139,31 @@ class PostLikeControllerTest : FunSpec() {
             }
 
             verify(exactly = 1) { postLikeService.getLikeStatus(postId, any<Requester.Authenticated>()) }
+        }
+
+        test("PUT /api/v1/posts/{postId}/like - 멱등 좋아요 설정") {
+            val postId = Tsid.generate()
+            every { postLikeService.like(postId, any<Requester.Anonymous>()) } just Runs
+
+            mockMvc.put("/api/v1/posts/$postId/like") { accept = MediaType.APPLICATION_JSON }.andExpect {
+                status { isOk() }
+                jsonPath("$.liked") { value(true) }
+            }
+
+            verify(exactly = 1) { postLikeService.like(postId, any<Requester.Anonymous>()) }
+            verify(exactly = 0) { postLikeService.toggleLike(any(), any()) }
+        }
+
+        test("DELETE /api/v1/posts/{postId}/like - 멱등 좋아요 해제") {
+            val postId = Tsid.generate()
+            every { postLikeService.unlike(postId, any<Requester.Anonymous>()) } just Runs
+
+            mockMvc.delete("/api/v1/posts/$postId/like") { accept = MediaType.APPLICATION_JSON }.andExpect {
+                status { isOk() }
+                jsonPath("$.liked") { value(false) }
+            }
+
+            verify(exactly = 1) { postLikeService.unlike(postId, any<Requester.Anonymous>()) }
         }
 
         test("GET /api/v1/posts/{postId}/like - Anonymous User - Not Liked") {
