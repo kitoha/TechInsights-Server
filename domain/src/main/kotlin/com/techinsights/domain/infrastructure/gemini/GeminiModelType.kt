@@ -1,4 +1,4 @@
-package com.techinsights.domain.enums
+package com.techinsights.domain.infrastructure.gemini
 
 enum class GeminiModelType {
   GEMINI_3_FLASH("gemini-3-pro-preview"),

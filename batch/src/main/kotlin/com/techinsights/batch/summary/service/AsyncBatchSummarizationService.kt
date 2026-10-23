@@ -5,7 +5,6 @@ import com.techinsights.batch.summary.dto.BatchRequest
 import com.techinsights.batch.summary.dto.BatchResult
 import com.techinsights.domain.dto.summary.ArticleInput
 import com.techinsights.domain.dto.summary.BatchSummaryResponse
-import com.techinsights.domain.enums.GeminiModelType
 import com.techinsights.domain.service.summary.BatchArticleSummarizer
 import io.github.resilience4j.circuitbreaker.CircuitBreaker
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
@@ -150,10 +149,7 @@ class AsyncBatchSummarizationService(
             )
         }
 
-        val summaryFlow = batchSummarizer.summarizeBatch(
-            inputs,
-            GeminiModelType.GEMINI_2_5_FLASH_LITE
-        )
+        val summaryFlow = batchSummarizer.summarizeBatch(inputs)
 
         val results = mutableListOf<com.techinsights.domain.dto.summary.SummaryResultWithId>()
         summaryFlow.collect { result ->

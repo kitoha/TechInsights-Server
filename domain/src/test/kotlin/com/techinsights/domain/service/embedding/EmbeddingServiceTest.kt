@@ -1,7 +1,6 @@
 package com.techinsights.domain.service.embedding
 
 import com.techinsights.domain.dto.embedding.EmbeddingRequest
-import com.techinsights.domain.enums.GeminiModelType
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -50,21 +49,19 @@ class EmbeddingServiceTest : FunSpec({
             val requestSlot = slot<EmbeddingRequest>()
 
             every {
-                embeddingService.generateEmbedding(capture(requestSlot), GeminiModelType.GEMINI_EMBEDDING)
+                embeddingService.generateEmbedding(capture(requestSlot))
             } returns expectedVector
 
             every { embeddingService.generateQuestionEmbedding(question) } answers {
                 embeddingService.generateEmbedding(
-                    EmbeddingRequest(content = question, categories = emptyList(), companyName = ""),
-                    GeminiModelType.GEMINI_EMBEDDING
-                )
+                    EmbeddingRequest(content = question, categories = emptyList(), companyName = ""))
             }
 
             val result = embeddingService.generateQuestionEmbedding(question)
 
             result shouldBe expectedVector
             verify(exactly = 1) {
-                embeddingService.generateEmbedding(any(), GeminiModelType.GEMINI_EMBEDDING)
+                embeddingService.generateEmbedding(any())
             }
             requestSlot.captured.content shouldBe question
             requestSlot.captured.categories shouldBe emptyList()

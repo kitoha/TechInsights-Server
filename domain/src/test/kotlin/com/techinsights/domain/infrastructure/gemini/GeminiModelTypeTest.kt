@@ -1,4 +1,4 @@
-package com.techinsights.domain.enums
+package com.techinsights.domain.infrastructure.gemini
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test

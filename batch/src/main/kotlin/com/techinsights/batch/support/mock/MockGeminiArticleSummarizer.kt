@@ -1,7 +1,6 @@
 package com.techinsights.batch.support.mock
 
 import com.techinsights.domain.dto.summary.SummaryResult
-import com.techinsights.domain.enums.GeminiModelType
 import com.techinsights.domain.service.summary.ArticleSummarizer
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Primary
@@ -24,7 +23,7 @@ class MockGeminiArticleSummarizer : ArticleSummarizer {
         private val MOCK_CATEGORIES = listOf("FrontEnd", "BackEnd", "AI", "BigData", "Infra", "Architecture")
     }
 
-    override fun summarize(article: String, modelType: GeminiModelType): SummaryResult {
+    override fun summarize(article: String): SummaryResult {
         val startTime = System.currentTimeMillis()
 
         Thread.sleep(API_RESPONSE_TIME_MS)

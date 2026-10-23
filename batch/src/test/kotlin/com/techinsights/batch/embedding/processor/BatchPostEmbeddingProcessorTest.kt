@@ -4,7 +4,6 @@ import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.embedding.EmbeddingRequest
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.enums.Category
-import com.techinsights.domain.enums.GeminiModelType
 import com.techinsights.domain.service.embedding.EmbeddingService
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -35,7 +34,7 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
 
         // then
         result.shouldBeNull()
-        verify(exactly = 0) { embeddingService.generateEmbeddingBatch(any(), any()) }
+        verify(exactly = 0) { embeddingService.generateEmbeddingBatch(any()) }
     }
 
     test("process should successfully generate embeddings using content field") {
@@ -57,7 +56,7 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
             )
         }
 
-        every { embeddingService.generateEmbeddingBatch(any(), GeminiModelType.GEMINI_EMBEDDING) } returns embeddingResults
+        every { embeddingService.generateEmbeddingBatch(any()) } returns embeddingResults
 
         // when
         val result = processor.process(posts)
@@ -71,7 +70,7 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
         result[1].postId shouldBe "2"
         result[1].content shouldBe "Detailed content 2"
 
-        verify(exactly = 1) { embeddingService.generateEmbeddingBatch(any(), GeminiModelType.GEMINI_EMBEDDING) }
+        verify(exactly = 1) { embeddingService.generateEmbeddingBatch(any()) }
     }
 
     test("process should filter out posts that are not summarized") {
@@ -91,7 +90,7 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
             success = true
         )
 
-        every { embeddingService.generateEmbeddingBatch(any(), any()) } returns listOf(embeddingResult)
+        every { embeddingService.generateEmbeddingBatch(any()) } returns listOf(embeddingResult)
 
         // when
         val result = processor.process(posts)
@@ -102,10 +101,7 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
         result[0].postId shouldBe "2"
 
         verify(exactly = 1) {
-            embeddingService.generateEmbeddingBatch(
-                match { it.size == 1 },
-                any()
-            )
+            embeddingService.generateEmbeddingBatch(match { it.size == 1 })
         }
     }
 
@@ -122,7 +118,7 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
             success = true
         )
 
-        every { embeddingService.generateEmbeddingBatch(any(), any()) } returns listOf(embeddingResult)
+        every { embeddingService.generateEmbeddingBatch(any()) } returns listOf(embeddingResult)
 
         // when
         val result = processor.process(posts)
@@ -146,7 +142,7 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
             success = true
         )
 
-        every { embeddingService.generateEmbeddingBatch(any(), any()) } returns listOf(embeddingResult)
+        every { embeddingService.generateEmbeddingBatch(any()) } returns listOf(embeddingResult)
 
         // when
         val result = processor.process(posts)
@@ -169,7 +165,7 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
 
         // then
         result.shouldBeNull()
-        verify(exactly = 0) { embeddingService.generateEmbeddingBatch(any(), any()) }
+        verify(exactly = 0) { embeddingService.generateEmbeddingBatch(any()) }
     }
 
     test("process should handle partial embedding failures") {
@@ -193,7 +189,7 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
             )
         )
 
-        every { embeddingService.generateEmbeddingBatch(any(), any()) } returns embeddingResults
+        every { embeddingService.generateEmbeddingBatch(any()) } returns embeddingResults
 
         // when
         val result = processor.process(posts)
@@ -217,7 +213,7 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
             error = "API error"
         )
 
-        every { embeddingService.generateEmbeddingBatch(any(), any()) } returns listOf(embeddingResult)
+        every { embeddingService.generateEmbeddingBatch(any()) } returns listOf(embeddingResult)
 
         // when
         val result = processor.process(posts)
@@ -238,7 +234,7 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
             success = true
         )
 
-        every { embeddingService.generateEmbeddingBatch(any(), any()) } returns listOf(embeddingResult)
+        every { embeddingService.generateEmbeddingBatch(any()) } returns listOf(embeddingResult)
 
         // when
         val result = processor.process(posts)
@@ -252,8 +248,7 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
                 match { requests ->
                     requests.size == 1 &&
                     requests[0].categories.containsAll(listOf("AI", "BackEnd"))
-                },
-                any()
+                }
             )
         }
     }
@@ -264,7 +259,7 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
             createPostDto("1", "Title 1", content = "Content 1", isSummary = true)
         )
 
-        every { embeddingService.generateEmbeddingBatch(any(), any()) } throws RuntimeException("Service error")
+        every { embeddingService.generateEmbeddingBatch(any()) } throws RuntimeException("Service error")
 
         // when / then
         val exception = runCatching { processor.process(posts) }.exceptionOrNull()
@@ -290,7 +285,7 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
             success = true
         )
 
-        every { embeddingService.generateEmbeddingBatch(any(), any()) } returns listOf(embeddingResult)
+        every { embeddingService.generateEmbeddingBatch(any()) } returns listOf(embeddingResult)
 
         // when
         processor.process(posts)
@@ -302,9 +297,7 @@ class BatchPostEmbeddingProcessorTest : FunSpec({
                     requests[0].content == "Markdown detailed summary content" &&
                     requests[0].categories == listOf("AI") &&
                     requests[0].companyName == "Tech Company"
-                },
-                GeminiModelType.GEMINI_EMBEDDING
-            )
+                })
         }
     }
 })

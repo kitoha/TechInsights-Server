@@ -7,7 +7,7 @@ import com.techinsights.domain.infrastructure.gemini.GeminiProperties
 import com.techinsights.domain.dto.summary.ArticleInput
 import com.techinsights.domain.dto.summary.SummaryResultWithId
 import com.techinsights.domain.enums.ErrorType
-import com.techinsights.domain.enums.GeminiModelType
+import com.techinsights.domain.infrastructure.gemini.GeminiModelType
 import com.techinsights.domain.service.quota.DailyQuota
 import com.techinsights.domain.service.quota.DailyQuotaService
 import io.github.resilience4j.circuitbreaker.CircuitBreaker
@@ -63,7 +63,7 @@ class GeminiBatchArticleSummarizerTest : FunSpec({
             spySummarizer["callGeminiApi"](any<List<ArticleInput>>(), any<GeminiModelType>()) 
         } returns flowOf(*expectedResults.toTypedArray())
 
-        val resultFlow = spySummarizer.summarizeBatch(articles, GeminiModelType.GEMINI_2_5_FLASH_LITE)
+        val resultFlow = spySummarizer.summarizeBatch(articles)
         val results = resultFlow.toList()
 
         results shouldHaveSize 3
@@ -81,7 +81,7 @@ class GeminiBatchArticleSummarizerTest : FunSpec({
             spySummarizer["callGeminiApi"](any<List<ArticleInput>>(), any<GeminiModelType>()) 
         } returns flowOf(*partialResults.toTypedArray())
 
-        val resultFlow = spySummarizer.summarizeBatch(articles, GeminiModelType.GEMINI_2_5_FLASH_LITE)
+        val resultFlow = spySummarizer.summarizeBatch(articles)
         val results = resultFlow.toList()
 
         results shouldHaveSize 3
@@ -105,7 +105,7 @@ class GeminiBatchArticleSummarizerTest : FunSpec({
             spySummarizer["callGeminiApi"](any<List<ArticleInput>>(), any<GeminiModelType>()) 
         } returns flowOf(*mixedResults.toTypedArray())
 
-        val resultFlow = spySummarizer.summarizeBatch(articles, GeminiModelType.GEMINI_2_5_FLASH_LITE)
+        val resultFlow = spySummarizer.summarizeBatch(articles)
         val results = resultFlow.toList()
 
         results shouldHaveSize 3
@@ -124,7 +124,7 @@ class GeminiBatchArticleSummarizerTest : FunSpec({
             spySummarizer["callGeminiApi"](emptyList<ArticleInput>(), any<GeminiModelType>()) 
         } returns kotlinx.coroutines.flow.emptyFlow<SummaryResultWithId>()
 
-        val resultFlow = spySummarizer.summarizeBatch(emptyList(), GeminiModelType.GEMINI_2_5_FLASH_LITE)
+        val resultFlow = spySummarizer.summarizeBatch(emptyList())
         val results = resultFlow.toList()
         results shouldHaveSize 0
     }
@@ -133,7 +133,7 @@ class GeminiBatchArticleSummarizerTest : FunSpec({
         every { dailyQuotaService.tryReserve(DailyQuota.BATCH_SUMMARY) } returns false
         val articles = (1..2).map { ArticleInput("id-$it", "T", "C") }
 
-        val results = summarizer.summarizeBatch(articles, GeminiModelType.GEMINI_2_5_FLASH_LITE).toList()
+        val results = summarizer.summarizeBatch(articles).toList()
 
         results shouldHaveSize 2
         results.all { !it.success && it.errorType == ErrorType.RATE_LIMIT } shouldBe true
