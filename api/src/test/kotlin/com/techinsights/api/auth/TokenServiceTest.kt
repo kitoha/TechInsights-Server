@@ -5,7 +5,6 @@ import com.techinsights.domain.dto.user.AuthUserDto
 import com.techinsights.domain.dto.user.RefreshTokenRotationResult
 import com.techinsights.domain.enums.UserRole
 import com.techinsights.domain.enums.UserStatus
-import com.techinsights.domain.exception.user.UserNotFoundException
 import com.techinsights.domain.service.user.RefreshTokenService
 import com.techinsights.domain.service.user.UserService
 import io.kotest.assertions.throwables.shouldThrow
@@ -61,7 +60,7 @@ class TokenServiceTest : FunSpec({
         val claims = mockk<Claims>()
         every { claims.get("userId", Long::class.javaObjectType) } returns userId
         every { jwtPlugin.validateRefreshToken(token) } returns claims
-        every { userService.getAuthUserById(userId) } returns user
+        every { userService.findAuthUserById(userId) } returns user
         every { jwtPlugin.generateAccessToken(any(), any(), any()) } returns "new-at"
         every { jwtPlugin.generateRefreshToken(userId) } returns "new-rt"
     }
@@ -134,7 +133,7 @@ class TokenServiceTest : FunSpec({
         val claims = mockk<Claims>()
         every { claims.get("userId", Long::class.javaObjectType) } returns userId
         every { jwtPlugin.validateRefreshToken("old-rt") } returns claims
-        every { userService.getAuthUserById(userId) } throws UserNotFoundException(userId)
+        every { userService.findAuthUserById(userId) } returns null
         every { refreshTokenService.deleteAllByUserId(userId) } just Runs
 
         shouldThrow<InvalidTokenException> { tokenService.refresh("old-rt") }
@@ -148,7 +147,7 @@ class TokenServiceTest : FunSpec({
             val claims = mockk<Claims>()
             every { claims.get("userId", Long::class.javaObjectType) } returns userId
             every { jwtPlugin.validateRefreshToken("old-rt") } returns claims
-            every { userService.getAuthUserById(userId) } returns user.copy(status = status)
+            every { userService.findAuthUserById(userId) } returns user.copy(status = status)
             every { refreshTokenService.deleteAllByUserId(userId) } just Runs
 
             shouldThrow<InvalidTokenException> { tokenService.refresh("old-rt") }

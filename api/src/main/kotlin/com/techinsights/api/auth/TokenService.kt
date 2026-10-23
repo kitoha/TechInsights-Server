@@ -4,7 +4,6 @@ import com.techinsights.api.props.AuthProperties
 import com.techinsights.domain.dto.user.RefreshTokenRotationResult
 import com.techinsights.domain.enums.UserRole
 import com.techinsights.domain.enums.UserStatus
-import com.techinsights.domain.exception.user.UserNotFoundException
 import com.techinsights.domain.service.user.RefreshTokenService
 import com.techinsights.domain.service.user.UserService
 import org.springframework.stereotype.Service
@@ -45,15 +44,10 @@ class TokenService(
         val userId = claims.get("userId", Long::class.javaObjectType)
             ?: throw InvalidTokenException("유효하지 않은 토큰입니다.")
 
-        val user = try {
-            userService.getAuthUserById(userId)
-        } catch (_: UserNotFoundException) {
+        val user = userService.findAuthUserById(userId)
+        if (user == null || user.status != UserStatus.ACTIVE) {
             refreshTokenService.deleteAllByUserId(userId)
-            throw InvalidTokenException("사용자를 찾을 수 없습니다.")
-        }
-        if (user.status != UserStatus.ACTIVE) {
-            refreshTokenService.deleteAllByUserId(userId)
-            throw InvalidTokenException("활성 상태가 아닌 사용자입니다.")
+            throw InvalidTokenException("유효하지 않은 토큰입니다.")
         }
 
         val accessToken = jwtPlugin.generateAccessToken(user.id, user.email, user.role)

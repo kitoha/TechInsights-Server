@@ -40,6 +40,16 @@ class UserService(
         return UserProfileDto.fromEntity(getUserById(userId))
     }
 
+    /**
+     * 존재하지 않으면 예외 대신 null을 반환한다.
+     * 호출자의 트랜잭션에 참여할 때 예외가 프록시를 통과하면 해당 트랜잭션이 rollback-only로 표시되기 때문이다.
+     */
+    fun findAuthUserById(userId: Long): AuthUserDto? {
+        return userRepository.findById(userId)
+            .map(AuthUserDto::fromEntity)
+            .orElse(null)
+    }
+
     fun getAuthUserById(userId: Long): AuthUserDto {
         val user = getUserById(userId)
         return AuthUserDto.fromEntity(user)
