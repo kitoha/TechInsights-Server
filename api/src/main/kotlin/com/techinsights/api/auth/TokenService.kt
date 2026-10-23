@@ -3,6 +3,7 @@ package com.techinsights.api.auth
 import com.techinsights.api.props.AuthProperties
 import com.techinsights.domain.dto.user.RefreshTokenRotationResult
 import com.techinsights.domain.enums.UserRole
+import com.techinsights.domain.enums.UserStatus
 import com.techinsights.domain.exception.user.UserNotFoundException
 import com.techinsights.domain.service.user.RefreshTokenService
 import com.techinsights.domain.service.user.UserService
@@ -36,7 +37,9 @@ class TokenService(
         return TokenResponse(accessToken, refreshTokenString)
     }
 
-    @Transactional(noRollbackFor = [TokenTamperedException::class, ExpiredTokenException::class])
+    @Transactional(
+        noRollbackFor = [TokenTamperedException::class, ExpiredTokenException::class, InvalidTokenException::class]
+    )
     fun refresh(oldRefreshToken: String): TokenResponse {
         val claims = jwtPlugin.validateRefreshToken(oldRefreshToken)
         val userId = claims.get("userId", Long::class.javaObjectType)
@@ -45,7 +48,12 @@ class TokenService(
         val user = try {
             userService.getAuthUserById(userId)
         } catch (_: UserNotFoundException) {
+            refreshTokenService.deleteAllByUserId(userId)
             throw InvalidTokenException("사용자를 찾을 수 없습니다.")
+        }
+        if (user.status != UserStatus.ACTIVE) {
+            refreshTokenService.deleteAllByUserId(userId)
+            throw InvalidTokenException("활성 상태가 아닌 사용자입니다.")
         }
 
         val accessToken = jwtPlugin.generateAccessToken(user.id, user.email, user.role)
