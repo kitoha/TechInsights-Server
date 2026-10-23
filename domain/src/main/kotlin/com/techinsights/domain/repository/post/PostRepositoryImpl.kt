@@ -1,5 +1,6 @@
 package com.techinsights.domain.repository.post
 
+import com.querydsl.core.types.OrderSpecifier
 import com.querydsl.core.types.Projections
 import java.time.LocalDateTime
 import com.querydsl.jpa.impl.JPAQueryFactory
@@ -9,6 +10,7 @@ import com.techinsights.domain.entity.company.QCompany
 import com.techinsights.domain.entity.post.QPost
 import com.techinsights.domain.entity.post.QPostCategory
 import com.techinsights.domain.enums.Category
+import com.techinsights.domain.enums.PostSortType
 import com.techinsights.domain.exception.PostNotFoundException
 import com.techinsights.domain.utils.Tsid
 import jakarta.persistence.EntityManager
@@ -274,7 +276,8 @@ class PostRepositoryImpl(
 
   override fun getAllPosts(
     pageable: Pageable,
-    companyId: String?
+    companyId: String?,
+    sort: PostSortType
   ): Page<PostDto> {
     val postEntity = QPost.post
     val companyEntity = QCompany.company
@@ -286,7 +289,7 @@ class PostRepositoryImpl(
         postEntity.isSummary.isTrue,
         companyIdLong?.let { postEntity.company.id.eq(it) }
       )
-      .orderBy(postEntity.publishedAt.desc())
+      .orderBy(*listOrder(postEntity, sort))
       .offset(pageable.offset)
       .limit(pageable.pageSize.toLong())
       .fetch()
@@ -306,7 +309,8 @@ class PostRepositoryImpl(
   override fun getPostsByCategory(
     pageable: Pageable,
     category: Category,
-    companyId: String?
+    companyId: String?,
+    sort: PostSortType
   ): Page<PostDto> {
     val postEntity = QPost.post
     val companyEntity = QCompany.company
@@ -322,7 +326,7 @@ class PostRepositoryImpl(
         postCategory.category.eq(category),
         companyIdLong?.let { postEntity.company.id.eq(it) }
       )
-      .orderBy(postEntity.publishedAt.desc())
+      .orderBy(*listOrder(postEntity, sort))
       .offset(pageable.offset)
       .limit(pageable.pageSize.toLong())
       .fetch()
@@ -366,6 +370,12 @@ class PostRepositoryImpl(
       .where(post.id.eq(decodedId))
       .execute()
   }
+
+  private fun listOrder(post: QPost, sort: PostSortType): Array<OrderSpecifier<*>> =
+    when (sort) {
+      PostSortType.RECENT -> arrayOf(post.publishedAt.desc(), post.id.desc())
+      PostSortType.POPULAR -> arrayOf(post.viewCount.desc(), post.id.desc())
+    }
 
   private fun buildCursorCondition(
     post: QPost,
