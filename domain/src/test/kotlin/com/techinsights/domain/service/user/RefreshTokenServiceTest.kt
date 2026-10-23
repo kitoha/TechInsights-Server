@@ -1,196 +1,275 @@
 package com.techinsights.domain.service.user
 
 import com.techinsights.domain.dto.user.RefreshTokenRotationResult
-import com.techinsights.domain.entity.user.RefreshToken
 import com.techinsights.domain.repository.user.RefreshTokenRepository
-import io.kotest.core.spec.style.FunSpec
+import com.techinsights.domain.support.RepositoryTestSpec
 import io.kotest.matchers.shouldBe
-import io.mockk.clearMocks
-import io.mockk.every
-import io.mockk.just
-import io.mockk.mockk
-import io.mockk.runs
-import io.mockk.slot
-import io.mockk.verify
+import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.support.TransactionTemplate
 import java.time.Instant
-import java.time.LocalDateTime
-import java.util.Optional
 
-class RefreshTokenServiceTest : FunSpec({
-    val repository = mockk<RefreshTokenRepository>()
-    val service = RefreshTokenService(repository)
-    val newExpiry = Instant.now().plusSeconds(3600)
+class RefreshTokenServiceTest(
+  repository: RefreshTokenRepository,
+  transactionManager: PlatformTransactionManager,
+  jdbcTemplate: JdbcTemplate
+) : RepositoryTestSpec({
+  val service = RefreshTokenService(repository)
+  val tx = TransactionTemplate(transactionManager)
+  val expiry = { Instant.now().plusSeconds(3600) }
 
-    fun token(
-        tokenHash: String = "current",
-        previousTokenHash: String? = null,
-        expiryAt: Instant = Instant.now().plusSeconds(3600),
-        updatedAt: LocalDateTime = LocalDateTime.now()
-    ) = RefreshToken(
-        id = 1L,
-        userId = 100L,
-        tokenHash = tokenHash,
-        previousTokenHash = previousTokenHash,
-        deviceId = "login-state-device",
-        expiryAt = expiryAt
-    ).apply { this.updatedAt = updatedAt }
+  fun <T> inTx(block: () -> T): T = tx.execute { block() }!!
 
-    beforeTest {
-        clearMocks(repository)
-        every { repository.save(any()) } answers { firstArg() }
-        every { repository.delete(any()) } just runs
+  fun insertUser(id: Long) {
+    jdbcTemplate.update(
+      "INSERT INTO users (id, email, name, provider_id) VALUES (?, ?, 'n', ?)",
+      id, "u$id@example.com", "p$id"
+    )
+  }
+
+  fun login(userId: Long, hash: String, deviceId: String? = null, maxSessions: Int = 10) =
+    inTx { service.startSession(userId, deviceId, hash, expiry(), maxSessions) }
+
+  fun rotate(presented: String, new: String) = inTx { service.rotate(presented, new, expiry()) }
+
+  fun sessionCount(userId: Long): Int =
+    jdbcTemplate.queryForObject("SELECT count(*) FROM refresh_tokens WHERE user_id = ?", Int::class.java, userId)!!
+
+  fun retiredCount(): Int =
+    jdbcTemplate.queryForObject("SELECT count(*) FROM refresh_token_retired_hashes", Int::class.java)!!
+
+  fun ageRetired(hash: String, seconds: Long) {
+    jdbcTemplate.update(
+      "UPDATE refresh_token_retired_hashes SET retired_at = now() - make_interval(secs => ?) WHERE token_hash = ?",
+      seconds.toDouble(), hash
+    )
+  }
+
+  fun currentHash(userId: Long): List<String> =
+    jdbcTemplate.queryForList("SELECT token_hash FROM refresh_tokens WHERE user_id = ?", String::class.java, userId)
+
+  context("rotation chain") {
+    test("회전할 때마다 이전 해시가 같은 패밀리의 폐기 해시로 쌓이고 현재 해시만 유효하다") {
+      insertUser(1)
+      login(1, "h0")
+
+      rotate("h0", "h1") shouldBe RefreshTokenRotationResult.Rotated
+      rotate("h1", "h2") shouldBe RefreshTokenRotationResult.Rotated
+      rotate("h2", "h3") shouldBe RefreshTokenRotationResult.Rotated
+
+      currentHash(1) shouldBe listOf("h3")
+      retiredCount() shouldBe 3
+      jdbcTemplate.queryForObject(
+        "SELECT count(DISTINCT family_id) FROM refresh_token_retired_hashes", Int::class.java
+      ) shouldBe 1
     }
 
-    test("현재 해시와 일치하는 행을 잠근 채로 그 행을 회전해야 한다") {
-        val row = token(tokenHash = "presented")
-        every { repository.findByHashForUpdate("presented") } returns Optional.of(row)
+    test("처음 발급된 적 없는 해시는 NotFound이며 아무것도 폐기하지 않는다") {
+      insertUser(1)
+      login(1, "h0")
 
-        val result = service.rotate("presented", "new", newExpiry)
+      rotate("never-issued", "x") shouldBe RefreshTokenRotationResult.NotFound
 
-        result shouldBe RefreshTokenRotationResult.Rotated
-        row.tokenHash shouldBe "new"
-        row.previousTokenHash shouldBe "presented"
-        row.expiryAt shouldBe newExpiry
-        verify { repository.save(row) }
+      currentHash(1) shouldBe listOf("h0")
+    }
+  }
+
+  context("이전 토큰 재사용 감지") {
+    test("두 번 이상 이전에 폐기된 토큰을 유예 시간 밖에서 재사용하면 해당 패밀리가 폐기된다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1")
+      rotate("h1", "h2")
+      ageRetired("h0", 120)
+
+      rotate("h0", "evil") shouldBe RefreshTokenRotationResult.ReuseDetected
+
+      sessionCount(1) shouldBe 0
+      retiredCount() shouldBe 0
     }
 
-    test("만료된 현재 토큰은 삭제하고 Expired를 반환해야 한다") {
-        val row = token(tokenHash = "presented", expiryAt = Instant.now().minusSeconds(1))
-        every { repository.findByHashForUpdate("presented") } returns Optional.of(row)
+    test("재사용 감지는 같은 사용자의 다른 세션에 영향을 주지 않는다") {
+      insertUser(1)
+      login(1, "a0", deviceId = "dev-a")
+      login(1, "b0", deviceId = "dev-b")
+      rotate("a0", "a1")
+      rotate("a1", "a2")
+      ageRetired("a0", 120)
 
-        val result = service.rotate("presented", "new", newExpiry)
+      rotate("a0", "evil") shouldBe RefreshTokenRotationResult.ReuseDetected
 
-        result shouldBe RefreshTokenRotationResult.Expired
-        verify { repository.delete(row) }
-        verify(exactly = 0) { repository.save(any()) }
+      currentHash(1) shouldBe listOf("b0")
+      rotate("b0", "b1") shouldBe RefreshTokenRotationResult.Rotated
     }
 
-    test("유예 시간 내에 직전 해시가 제시되면 같은 행을 다시 회전해야 한다") {
-        val row = token(tokenHash = "winner", previousTokenHash = "presented", updatedAt = LocalDateTime.now())
-        every { repository.findByHashForUpdate("presented") } returns Optional.empty()
-        every { repository.findByPreviousHashForUpdate("presented") } returns Optional.of(row)
+    test("패밀리가 폐기된 뒤에는 그 패밀리의 현재 토큰도 사용할 수 없다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1")
+      ageRetired("h0", 120)
+      rotate("h0", "evil")
 
-        val result = service.rotate("presented", "new", newExpiry)
+      rotate("h1", "h2") shouldBe RefreshTokenRotationResult.NotFound
+    }
+  }
 
-        result shouldBe RefreshTokenRotationResult.Rotated
-        row.tokenHash shouldBe "new"
-        row.previousTokenHash shouldBe "winner"
-        verify { repository.save(row) }
+  context("유예 시간") {
+    test("방금 폐기된 토큰을 유예 시간 안에 제시하면 같은 세션이 다시 회전되고 폐기되지 않는다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1")
+
+      rotate("h0", "h2") shouldBe RefreshTokenRotationResult.Rotated
+
+      currentHash(1) shouldBe listOf("h2")
+      rotate("h1", "h3") shouldBe RefreshTokenRotationResult.Rotated
+      sessionCount(1) shouldBe 1
     }
 
-    test("유예 시간이 지난 뒤 직전 해시가 제시되면 ReuseDetected를 반환하고 행을 바꾸지 않아야 한다") {
-        val row = token(tokenHash = "winner", previousTokenHash = "presented", updatedAt = LocalDateTime.now().minusMinutes(5))
-        every { repository.findByHashForUpdate("presented") } returns Optional.empty()
-        every { repository.findByPreviousHashForUpdate("presented") } returns Optional.of(row)
+    test("유예 안에서 다시 회전된 뒤에도 더 오래된 토큰 재사용은 패밀리를 폐기한다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1")
+      rotate("h0", "h2")
+      ageRetired("h0", 120)
 
-        val result = service.rotate("presented", "new", newExpiry)
+      rotate("h0", "evil") shouldBe RefreshTokenRotationResult.ReuseDetected
+    }
+  }
 
-        result shouldBe RefreshTokenRotationResult.ReuseDetected
-        row.tokenHash shouldBe "winner"
-        verify(exactly = 0) { repository.save(any()) }
+  context("만료") {
+    test("만료된 현재 토큰은 세션과 폐기 해시를 삭제하고 Expired를 반환한다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1")
+      jdbcTemplate.update("UPDATE refresh_tokens SET expiry_at = now() - interval '1 minute'")
+
+      rotate("h1", "h2") shouldBe RefreshTokenRotationResult.Expired
+
+      sessionCount(1) shouldBe 0
+      retiredCount() shouldBe 0
+    }
+  }
+
+  context("로그인(세션 시작)") {
+    test("같은 기기로 다시 로그인하면 기존 세션과 폐기 해시를 지우고 새 패밀리를 시작한다") {
+      insertUser(1)
+      login(1, "h0", deviceId = "dev")
+      rotate("h0", "h1")
+
+      login(1, "fresh", deviceId = "dev")
+
+      currentHash(1) shouldBe listOf("fresh")
+      retiredCount() shouldBe 0
+      rotate("h0", "x") shouldBe RefreshTokenRotationResult.NotFound
     }
 
-    test("현재 해시도 직전 해시도 아니면 NotFound를 반환해야 한다") {
-        every { repository.findByHashForUpdate("unknown") } returns Optional.empty()
-        every { repository.findByPreviousHashForUpdate("unknown") } returns Optional.empty()
+    test("기기 ID가 없는 로그인은 항상 별도의 세션을 만든다") {
+      insertUser(1)
+      login(1, "a")
+      login(1, "b")
 
-        val result = service.rotate("unknown", "new", newExpiry)
-
-        result shouldBe RefreshTokenRotationResult.NotFound
-        verify(exactly = 0) { repository.save(any()) }
-        verify(exactly = 0) { repository.delete(any()) }
+      sessionCount(1) shouldBe 2
     }
 
-    test("유예 시간 내라도 만료된 행은 회전하지 않고 삭제해야 한다") {
-        val row = token(
-            tokenHash = "winner",
-            previousTokenHash = "presented",
-            expiryAt = Instant.now().minusSeconds(1)
-        )
-        every { repository.findByHashForUpdate("presented") } returns Optional.empty()
-        every { repository.findByPreviousHashForUpdate("presented") } returns Optional.of(row)
+    test("세션 상한을 넘으면 가장 오래 사용되지 않은 세션부터 삭제한다") {
+      insertUser(1)
+      login(1, "s1", maxSessions = 3)
+      login(1, "s2", maxSessions = 3)
+      login(1, "s3", maxSessions = 3)
+      jdbcTemplate.update("UPDATE refresh_tokens SET updated_at = now() - interval '3 hours' WHERE token_hash = 's1'")
+      jdbcTemplate.update("UPDATE refresh_tokens SET updated_at = now() - interval '2 hours' WHERE token_hash = 's2'")
+      jdbcTemplate.update("UPDATE refresh_tokens SET updated_at = now() - interval '1 hours' WHERE token_hash = 's3'")
+      // s1 을 회전시켜 가장 최근에 사용된 세션으로 만든다
+      rotate("s1", "s1b")
 
-        val result = service.rotate("presented", "new", newExpiry)
+      login(1, "s4", maxSessions = 3)
 
-        result shouldBe RefreshTokenRotationResult.Expired
-        verify { repository.delete(row) }
+      currentHash(1).toSet() shouldBe setOf("s1b", "s3", "s4")
     }
 
-    context("upsertToken (login)") {
-        test("같은 기기의 기존 행을 교체할 때 previous_token_hash는 null이어야 한다") {
-            val row = token(tokenHash = "old", previousTokenHash = "older")
-            every { repository.findByUserAndDevice(100L, "dev") } returns Optional.of(row)
+    test("상한 초과로 삭제된 세션의 폐기 해시도 함께 삭제된다") {
+      insertUser(1)
+      login(1, "s1", maxSessions = 1)
+      rotate("s1", "s1b")
 
-            service.upsertToken(100L, "dev", "login-hash", newExpiry)
+      login(1, "s2", maxSessions = 1)
 
-            row.tokenHash shouldBe "login-hash"
-            row.previousTokenHash shouldBe null
-            row.expiryAt shouldBe newExpiry
-            verify { repository.save(row) }
-        }
-
-        test("기기 ID가 있고 기존 행이 없으면 새 행을 만들어야 한다") {
-            every { repository.findByUserAndDevice(100L, "dev") } returns Optional.empty()
-            val saved = slot<RefreshToken>()
-            every { repository.save(capture(saved)) } answers { saved.captured }
-
-            service.upsertToken(100L, "dev", "login-hash", newExpiry)
-
-            saved.captured.userId shouldBe 100L
-            saved.captured.deviceId shouldBe "dev"
-            saved.captured.tokenHash shouldBe "login-hash"
-            saved.captured.previousTokenHash shouldBe null
-        }
-
-        test("기기 ID가 없으면 기존 행을 조회하지 않고 항상 새 세션 행을 만들어야 한다") {
-            val saved = slot<RefreshToken>()
-            every { repository.save(capture(saved)) } answers { saved.captured }
-
-            service.upsertToken(100L, null, "login-hash", newExpiry)
-
-            saved.captured.deviceId shouldBe null
-            saved.captured.tokenHash shouldBe "login-hash"
-            verify(exactly = 0) { repository.findByUserAndDevice(any(), any()) }
-        }
+      currentHash(1) shouldBe listOf("s2")
+      retiredCount() shouldBe 0
     }
 
-    context("deleteByHash (logout)") {
-        test("현재 해시와 일치하는 행을 삭제해야 한다") {
-            val row = token(tokenHash = "presented")
-            every { repository.findByHashForUpdate("presented") } returns Optional.of(row)
+    test("상한은 사용자별로 적용된다") {
+      insertUser(1)
+      insertUser(2)
+      login(1, "u1a", maxSessions = 1)
+      login(2, "u2a", maxSessions = 1)
 
-            service.deleteByHash("presented")
+      login(1, "u1b", maxSessions = 1)
 
-            verify { repository.delete(row) }
-        }
-
-        test("유예 시간 내 직전 해시와 일치하는 행도 삭제해야 한다") {
-            val row = token(tokenHash = "winner", previousTokenHash = "presented", updatedAt = LocalDateTime.now())
-            every { repository.findByHashForUpdate("presented") } returns Optional.empty()
-            every { repository.findByPreviousHashForUpdate("presented") } returns Optional.of(row)
-
-            service.deleteByHash("presented")
-
-            verify { repository.delete(row) }
-        }
-
-        test("유예 시간이 지난 직전 해시로는 행을 삭제하지 않아야 한다") {
-            val row = token(tokenHash = "winner", previousTokenHash = "presented", updatedAt = LocalDateTime.now().minusMinutes(5))
-            every { repository.findByHashForUpdate("presented") } returns Optional.empty()
-            every { repository.findByPreviousHashForUpdate("presented") } returns Optional.of(row)
-
-            service.deleteByHash("presented")
-
-            verify(exactly = 0) { repository.delete(any()) }
-        }
-
-        test("일치하는 행이 없으면 아무것도 삭제하지 않아야 한다") {
-            every { repository.findByHashForUpdate("unknown") } returns Optional.empty()
-            every { repository.findByPreviousHashForUpdate("unknown") } returns Optional.empty()
-
-            service.deleteByHash("unknown")
-
-            verify(exactly = 0) { repository.delete(any()) }
-        }
+      currentHash(1) shouldBe listOf("u1b")
+      currentHash(2) shouldBe listOf("u2a")
     }
+  }
+
+  context("로그아웃") {
+    test("현재 해시로 로그아웃하면 세션이 삭제된다") {
+      insertUser(1)
+      login(1, "h0")
+
+      inTx { service.deleteByHash("h0") }
+
+      sessionCount(1) shouldBe 0
+    }
+
+    test("유예 시간 안의 폐기된 해시로도 세션을 종료할 수 있다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1")
+
+      inTx { service.deleteByHash("h0") }
+
+      sessionCount(1) shouldBe 0
+    }
+
+    test("유예 시간이 지난 폐기 해시로는 세션을 종료하지 않는다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1")
+      ageRetired("h0", 120)
+
+      inTx { service.deleteByHash("h0") }
+
+      sessionCount(1) shouldBe 1
+    }
+  }
+
+  context("정리") {
+    test("만료된 세션과 그 폐기 해시를 삭제한다") {
+      insertUser(1)
+      login(1, "live")
+      login(1, "dead")
+      rotate("dead", "dead2")
+      jdbcTemplate.update("UPDATE refresh_tokens SET expiry_at = now() - interval '1 day' WHERE token_hash = 'dead2'")
+
+      val deleted = inTx { service.deleteExpired() }
+
+      deleted shouldBe 1
+      currentHash(1) shouldBe listOf("live")
+      retiredCount() shouldBe 0
+    }
+
+    test("기준 시각보다 오래된 폐기 해시만 삭제한다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1")
+      rotate("h1", "h2")
+      ageRetired("h0", 40L * 24 * 3600)
+
+      val deleted = inTx { service.deleteRetiredBefore(Instant.now().minusSeconds(30L * 24 * 3600)) }
+
+      deleted shouldBe 1
+      retiredCount() shouldBe 1
+    }
+  }
 })

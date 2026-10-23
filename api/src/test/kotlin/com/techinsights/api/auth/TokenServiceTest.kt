@@ -42,7 +42,7 @@ class TokenServiceTest : FunSpec({
         
         every { jwtPlugin.generateAccessToken(userId, email, role) } returns "access-token"
         every { jwtPlugin.generateRefreshToken(userId) } returns "refresh-token"
-        every { refreshTokenService.upsertToken(userId, deviceId, any(), any()) } returns mockk()
+        every { refreshTokenService.startSession(userId, deviceId, any(), any(), 10) } returns mockk()
 
         // when
         val response = tokenService.issueTokens(userId, email, role, deviceId)
@@ -50,7 +50,7 @@ class TokenServiceTest : FunSpec({
         // then
         response.accessToken shouldBe "access-token"
         response.refreshToken shouldBe "refresh-token"
-        verify { refreshTokenService.upsertToken(userId, deviceId, any(), any()) }
+        verify { refreshTokenService.startSession(userId, deviceId, any(), any(), 10) }
     }
 
     val userId = 1L
@@ -78,7 +78,7 @@ class TokenServiceTest : FunSpec({
         // then
         response.accessToken shouldBe "new-at"
         response.refreshToken shouldBe "new-rt"
-        verify(exactly = 0) { refreshTokenService.upsertToken(any(), any(), any(), any()) }
+        verify(exactly = 0) { refreshTokenService.startSession(any(), any(), any(), any(), any()) }
         verify(exactly = 0) { refreshTokenService.deleteAllByUserId(any()) }
     }
 
@@ -92,14 +92,13 @@ class TokenServiceTest : FunSpec({
         verify(exactly = 0) { refreshTokenService.deleteAllByUserId(any()) }
     }
 
-    test("유예 기간이 지난 직전 토큰이 재사용되면 모든 세션을 폐기하고 TokenTamperedException이 발생해야 한다") {
+    test("폐기된 토큰이 재사용되면 TokenTamperedException이 발생하고 사용자의 모든 세션을 폐기하지는 않아야 한다 (패밀리 폐기는 회전 내부에서 처리)") {
         givenValidRefreshToken("old-rt")
         every { refreshTokenService.rotate(any(), any(), any()) } returns RefreshTokenRotationResult.ReuseDetected
-        every { refreshTokenService.deleteAllByUserId(userId) } just Runs
 
         shouldThrow<TokenTamperedException> { tokenService.refresh("old-rt") }
 
-        verify(exactly = 1) { refreshTokenService.deleteAllByUserId(userId) }
+        verify(exactly = 0) { refreshTokenService.deleteAllByUserId(any()) }
     }
 
     test("저장된 적 없는 해시는 세션 폐기 없이 InvalidTokenException이 발생해야 한다") {
