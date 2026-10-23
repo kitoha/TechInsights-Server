@@ -1,5 +1,6 @@
 package com.techinsights.api.user
 
+import com.techinsights.api.config.MAX_PAGE_SIZE
 import com.techinsights.api.auth.CustomUserDetails
 import com.techinsights.api.github.GithubRepositoryResponse
 import com.techinsights.api.post.PageResponse
@@ -76,7 +77,7 @@ class UserController(
     fun getMyBookmarkedPosts(
         @AuthenticationPrincipal userDetails: CustomUserDetails,
         @RequestParam(defaultValue = "0") @Min(0) page: Int,
-        @RequestParam(defaultValue = "20") @Min(1) @Max(100) size: Int,
+        @RequestParam(defaultValue = "20") @Min(1) @Max(MAX_PAGE_SIZE) size: Int,
     ): ResponseEntity<PageResponse<PostResponse>> {
         val result = postBookmarkService.getMyBookmarks(userDetails.userId, PageRequest.of(page, size))
         return ResponseEntity.ok(
@@ -102,7 +103,7 @@ class UserController(
     fun getMyBookmarkedRepos(
         @AuthenticationPrincipal userDetails: CustomUserDetails,
         @RequestParam(defaultValue = "0") @Min(0) page: Int,
-        @RequestParam(defaultValue = "20") @Min(1) @Max(100) size: Int,
+        @RequestParam(defaultValue = "20") @Min(1) @Max(MAX_PAGE_SIZE) size: Int,
     ): ResponseEntity<PageResponse<GithubRepositoryResponse>> {
         val result = githubBookmarkService.getMyBookmarks(userDetails.userId, PageRequest.of(page, size))
         return ResponseEntity.ok(

@@ -2,6 +2,7 @@ package com.techinsights.batch.crawling.reader
 
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.repository.company.CompanyRepository
+import org.slf4j.LoggerFactory
 import org.springframework.batch.core.configuration.annotation.StepScope
 import org.springframework.batch.item.ItemReader
 import org.springframework.stereotype.Component
@@ -12,7 +13,7 @@ class CompanyReader(
   private val companyRepository: CompanyRepository
 ) : ItemReader<CompanyDto> {
 
-  private val log = org.slf4j.LoggerFactory.getLogger(javaClass)
+  private val log = LoggerFactory.getLogger(javaClass)
   private var iterator: Iterator<CompanyDto>? = null
 
   override fun read(): CompanyDto? = synchronized(this) {

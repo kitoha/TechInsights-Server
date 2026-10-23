@@ -102,4 +102,55 @@ class PostBookmarkServiceTest : FunSpec({
         result shouldBe 7L
         verify(exactly = 1) { postBookmarkRepository.countByUserId(1L) }
     }
+
+    test("addBookmark - 익명 유저 요청 시 UnauthorizedException 발생") {
+        shouldThrow<UnauthorizedException> { service.addBookmark(postIdStr, anonymousUser) }
+        verify(exactly = 0) { postRepository.existsById(any()) }
+    }
+
+    test("addBookmark - 존재하지 않는 게시글이면 PostNotFoundException 발생") {
+        every { postRepository.existsById(postId) } returns false
+
+        shouldThrow<PostNotFoundException> { service.addBookmark(postIdStr, authenticatedUser) }
+    }
+
+    test("addBookmark - 북마크가 없으면 저장한다") {
+        every { postRepository.existsById(postId) } returns true
+        every { postBookmarkRepository.findByPostIdAndUserId(postId, 1L) } returns null
+        every { postBookmarkSaveHelper.saveIfAbsent(any()) } returns true
+
+        service.addBookmark(postIdStr, authenticatedUser)
+
+        verify(exactly = 1) { postBookmarkSaveHelper.saveIfAbsent(any()) }
+    }
+
+    test("addBookmark - 이미 북마크된 경우 아무것도 하지 않는다 (멱등)") {
+        every { postRepository.existsById(postId) } returns true
+        every { postBookmarkRepository.findByPostIdAndUserId(postId, 1L) } returns
+            PostBookmark(id = Tsid.generateLong(), postId = postId, userId = 1L)
+
+        service.addBookmark(postIdStr, authenticatedUser)
+
+        verify(exactly = 0) { postBookmarkSaveHelper.saveIfAbsent(any()) }
+        verify(exactly = 0) { postBookmarkRepository.deleteByPostIdAndUserId(any(), any()) }
+    }
+
+    test("removeBookmark - 익명 유저 요청 시 UnauthorizedException 발생") {
+        shouldThrow<UnauthorizedException> { service.removeBookmark(postIdStr, anonymousUser) }
+    }
+
+    test("removeBookmark - 존재하지 않는 게시글이면 PostNotFoundException 발생") {
+        every { postRepository.existsById(postId) } returns false
+
+        shouldThrow<PostNotFoundException> { service.removeBookmark(postIdStr, authenticatedUser) }
+    }
+
+    test("removeBookmark - 북마크 유무와 관계없이 삭제를 시도한다 (멱등)") {
+        every { postRepository.existsById(postId) } returns true
+        every { postBookmarkRepository.deleteByPostIdAndUserId(postId, 1L) } returns 0L
+
+        service.removeBookmark(postIdStr, authenticatedUser)
+
+        verify(exactly = 1) { postBookmarkRepository.deleteByPostIdAndUserId(postId, 1L) }
+    }
 })

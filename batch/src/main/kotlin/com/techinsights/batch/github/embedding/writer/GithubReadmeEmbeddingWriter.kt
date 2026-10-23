@@ -1,7 +1,6 @@
 package com.techinsights.batch.github.embedding.writer
 
 import com.techinsights.batch.github.embedding.dto.GithubEmbeddingRequestDto
-import com.techinsights.domain.enums.GeminiModelType
 import com.techinsights.domain.service.embedding.EmbeddingService
 import org.slf4j.LoggerFactory
 import org.springframework.batch.item.Chunk
@@ -21,10 +20,7 @@ class GithubReadmeEmbeddingWriter(
         if (items.isEmpty()) return
 
         // 청크 내 모든 promptString을 1번의 API 호출로 임베딩 (batchEmbedContents)
-        val vectors = embeddingService.batchEmbedTexts(
-            items.map { it.promptString },
-            GeminiModelType.GEMINI_EMBEDDING,
-        )
+        val vectors = embeddingService.batchEmbedTexts(items.map { it.promptString })
 
         val params = items.zip(vectors)
             .filter { (_, vector) -> vector.isNotEmpty() }

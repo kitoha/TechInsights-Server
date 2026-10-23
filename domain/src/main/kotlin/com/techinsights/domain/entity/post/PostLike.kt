@@ -21,4 +21,7 @@ class PostLike(
     @Column(name = "ip_address", nullable = false, length = 64)
     val ipAddress: String,
 
+    @Column(name = "anonymous_id", nullable = true)
+    val anonymousId: String? = null,
+
 ) : BaseEntity()

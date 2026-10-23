@@ -1,6 +1,7 @@
 package com.techinsights.batch.summary.processor
 
 import com.techinsights.batch.summary.builder.DynamicBatchBuilder
+import com.techinsights.batch.summary.dto.BatchFailure
 import com.techinsights.batch.summary.dto.BatchRequest
 import com.techinsights.batch.summary.service.AsyncBatchSummarizationService
 import com.techinsights.domain.dto.post.PostDto
@@ -58,7 +59,7 @@ class AsyncBatchPostSummaryProcessor(
         }
     }
 
-    private fun logProcessingResults(successCount: Int, failures: List<com.techinsights.batch.summary.dto.BatchFailure>) {
+    private fun logProcessingResults(successCount: Int, failures: List<BatchFailure>) {
         log.info("Batch processing complete: $successCount successes, ${failures.size} failures")
 
         if (failures.isNotEmpty()) {

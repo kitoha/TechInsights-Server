@@ -9,6 +9,7 @@ import io.mockk.*
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User
 
 import com.techinsights.domain.enums.UserRole
+import com.techinsights.domain.enums.UserStatus
 import com.techinsights.domain.service.user.UserService
 
 class CustomOAuth2UserServiceTest : FunSpec({
@@ -34,7 +35,8 @@ class CustomOAuth2UserServiceTest : FunSpec({
         } returns AuthUserDto(
             id = 100L,
             email = "test@example.com",
-            role = UserRole.USER
+            role = UserRole.USER,
+            status = UserStatus.ACTIVE
         )
 
         // when
@@ -66,7 +68,8 @@ class CustomOAuth2UserServiceTest : FunSpec({
         } returns AuthUserDto(
             id = 1L,
             email = "test@example.com",
-            role = UserRole.USER
+            role = UserRole.USER,
+            status = UserStatus.ACTIVE
         )
 
         // when

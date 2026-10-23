@@ -26,15 +26,14 @@ class AuthControllerTest : FunSpec({
         clearMocks(tokenService)
     }
 
-    test("/refresh 호출 시 X-Device-Id 헤더가 있으면 해당 deviceId로 RTR이 작동해야 한다") {
+    test("/refresh 호출 시 리프레시 토큰 쿠키로 RTR이 작동해야 한다") {
         val request = mockk<HttpServletRequest>()
         val response = mockk<HttpServletResponse>()
         val oldRt = "old-rt"
         val cookies = arrayOf(Cookie(authProperties.jwt.refreshTokenCookieName, oldRt))
 
         every { request.cookies } returns cookies
-        every { request.getHeader("X-Device-Id") } returns "device-uuid-123"
-        every { tokenService.refresh(oldRt, "device-uuid-123") } returns TokenResponse("new-at", "new-rt")
+        every { tokenService.refresh(oldRt) } returns TokenResponse("new-at", "new-rt")
         every { response.addHeader(any(), any()) } just Runs
 
         val result = controller.refresh(request, response)
@@ -46,20 +45,19 @@ class AuthControllerTest : FunSpec({
         verify { response.addHeader("Set-Cookie", match { it.contains("$rtName=new-rt") && it.contains("Secure") }) }
     }
 
-    test("X-Device-Id 헤더가 없으면 null deviceId로 refresh해야 한다 (User-Agent fallback 없음)") {
+    test("X-Device-Id 헤더와 무관하게 쿠키의 리프레시 토큰만으로 refresh해야 한다") {
         val request = mockk<HttpServletRequest>()
         val response = mockk<HttpServletResponse>()
         val cookies = arrayOf(Cookie(authProperties.jwt.refreshTokenCookieName, "old-rt"))
 
         every { request.cookies } returns cookies
-        every { request.getHeader("X-Device-Id") } returns null
-        every { tokenService.refresh("old-rt", null) } returns TokenResponse("new-at", "new-rt")
+        every { tokenService.refresh("old-rt") } returns TokenResponse("new-at", "new-rt")
         every { response.addHeader(any(), any()) } just Runs
 
         val result = controller.refresh(request, response)
 
         result.statusCode.value() shouldBe 200
-        verify { tokenService.refresh("old-rt", null) }
+        verify { tokenService.refresh("old-rt") }
     }
 
     test("/logout 호출 시 세션이 무효화되고 쿠키가 삭제되어야 한다") {
@@ -98,8 +96,7 @@ class AuthControllerTest : FunSpec({
         val setCookieHeaders = mutableListOf<String>()
 
         every { request.cookies } returns cookies
-        every { request.getHeader("X-Device-Id") } returns null
-        every { tokenService.refresh("old-rt", null) } returns TokenResponse("new-at", "new-rt")
+        every { tokenService.refresh("old-rt") } returns TokenResponse("new-at", "new-rt")
         every { response.addHeader("Set-Cookie", capture(setCookieHeaders)) } just Runs
 
         // when

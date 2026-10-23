@@ -87,7 +87,7 @@ search:
       title-contains: 50.0
       company-name: 30.0
       content: 10.0
-      view-count-multiplier: 5.0
+      view-count-multiplier: 2.0
       recent-7days: 20.0
       recent-30days: 10.0
       summary-bonus: 5.0

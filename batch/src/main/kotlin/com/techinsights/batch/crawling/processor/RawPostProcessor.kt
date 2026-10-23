@@ -4,6 +4,7 @@ import com.techinsights.batch.crawling.service.PostCrawlingService
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
 import kotlinx.coroutines.runBlocking
+import org.slf4j.LoggerFactory
 import org.springframework.batch.item.ItemProcessor
 import org.springframework.stereotype.Component
 
@@ -30,6 +31,6 @@ class RawPostProcessor(
   }
 
   companion object {
-    private val log = org.slf4j.LoggerFactory.getLogger(RawPostProcessor::class.java)
+    private val log = LoggerFactory.getLogger(RawPostProcessor::class.java)
   }
 }

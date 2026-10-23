@@ -12,7 +12,7 @@ data class ScoreWeights(
   @JsonProperty("content")
   val content: Double = 10.0,
   @JsonProperty("view-count-multiplier")
-  val viewCountMultiplier: Double = 5.0,
+  val viewCountMultiplier: Double = 2.0,
   @JsonProperty("recent-7days")
   val recent7days: Double = 20.0,
   @JsonProperty("recent-30days")

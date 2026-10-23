@@ -1,7 +1,9 @@
 package com.techinsights.batch.crawling.extract
 
+import java.net.URI
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import org.jsoup.parser.Parser
 import org.springframework.stereotype.Component
 
 @Component
@@ -17,7 +19,7 @@ class FeedContentImageExtractor : ThumbnailExtractorStrategy {
     val html = contentElement.html()
     if (html.isBlank()) return null
 
-    val decodedHtml = org.jsoup.parser.Parser.unescapeEntities(html, false)
+    val decodedHtml = Parser.unescapeEntities(html, false)
 
     val doc = Jsoup.parse(decodedHtml)
     val img = doc.select("img")
@@ -56,7 +58,7 @@ class FeedContentImageExtractor : ThumbnailExtractorStrategy {
     if (link.isBlank()) return ""
 
     return try {
-      val url = java.net.URI(link)
+      val url = URI(link)
       "${url.scheme}://${url.host}"
     } catch (e: Exception) {
       ""
