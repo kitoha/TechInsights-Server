@@ -25,15 +25,16 @@ class SqlFixtures(private val jdbc: JdbcTemplate) {
     likeCount: Long = 0L,
     summaryFailureCount: Int = 0,
     isSummary: Boolean = true,
+    isEmbedding: Boolean = false,
     categories: List<String> = emptyList()
   ) {
     jdbc.update(
       """
       INSERT INTO posts (id, title, url, content, published_at, company_id, view_count, like_count,
-                         summary_failure_count, is_summary, created_at, updated_at)
-      VALUES (?, ?, ?, 'content', ?, ?, ?, ?, ?, ?, now(), now())
+                         summary_failure_count, is_summary, is_embedding, created_at, updated_at)
+      VALUES (?, ?, ?, 'content', ?, ?, ?, ?, ?, ?, ?, now(), now())
       """.trimIndent(),
-      id, "title-$id", url, publishedAt, companyId, viewCount, likeCount, summaryFailureCount, isSummary
+      id, "title-$id", url, publishedAt, companyId, viewCount, likeCount, summaryFailureCount, isSummary, isEmbedding
     )
     categories.forEachIndexed { index, category ->
       jdbc.update(
