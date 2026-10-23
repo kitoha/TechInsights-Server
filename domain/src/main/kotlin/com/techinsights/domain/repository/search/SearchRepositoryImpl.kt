@@ -74,6 +74,7 @@ class SearchRepositoryImpl(
     val relevanceScore = queryBuilder.buildRelevanceScore(query)
     val projections = postSearchQueryRepository.findForInstantSearch(
       query = query,
+      matchedCompanyIds = companySearchQueryRepository.findIdsByNameContaining(query),
       relevanceScore = relevanceScore,
       limit = limit
     )
