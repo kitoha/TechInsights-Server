@@ -42,6 +42,45 @@ class UserReadHistoryRepositoryTest(
     history.all { it.userId == 1L } shouldBe true
   }
 
+  test("같은 글을 다시 읽으면 행이 늘지 않고 read_at만 갱신된다") {
+    insertUser(1)
+    repository.trackUserPostRead(1, Tsid.encode(10))
+    backdate(1, 10, 60)
+    val before = jdbcTemplate.queryForObject(
+      "SELECT read_at FROM user_read_history WHERE user_id = 1 AND post_id = 10", java.sql.Timestamp::class.java
+    )!!
+
+    repository.trackUserPostRead(1, Tsid.encode(10))
+
+    jdbcTemplate.queryForObject("SELECT count(*) FROM user_read_history", Int::class.java) shouldBe 1
+    val after = jdbcTemplate.queryForObject(
+      "SELECT read_at FROM user_read_history WHERE user_id = 1 AND post_id = 10", java.sql.Timestamp::class.java
+    )!!
+    after.after(before) shouldBe true
+  }
+
+  test("다시 읽은 글은 최근 읽은 순에서 맨 앞으로 오고 중복 없이 조회된다") {
+    insertUser(1)
+    repository.trackUserPostRead(1, Tsid.encode(10))
+    repository.trackUserPostRead(1, Tsid.encode(20))
+    backdate(1, 10, 30)
+    backdate(1, 20, 10)
+
+    repository.trackUserPostRead(1, Tsid.encode(10))
+
+    repository.getRecentReadHistory(1, PageRequest.of(0, 10)).map { it.postId } shouldBe listOf("10", "20")
+  }
+
+  test("같은 글을 서로 다른 사용자가 읽으면 각자 한 행씩 가진다") {
+    insertUser(1)
+    insertUser(2)
+    repository.trackUserPostRead(1, Tsid.encode(10))
+    repository.trackUserPostRead(2, Tsid.encode(10))
+    repository.trackUserPostRead(1, Tsid.encode(10))
+
+    jdbcTemplate.queryForObject("SELECT count(*) FROM user_read_history", Int::class.java) shouldBe 2
+  }
+
   test("Pageable 크기만큼만 조회한다") {
     insertUser(1)
     (1L..5L).forEach { repository.trackUserPostRead(1, Tsid.encode(it)) }
