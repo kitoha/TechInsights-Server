@@ -61,6 +61,28 @@ class JwtAuthenticationFilterTest : FunSpec({
         verify { chain.doFilter(any(), any()) }
     }
 
+    test("거부된 토큰의 사유 코드를 request attribute로 남긴다") {
+        val request = MockHttpServletRequest()
+        val chain = mockk<FilterChain>()
+        request.setCookies(Cookie("at", "expired-at"))
+        every { jwtPlugin.validateAccessToken("expired-at") } throws ExpiredTokenException()
+        every { chain.doFilter(any(), any()) } just Runs
+
+        filter.doFilter(request, MockHttpServletResponse(), chain)
+
+        request.getAttribute(JwtAuthenticationFilter.AUTH_ERROR_CODE_ATTRIBUTE) shouldBe "EXPIRED_TOKEN"
+    }
+
+    test("토큰이 없으면 사유 코드 attribute를 남기지 않는다") {
+        val request = MockHttpServletRequest()
+        val chain = mockk<FilterChain>()
+        every { chain.doFilter(any(), any()) } just Runs
+
+        filter.doFilter(request, MockHttpServletResponse(), chain)
+
+        request.getAttribute(JwtAuthenticationFilter.AUTH_ERROR_CODE_ATTRIBUTE) shouldBe null
+    }
+
     test("Access Token 쿠키가 없으면 인증 정보를 설정하지 않아야 한다") {
         // given
         val request = MockHttpServletRequest()

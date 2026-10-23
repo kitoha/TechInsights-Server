@@ -97,7 +97,7 @@ class PostBookmarkControllerTest : FunSpec() {
                 accept = MediaType.APPLICATION_JSON
             }.andExpect {
                 status { isUnauthorized() }
-                jsonPath("$.errorCode") { value("UNAUTHORIZED") }
+                jsonPath("$.code") { value("UNAUTHORIZED") }
             }
 
             verify(exactly = 1) { postBookmarkService.toggleBookmark(postId, any<Requester.Anonymous>()) }
@@ -139,7 +139,7 @@ class PostBookmarkControllerTest : FunSpec() {
                 accept = MediaType.APPLICATION_JSON
             }.andExpect {
                 status { isUnauthorized() }
-                jsonPath("$.errorCode") { value("UNAUTHORIZED") }
+                jsonPath("$.code") { value("UNAUTHORIZED") }
             }
         }
 
@@ -166,7 +166,7 @@ class PostBookmarkControllerTest : FunSpec() {
                 accept = MediaType.APPLICATION_JSON
             }.andExpect {
                 status { isUnauthorized() }
-                jsonPath("$.errorCode") { value("UNAUTHORIZED") }
+                jsonPath("$.code") { value("UNAUTHORIZED") }
             }
         }
     }

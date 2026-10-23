@@ -30,3 +30,11 @@ class MyControllerTest : FunSpec({
 ## Cursor Pagination
 
 Use `CursorPageResponse<T>` for cursor-based list endpoints.
+
+## Error Contract
+
+Every error response is RFC 7807 `application/problem+json`: `type` (`about:blank`), `title`, `status`, `detail`, `instance` (request path), plus `code` (stable machine-readable error code — switch on this), `timestamp`, and `errors` (field → message map, validation errors only).
+
+- Domain/web errors: `GlobalExceptionHandler` → `ProblemDetails.response(...)`. Never return a bespoke error body.
+- 401 / 403 from Spring Security: `ProblemDetailAuthenticationEntryPoint` / `ProblemDetailAccessDeniedHandler`. 401 `code` is `UNAUTHORIZED` (no token), `EXPIRED_TOKEN`, `INVALID_TOKEN` or `TOKEN_TAMPERED` (reason recorded by `JwtAuthenticationFilter`); 403 `code` is `FORBIDDEN`.
+- nginx maintenance 503 uses the same shape (`code: SERVICE_UNAVAILABLE`).

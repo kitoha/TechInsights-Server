@@ -50,9 +50,11 @@ class JwtAuthenticationFilter(
                 SecurityContextHolder.getContext().authentication = authentication
             } catch (e: AuthException) {
                 SecurityContextHolder.clearContext()
+                request.setAttribute(AUTH_ERROR_CODE_ATTRIBUTE, e.errorCode)
                 log.debug { "JWT authentication failed: uri=${request.requestURI}, category=${category(e)}" }
             } catch (e: Exception) {
                 SecurityContextHolder.clearContext()
+                request.setAttribute(AUTH_ERROR_CODE_ATTRIBUTE, "INVALID_TOKEN")
                 log.warn { "JWT authentication failed unexpectedly: uri=${request.requestURI}, exception=${e::class.simpleName}" }
             }
         }
@@ -70,5 +72,10 @@ class JwtAuthenticationFilter(
 
     private fun extractToken(request: HttpServletRequest): String? {
         return request.cookies?.find { it.name == authProperties.jwt.accessTokenCookieName }?.value
+    }
+
+    companion object {
+        /** Set when a token was sent but rejected; read by [ProblemDetailAuthenticationEntryPoint]. */
+        const val AUTH_ERROR_CODE_ATTRIBUTE = "com.techinsights.api.auth.errorCode"
     }
 }
