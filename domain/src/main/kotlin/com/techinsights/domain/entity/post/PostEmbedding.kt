@@ -4,10 +4,12 @@ import com.techinsights.domain.entity.BaseEntity
 import jakarta.persistence.*
 import org.hibernate.annotations.Array
 import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.annotations.SQLRestriction
 import org.hibernate.type.SqlTypes
 
 @Entity
 @Table(name = "post_embedding")
+@SQLRestriction("deleted_at IS NULL")
 class PostEmbedding(
     @Id
     @Column(name = "post_id")
