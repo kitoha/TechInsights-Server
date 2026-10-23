@@ -12,6 +12,7 @@ import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
 import io.mockk.verify
+import java.util.function.Supplier
 import org.jsoup.Connection
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -65,8 +66,8 @@ class WebContentExtractorTest : FunSpec({
         
         every { rateLimiterManager.applyJitter() } returns Unit
         
-        every { rateLimiter.executeSupplier(any<java.util.function.Supplier<*>>()) } answers { 
-            (it.invocation.args[0] as java.util.function.Supplier<*>).get() as Document
+        every { rateLimiter.executeSupplier(any<Supplier<*>>()) } answers { 
+            (it.invocation.args[0] as Supplier<*>).get() as Document
         }
 
         every { selectorRegistry.getSelectors(domain) } returns listOf("article")

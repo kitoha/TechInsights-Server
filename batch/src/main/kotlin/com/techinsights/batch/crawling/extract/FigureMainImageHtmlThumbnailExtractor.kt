@@ -1,6 +1,7 @@
 package com.techinsights.batch.crawling.extract
 
 import org.jsoup.nodes.Document
+import org.jsoup.nodes.Element
 import org.springframework.stereotype.Component
 
 @Component
@@ -11,7 +12,7 @@ class FigureMainImageHtmlThumbnailExtractor : ThumbnailExtractorStrategy {
       .firstOrNull { isValidImg(it) }
       ?.absUrl("src")
   }
-  private fun isValidImg(img: org.jsoup.nodes.Element): Boolean =
+  private fun isValidImg(img: Element): Boolean =
     !img.absUrl("src").isNullOrBlank() &&
         !img.absUrl("src").contains("data:image/svg") &&
         !img.absUrl("src").contains("icon") &&
