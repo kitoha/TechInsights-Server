@@ -46,6 +46,7 @@ class GlobalExceptionHandler {
             UserErrorCode.USER_NOT_FOUND -> HttpStatus.NOT_FOUND
             UserErrorCode.DUPLICATE_NICKNAME -> HttpStatus.CONFLICT
             UserErrorCode.INVALID_NICKNAME -> HttpStatus.BAD_REQUEST
+            UserErrorCode.ACCOUNT_DEACTIVATED -> HttpStatus.FORBIDDEN
         }
 
         return ProblemDetails.response(

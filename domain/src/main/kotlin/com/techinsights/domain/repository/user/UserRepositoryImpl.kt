@@ -24,6 +24,10 @@ class UserRepositoryImpl(
         return userJpaRepository.save(user)
     }
 
+    override fun isDeactivatedAccount(provider: ProviderType, providerId: String): Boolean {
+        return userJpaRepository.countDeactivatedByProvider(provider.name, providerId) > 0
+    }
+
     override fun upsertByProvider(
         id: Long,
         email: String,

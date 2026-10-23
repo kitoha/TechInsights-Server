@@ -1,8 +1,11 @@
 package com.techinsights.api.auth
 
+import com.techinsights.domain.exception.user.AccountDeactivatedException
 import com.techinsights.domain.service.user.UserService
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException
+import org.springframework.security.oauth2.core.OAuth2Error
 import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.stereotype.Service
 
@@ -23,12 +26,16 @@ class CustomOAuth2UserService(
         val name = attributes["name"] as String
         val profileImage = attributes["picture"] as? String
 
-        val authUser = userService.upsertGoogleOAuthUser(
-            providerId = providerId,
-            email = email,
-            name = name,
-            profileImage = profileImage
-        )
+        val authUser = try {
+            userService.upsertGoogleOAuthUser(
+                providerId = providerId,
+                email = email,
+                name = name,
+                profileImage = profileImage
+            )
+        } catch (e: AccountDeactivatedException) {
+            throw OAuth2AuthenticationException(OAuth2Error(ACCOUNT_DEACTIVATED_ERROR_CODE), e.message, e)
+        }
         
         return CustomUserDetails(
             userId = authUser.id,
@@ -36,5 +43,9 @@ class CustomOAuth2UserService(
             role = authUser.role,
             attributes = attributes
         )
+    }
+
+    companion object {
+        const val ACCOUNT_DEACTIVATED_ERROR_CODE = "account_deactivated"
     }
 }
