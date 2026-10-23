@@ -4,6 +4,7 @@ import com.techinsights.domain.support.RepositoryTestSpec
 import com.techinsights.domain.utils.Tsid
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
+import java.sql.Timestamp
 import org.springframework.data.domain.PageRequest
 import org.springframework.jdbc.core.JdbcTemplate
 
@@ -47,14 +48,14 @@ class UserReadHistoryRepositoryTest(
     repository.trackUserPostRead(1, Tsid.encode(10))
     backdate(1, 10, 60)
     val before = jdbcTemplate.queryForObject(
-      "SELECT read_at FROM user_read_history WHERE user_id = 1 AND post_id = 10", java.sql.Timestamp::class.java
+      "SELECT read_at FROM user_read_history WHERE user_id = 1 AND post_id = 10", Timestamp::class.java
     )!!
 
     repository.trackUserPostRead(1, Tsid.encode(10))
 
     jdbcTemplate.queryForObject("SELECT count(*) FROM user_read_history", Int::class.java) shouldBe 1
     val after = jdbcTemplate.queryForObject(
-      "SELECT read_at FROM user_read_history WHERE user_id = 1 AND post_id = 10", java.sql.Timestamp::class.java
+      "SELECT read_at FROM user_read_history WHERE user_id = 1 AND post_id = 10", Timestamp::class.java
     )!!
     after.after(before) shouldBe true
   }

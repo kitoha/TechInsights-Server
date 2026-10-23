@@ -13,6 +13,7 @@ import com.techinsights.domain.enums.Category
 import com.techinsights.domain.enums.ErrorType
 import com.techinsights.domain.infrastructure.gemini.GeminiModelType
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
+import io.github.resilience4j.ratelimiter.RateLimiter
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -152,7 +153,7 @@ class GeminiBatchArticleSummarizer(
             .build()
     }
 
-    private suspend fun acquireRateLimiterPermission(limiter: io.github.resilience4j.ratelimiter.RateLimiter) {
+    private suspend fun acquireRateLimiterPermission(limiter: RateLimiter) {
         withContext(ioDispatcher) {
             limiter.acquirePermission()
         }

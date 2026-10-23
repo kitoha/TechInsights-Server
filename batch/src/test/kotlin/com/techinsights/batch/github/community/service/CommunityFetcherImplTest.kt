@@ -14,6 +14,7 @@ import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.mockk
 import org.springframework.core.ParameterizedTypeReference
+import org.springframework.http.HttpHeaders
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import org.springframework.web.util.UriBuilder
@@ -230,7 +231,7 @@ class CommunityFetcherImplTest : FunSpec({
     context("API 실패 처리") {
 
         test("HN API 실패 시 hnPosts를 빈 리스트로 반환한다") {
-            mockHnError(WebClientResponseException.create(429, "Too Many Requests", org.springframework.http.HttpHeaders.EMPTY, ByteArray(0), null))
+            mockHnError(WebClientResponseException.create(429, "Too Many Requests", HttpHeaders.EMPTY, ByteArray(0), null))
             mockReddit(buildRedditResponse(listOf(buildRedditPost("Reddit Post"))))
 
             val result = fetcher().fetch("owner/repo", "owner", "repo", null, 0)
@@ -241,7 +242,7 @@ class CommunityFetcherImplTest : FunSpec({
 
         test("Reddit API 실패 시 redditPosts를 빈 리스트로 반환한다") {
             mockHn(buildHnResponse(listOf(buildHnHit("id1", "HN Post"))))
-            mockRedditError(WebClientResponseException.create(503, "Service Unavailable", org.springframework.http.HttpHeaders.EMPTY, ByteArray(0), null))
+            mockRedditError(WebClientResponseException.create(503, "Service Unavailable", HttpHeaders.EMPTY, ByteArray(0), null))
 
             val result = fetcher().fetch("owner/repo", "owner", "repo", null, 0)
 

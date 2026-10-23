@@ -4,6 +4,8 @@ import com.techinsights.domain.dto.user.RefreshTokenRotationResult
 import com.techinsights.domain.repository.user.RefreshTokenRepository
 import com.techinsights.domain.support.RepositoryTestSpec
 import io.kotest.matchers.shouldBe
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
@@ -202,8 +204,8 @@ class RefreshTokenServiceTest(
     test("같은 사용자의 동시 로그인에서도 세션 상한을 넘지 않는다") {
       insertUser(1)
       val threads = 12
-      val ready = java.util.concurrent.CountDownLatch(threads)
-      val pool = java.util.concurrent.Executors.newFixedThreadPool(threads)
+      val ready = CountDownLatch(threads)
+      val pool = Executors.newFixedThreadPool(threads)
       val futures = (1..threads).map { i ->
         pool.submit {
           ready.countDown()
@@ -220,8 +222,8 @@ class RefreshTokenServiceTest(
     test("같은 기기로 동시에 로그인해도 세션은 하나만 남는다") {
       insertUser(1)
       val threads = 8
-      val ready = java.util.concurrent.CountDownLatch(threads)
-      val pool = java.util.concurrent.Executors.newFixedThreadPool(threads)
+      val ready = CountDownLatch(threads)
+      val pool = Executors.newFixedThreadPool(threads)
       val futures = (1..threads).map { i ->
         pool.submit {
           ready.countDown()

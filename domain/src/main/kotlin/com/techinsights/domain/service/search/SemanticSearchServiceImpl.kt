@@ -1,6 +1,7 @@
 package com.techinsights.domain.service.search
 
 import com.techinsights.domain.config.search.SemanticSearchProperties
+import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.dto.search.SemanticSearchResult
 import com.techinsights.domain.repository.post.PostEmbeddingRepository
 import com.techinsights.domain.repository.post.PostRepository
@@ -58,7 +59,7 @@ class SemanticSearchServiceImpl(
     private fun formatVectorString(vector: List<Float>): String =
         vector.joinToString(prefix = "[", postfix = "]")
 
-    private fun matchesCompany(post: com.techinsights.domain.dto.post.PostDto, companyId: Long?): Boolean {
+    private fun matchesCompany(post: PostDto, companyId: Long?): Boolean {
         if (companyId == null) return true
         return post.company.id == Tsid.encode(companyId)
     }

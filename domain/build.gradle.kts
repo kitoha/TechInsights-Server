@@ -63,4 +63,8 @@ kotlin {
 tasks {
   bootJar { enabled = false }
   jar { enabled = true }
+  test {
+    // InlineFqnConventionTest scans the sources of every module, so they must invalidate the test task's up-to-date check
+    inputs.files(fileTree("../api/src"), fileTree("../batch/src")).withPropertyName("conventionScannedSources")
+  }
 }

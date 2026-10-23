@@ -57,7 +57,7 @@ class OliveYoungBlogParser(
   fun extractBestThumbnail(detailUrl: String): String? {
     return runCatching {
       if (detailUrl.isBlank()) return@runCatching null
-      val doc = org.jsoup.Jsoup.connect(detailUrl).get()
+      val doc = Jsoup.connect(detailUrl).get()
       thumbnailExtractor.extract(doc)
     }.getOrNull()
   }

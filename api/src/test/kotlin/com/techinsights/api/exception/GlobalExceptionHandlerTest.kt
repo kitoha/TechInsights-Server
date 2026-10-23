@@ -28,6 +28,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
 import org.springframework.validation.BindingResult
 import org.springframework.validation.FieldError
+import org.springframework.validation.method.ParameterValidationResult
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.context.request.WebRequest
 import org.springframework.web.method.annotation.HandlerMethodValidationException
@@ -318,7 +319,7 @@ class GlobalExceptionHandlerTest : FunSpec({
         val methodParameter = mockk<MethodParameter>()
         every { methodParameter.parameterName } returns "query"
 
-        val validationResult = mockk<org.springframework.validation.method.ParameterValidationResult>()
+        val validationResult = mockk<ParameterValidationResult>()
         every { validationResult.methodParameter } returns methodParameter
         every { validationResult.resolvableErrors } returns listOf(resolvableError)
 
@@ -345,7 +346,7 @@ class GlobalExceptionHandlerTest : FunSpec({
         val methodParameter = mockk<MethodParameter>()
         every { methodParameter.parameterName } returns "size"
 
-        val validationResult = mockk<org.springframework.validation.method.ParameterValidationResult>()
+        val validationResult = mockk<ParameterValidationResult>()
         every { validationResult.methodParameter } returns methodParameter
         every { validationResult.resolvableErrors } returns listOf(resolvableError)
 

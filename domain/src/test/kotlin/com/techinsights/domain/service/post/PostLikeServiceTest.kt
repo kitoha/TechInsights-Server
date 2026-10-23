@@ -13,6 +13,7 @@ import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import java.util.UUID
 class PostLikeServiceTest : FunSpec({
 
     val postLikeRepository = mockk<PostLikeRepository>()
@@ -78,7 +79,7 @@ class PostLikeServiceTest : FunSpec({
     test("toggleLike - Anonymous User - New Like") {
         val postIdStr = Tsid.generate()
         val postId = Tsid.decode(postIdStr)
-        val anonymousId = java.util.UUID.randomUUID().toString()
+        val anonymousId = UUID.randomUUID().toString()
         val ipAddress = "127.0.0.1"
         val requester = Requester.Anonymous(anonymousId, ipAddress)
 
@@ -101,7 +102,7 @@ class PostLikeServiceTest : FunSpec({
     test("toggleLike - Anonymous User - Already Liked (Unlike)") {
         val postIdStr = Tsid.generate()
         val postId = Tsid.decode(postIdStr)
-        val anonymousId = java.util.UUID.randomUUID().toString()
+        val anonymousId = UUID.randomUUID().toString()
         val ipAddress = "127.0.0.1"
         val requester = Requester.Anonymous(anonymousId, ipAddress)
         val existingLike = mockk<PostLike>()
@@ -222,7 +223,7 @@ class PostLikeServiceTest : FunSpec({
     test("getLikeStatus - Anonymous User - Liked") {
         val postIdStr = Tsid.generate()
         val postId = Tsid.decode(postIdStr)
-        val anonymousId = java.util.UUID.randomUUID().toString()
+        val anonymousId = UUID.randomUUID().toString()
         val ipAddress = "127.0.0.1"
         val requester = Requester.Anonymous(anonymousId, ipAddress)
         val existingLike = mockk<PostLike>()
@@ -240,7 +241,7 @@ class PostLikeServiceTest : FunSpec({
     test("getLikeStatus - Anonymous User - Not Liked") {
         val postIdStr = Tsid.generate()
         val postId = Tsid.decode(postIdStr)
-        val anonymousId = java.util.UUID.randomUUID().toString()
+        val anonymousId = UUID.randomUUID().toString()
         val ipAddress = "127.0.0.1"
         val requester = Requester.Anonymous(anonymousId, ipAddress)
 
