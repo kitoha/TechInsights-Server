@@ -1,206 +1,122 @@
 package com.techinsights.domain.repository.search
 
-import com.querydsl.core.Tuple
-import com.querydsl.core.types.OrderSpecifier
-import com.querydsl.core.types.dsl.BooleanExpression
-import com.querydsl.core.types.dsl.NumberExpression
-import com.querydsl.jpa.impl.JPAQuery
-import com.querydsl.jpa.impl.JPAQueryFactory
-import com.techinsights.domain.entity.company.QCompany
-import com.techinsights.domain.entity.post.Post
-import com.techinsights.domain.entity.post.QPost
-import io.kotest.core.spec.style.FunSpec
+import com.techinsights.domain.enums.search.SearchSortType
+import com.techinsights.domain.repository.search.query.SearchQueryBuilder
+import com.techinsights.domain.support.RepositoryTestSpec
+import com.techinsights.domain.support.SqlFixtures
+import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
+import io.kotest.matchers.doubles.shouldBeGreaterThan
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldContain
-import io.kotest.matchers.string.shouldNotContain
-import io.mockk.clearMocks
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.slot
-import io.mockk.verify
+import org.springframework.jdbc.core.JdbcTemplate
+import java.time.LocalDateTime
 
-class PostSearchQueryRepositoryTest : FunSpec({
+class PostSearchQueryRepositoryTest(
+  private val repository: PostSearchQueryRepository,
+  private val queryBuilder: SearchQueryBuilder,
+  private val jdbc: JdbcTemplate
+) : RepositoryTestSpec({
 
-  val jpaQueryFactory = mockk<JPAQueryFactory>()
-  val tupleQuery = mockk<JPAQuery<Tuple>>()
-  val countQuery = mockk<JPAQuery<Long>>()
+  val fixtures = SqlFixtures(jdbc)
+  val day = { d: Int -> LocalDateTime.of(2020, 1, d, 0, 0) }
 
-  val repository = PostSearchQueryRepository(jpaQueryFactory)
-
-  val post = QPost.post
-  val company = QCompany.company
-
-  val mockPost = mockk<Post>()
-  val mockScore = 0.95
-  val mockTuple = mockk<Tuple>()
-
-  beforeTest {
-    clearMocks(jpaQueryFactory, tupleQuery, countQuery, mockTuple)
-
-    every { mockTuple[post] } returns mockPost
+  beforeEach {
+    fixtures.insertCompany(1L, "Kakao")
+    fixtures.insertCompany(2L, "Naver")
   }
 
-  test("findForInstantSearch should execute query and return projections") {
-    val searchQuery = "test"
-    val limit = 5
-    val relevanceScore = mockk<NumberExpression<Double>>()
-    val orderScore = mockk<OrderSpecifier<Double>>()
+  fun instant(query: String, companyIds: Collection<Long> = emptyList(), limit: Int = 10) =
+    repository.findForInstantSearch(query, companyIds, queryBuilder.buildRelevanceScore(query), limit)
 
-    every { relevanceScore.desc() } returns orderScore
-    every { mockTuple[relevanceScore] } returns mockScore
+  fun full(
+    query: String,
+    sort: SearchSortType,
+    companyId: Long? = null,
+    offset: Long = 0,
+    limit: Long = 10
+  ): List<Long> {
+    val score = queryBuilder.buildRelevanceScore(query)
+    return repository.findForFullSearch(
+      condition = queryBuilder.buildSearchCondition(query, companyId),
+      orderSpecifiers = queryBuilder.buildOrderSpecifier(sort, score),
+      relevanceScore = score,
+      offset = offset,
+      limit = limit
+    ).map { it.post.id }
+  }
 
-    every { jpaQueryFactory.select(post, relevanceScore) } returns tupleQuery
-    every { tupleQuery.from(post) } returns tupleQuery
-    every { tupleQuery.join(post.company, company) } returns tupleQuery
-    every { tupleQuery.fetchJoin() } returns tupleQuery
-    val conditionSlot = slot<BooleanExpression>()
-    every { tupleQuery.where(capture(conditionSlot), post.isSummary.isTrue) } returns tupleQuery
-    every { tupleQuery.orderBy(orderScore, post.viewCount.desc()) } returns tupleQuery
-    every { tupleQuery.limit(limit.toLong()) } returns tupleQuery
-    every { tupleQuery.fetch() } returns listOf(mockTuple)
+  context("instant search") {
+    test("matches title or content case-insensitively on title and returns only summarized posts") {
+      fixtures.insertPost(1L, title = "Kotlin Coroutines", companyId = 1L)
+      fixtures.insertPost(2L, title = "Other", content = "all about kotlin", companyId = 1L)
+      fixtures.insertPost(3L, title = "Spring", companyId = 1L)
+      fixtures.insertPost(4L, title = "KOTLIN draft", companyId = 1L, isSummary = false)
 
-    val result = repository.findForInstantSearch(searchQuery, listOf(3L, 7L), relevanceScore, limit)
+      instant("kotlin").map { it.post.id } shouldContainExactlyInAnyOrder listOf(1L, 2L)
+    }
 
-    conditionSlot.captured.toString() shouldContain "post.company.id in [3, 7]"
-    conditionSlot.captured.toString() shouldNotContain "company.name"
+    test("orders by relevance score and then view count, and applies the limit") {
+      fixtures.insertPost(1L, title = "kotlin tips", viewCount = 1, publishedAt = day(1))
+      fixtures.insertPost(2L, title = "about kotlin", viewCount = 1, publishedAt = day(1))
+      fixtures.insertPost(3L, title = "about kotlin 2", viewCount = 5000, publishedAt = day(1))
 
-    result.size shouldBe 1
-    result[0].post shouldBe mockPost
-    result[0].relevanceScore shouldBe mockScore
+      val result = instant("kotlin")
 
-    verify {
-      jpaQueryFactory.select(post, relevanceScore)
-      tupleQuery.from(post)
-      tupleQuery.join(post.company, company)
-      tupleQuery.fetchJoin()
-      tupleQuery.where(any<BooleanExpression>(), post.isSummary.isTrue)
-      tupleQuery.orderBy(orderScore, post.viewCount.desc())
-      tupleQuery.limit(5L)
-      tupleQuery.fetch()
+      result.first().post.id shouldBe 1L // title starts with the query: highest weight
+      result.first().relevanceScore shouldBeGreaterThan result.last().relevanceScore
+      instant("kotlin", limit = 2).size shouldBe 2
+    }
+
+    test("adds posts of matched companies by id") {
+      fixtures.insertPost(1L, title = "unrelated", companyId = 2L)
+      fixtures.insertPost(2L, title = "unrelated too", companyId = 1L)
+
+      instant("zzz", companyIds = listOf(2L)).map { it.post.id } shouldContainExactly listOf(1L)
+      instant("zzz").shouldBeEmpty()
     }
   }
 
-  test("findForInstantSearch should not add a company arm when no company name matched") {
-    val relevanceScore = mockk<NumberExpression<Double>>()
-    val orderScore = mockk<OrderSpecifier<Double>>()
-    every { relevanceScore.desc() } returns orderScore
-    every { jpaQueryFactory.select(post, relevanceScore) } returns tupleQuery
-    every { tupleQuery.from(post) } returns tupleQuery
-    every { tupleQuery.join(post.company, company) } returns tupleQuery
-    every { tupleQuery.fetchJoin() } returns tupleQuery
-    val conditionSlot = slot<BooleanExpression>()
-    every { tupleQuery.where(capture(conditionSlot), post.isSummary.isTrue) } returns tupleQuery
-    every { tupleQuery.orderBy(orderScore, post.viewCount.desc()) } returns tupleQuery
-    every { tupleQuery.limit(5L) } returns tupleQuery
-    every { tupleQuery.fetch() } returns emptyList()
+  context("full search") {
+    beforeEach {
+      fixtures.insertPost(1L, title = "kotlin one", viewCount = 10, publishedAt = day(1), companyId = 1L)
+      fixtures.insertPost(2L, title = "kotlin two", viewCount = 300, publishedAt = day(2), companyId = 2L)
+      fixtures.insertPost(3L, title = "kotlin three", viewCount = 50, publishedAt = day(3), companyId = 1L)
+      fixtures.insertPost(4L, title = "kotlin draft", viewCount = 999, publishedAt = day(4), isSummary = false)
+    }
 
-    repository.findForInstantSearch("test", emptyList(), relevanceScore, 5)
+    test("LATEST orders by published date descending") {
+      full("kotlin", SearchSortType.LATEST) shouldContainExactly listOf(3L, 2L, 1L)
+    }
 
-    conditionSlot.captured.toString() shouldNotContain "post.company.id"
-  }
+    test("POPULAR orders by view count descending") {
+      full("kotlin", SearchSortType.POPULAR) shouldContainExactly listOf(2L, 3L, 1L)
+    }
 
-  test("findForFullSearch should execute paginated query and return projections") {
-    val condition = mockk<BooleanExpression>()
-    val relevanceScore = mockk<NumberExpression<Double>>()
-    val orderSpecifier1 = mockk<OrderSpecifier<*>>()
-    val orderSpecifiers = arrayOf(orderSpecifier1)
-    val offset = 10L
-    val limit = 20L
+    test("company filter and paging apply") {
+      full("kotlin", SearchSortType.LATEST, companyId = 1L) shouldContainExactly listOf(3L, 1L)
+      full("kotlin", SearchSortType.LATEST, offset = 2, limit = 2) shouldContainExactly listOf(1L)
+    }
 
-    every { jpaQueryFactory.select(post, relevanceScore) } returns tupleQuery
-    every { tupleQuery.from(post) } returns tupleQuery
-    every { tupleQuery.join(post.company, company) } returns tupleQuery
-    every { tupleQuery.fetchJoin() } returns tupleQuery
-    every { tupleQuery.where(condition, post.isSummary.isTrue) } returns tupleQuery
-    every { tupleQuery.orderBy(*orderSpecifiers) } returns tupleQuery
-    every { tupleQuery.offset(offset) } returns tupleQuery
-    every { tupleQuery.limit(limit) } returns tupleQuery
-    every { tupleQuery.fetch() } returns listOf(mockTuple, mockTuple)
-    every { mockTuple[relevanceScore] } returns mockScore
+    test("RELEVANCE puts the most viewed equally-matching post first") {
+      full("kotlin", SearchSortType.RELEVANCE).first() shouldBe 2L
+    }
 
-    val result =
-      repository.findForFullSearch(condition, orderSpecifiers, relevanceScore, offset, limit)
-
-    result.size shouldBe 2
-    result[0].post shouldBe mockPost
-    result[1].relevanceScore shouldBe mockScore
-
-    verify {
-      jpaQueryFactory.select(post, relevanceScore)
-      tupleQuery.where(condition, post.isSummary.isTrue)
-      tupleQuery.orderBy(*orderSpecifiers)
-      tupleQuery.offset(offset)
-      tupleQuery.limit(limit)
-      tupleQuery.fetch()
+    test("countByCondition counts summarized matches only") {
+      repository.countByCondition(queryBuilder.buildSearchCondition("kotlin")) shouldBe 3L
+      repository.countByCondition(queryBuilder.buildSearchCondition("kotlin", companyId = 1L)) shouldBe 2L
+      repository.countByCondition(queryBuilder.buildSearchCondition("nothing")) shouldBe 0L
     }
   }
 
-  test("countByCondition should execute count query and return result") {
-    val condition = mockk<BooleanExpression>()
-    val expectedCount = 7L
+  test("countMatchedPostsByCompany counts summarized title or content matches of that company") {
+    fixtures.insertPost(1L, title = "Kotlin", companyId = 1L)
+    fixtures.insertPost(2L, title = "x", content = "kotlin inside", companyId = 1L)
+    fixtures.insertPost(3L, title = "Kotlin", companyId = 2L)
+    fixtures.insertPost(4L, title = "Kotlin", companyId = 1L, isSummary = false)
 
-    every { jpaQueryFactory.select(post.count()) } returns countQuery
-    every { countQuery.from(post) } returns countQuery
-    every { countQuery.join(post.company, company) } returns countQuery
-    every { countQuery.where(condition, post.isSummary.isTrue) } returns countQuery
-    every { countQuery.fetchOne() } returns expectedCount
-
-    val result = repository.countByCondition(condition)
-
-    result shouldBe expectedCount
-
-    verify {
-      jpaQueryFactory.select(post.count())
-      countQuery.from(post)
-      countQuery.join(post.company, company)
-      countQuery.where(condition, post.isSummary.isTrue)
-      countQuery.fetchOne()
-    }
-  }
-
-  test("countByCondition should return 0 when fetchOne is null") {
-    val condition = mockk<BooleanExpression>()
-
-    every { jpaQueryFactory.select(post.count()) } returns countQuery
-    every { countQuery.from(post) } returns countQuery
-    every { countQuery.join(post.company, company) } returns countQuery
-    every { countQuery.where(condition, post.isSummary.isTrue) } returns countQuery
-    every { countQuery.fetchOne() } returns null
-
-    val result = repository.countByCondition(condition)
-
-    result shouldBe 0L
-  }
-
-  test("countMatchedPostsByCompany should execute specific count query") {
-    val companyId = 123L
-    val query = "search term"
-    val expectedCount = 3L
-
-    every { jpaQueryFactory.select(post.count()) } returns countQuery
-    every { countQuery.from(post) } returns countQuery
-    every {
-      countQuery.where(
-        any<BooleanExpression>(),
-        any<BooleanExpression>(),
-        post.isSummary.isTrue
-      )
-    } returns countQuery
-    every { countQuery.fetchOne() } returns expectedCount
-
-    val result = repository.countMatchedPostsByCompany(companyId, query)
-
-    result shouldBe expectedCount
-
-    verify {
-      jpaQueryFactory.select(post.count())
-      countQuery.from(post)
-      countQuery.where(
-        post.company.id.eq(companyId),
-        any<BooleanExpression>(),
-        post.isSummary.isTrue
-      )
-      countQuery.fetchOne()
-    }
+    repository.countMatchedPostsByCompany(1L, "kotlin") shouldBe 2L
+    repository.countMatchedPostsByCompany(2L, "kotlin") shouldBe 1L
+    repository.countMatchedPostsByCompany(1L, "rust") shouldBe 0L
   }
 })
