@@ -2,6 +2,7 @@ package com.techinsights.domain.service.post
 
 import com.techinsights.domain.dto.post.PostViewDto
 import com.techinsights.domain.event.ViewCountIncrementEvent
+import com.techinsights.domain.exception.PostNotFoundException
 import com.techinsights.domain.repository.post.PostRepository
 import com.techinsights.domain.repository.post.PostViewRepository
 import com.techinsights.domain.repository.user.AnonymousUserReadHistoryRepository
@@ -23,6 +24,8 @@ class PostViewService(
 
   @Transactional
   fun recordView(postId: String, identifier: String, userAgent: String?) {
+    requireExistingPost(postId)
+
     val postView = PostViewDto(
       id = Tsid.generate(),
       postId = postId,
@@ -47,6 +50,14 @@ class PostViewService(
 
   @Transactional
   fun trackUserPostRead(userId: Long, postId: String) {
+    requireExistingPost(postId)
     userReadHistoryRepository.trackUserPostRead(userId, postId)
+  }
+
+  private fun requireExistingPost(postId: String) {
+    val id = runCatching { Tsid.decode(postId) }.getOrNull()
+    if (id == null || !postRepository.existsById(id)) {
+      throw PostNotFoundException("Post with ID $postId not found")
+    }
   }
 }
