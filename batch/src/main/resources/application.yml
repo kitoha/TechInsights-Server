@@ -1,4 +1,6 @@
 batch:
+  refresh-token-cleanup:
+    retired-hash-retention: 30d  # 리프레시 토큰 만료 기간(auth.jwt.refresh-token-expiration)과 맞춘다
   post-crawling:
     job-name: crawlPostJob
     step-name: crawlPostStep
