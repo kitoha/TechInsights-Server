@@ -4,7 +4,7 @@ import com.techinsights.domain.infrastructure.gemini.prompt.GithubReadmePromptBu
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.google.genai.Client
 import com.techinsights.domain.infrastructure.gemini.GeminiProperties
-import com.techinsights.domain.dto.gemini.ArticleInput
+import com.techinsights.domain.dto.summary.ArticleInput
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException
 import com.techinsights.domain.enums.ErrorType
 import com.techinsights.domain.service.quota.DailyQuota

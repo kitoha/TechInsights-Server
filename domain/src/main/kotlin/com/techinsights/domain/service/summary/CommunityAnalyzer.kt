@@ -1,4 +1,4 @@
-package com.techinsights.domain.service.gemini
+package com.techinsights.domain.service.summary
 
 import com.techinsights.domain.dto.community.CommunityAnalysisInput
 import com.techinsights.domain.dto.community.CommunityAnalysisResult

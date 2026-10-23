@@ -1,7 +1,7 @@
 package com.techinsights.domain.infrastructure.gemini.prompt
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.techinsights.domain.dto.gemini.ArticleInput
+import com.techinsights.domain.dto.summary.ArticleInput
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.Resource
 import org.springframework.stereotype.Component

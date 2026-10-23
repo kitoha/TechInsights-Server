@@ -5,7 +5,7 @@ import com.techinsights.batch.github.readme.config.props.GithubReadmeBatchProper
 import com.techinsights.batch.github.readme.processor.GithubReadmeFetchProcessor
 import com.techinsights.batch.github.readme.reader.UnsummarizedRepoReader
 import com.techinsights.batch.github.readme.writer.GithubReadmeBatchSummaryWriter
-import com.techinsights.domain.dto.gemini.ArticleInput
+import com.techinsights.domain.dto.summary.ArticleInput
 import com.techinsights.domain.dto.github.GithubRepositoryDto
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step

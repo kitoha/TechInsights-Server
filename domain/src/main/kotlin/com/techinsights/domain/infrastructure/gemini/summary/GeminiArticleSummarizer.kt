@@ -1,12 +1,12 @@
 package com.techinsights.domain.infrastructure.gemini.summary
 
 import com.techinsights.domain.infrastructure.gemini.prompt.PromptTemplateEngine
-import com.techinsights.domain.service.gemini.ArticleSummarizer
+import com.techinsights.domain.service.summary.ArticleSummarizer
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.genai.Client
 import com.google.genai.types.GenerateContentConfig
 import com.techinsights.domain.infrastructure.gemini.GeminiProperties
-import com.techinsights.domain.dto.gemini.SummaryResult
+import com.techinsights.domain.dto.summary.SummaryResult
 import com.techinsights.domain.enums.Category
 import com.techinsights.domain.enums.GeminiModelType
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry

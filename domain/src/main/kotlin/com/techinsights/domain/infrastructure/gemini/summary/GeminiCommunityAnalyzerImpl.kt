@@ -2,7 +2,7 @@ package com.techinsights.domain.infrastructure.gemini.summary
 
 import com.techinsights.domain.infrastructure.gemini.parser.StreamingJsonParser
 import com.techinsights.domain.infrastructure.gemini.prompt.CommunityBuzzPromptBuilder
-import com.techinsights.domain.service.gemini.CommunityAnalyzer
+import com.techinsights.domain.service.summary.CommunityAnalyzer
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.genai.Client
 import com.google.genai.types.GenerateContentConfig

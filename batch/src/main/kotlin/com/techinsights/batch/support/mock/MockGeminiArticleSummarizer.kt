@@ -1,8 +1,8 @@
 package com.techinsights.batch.support.mock
 
-import com.techinsights.domain.dto.gemini.SummaryResult
+import com.techinsights.domain.dto.summary.SummaryResult
 import com.techinsights.domain.enums.GeminiModelType
-import com.techinsights.domain.service.gemini.ArticleSummarizer
+import com.techinsights.domain.service.summary.ArticleSummarizer
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Primary
 import org.springframework.context.annotation.Profile

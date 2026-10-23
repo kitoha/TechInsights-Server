@@ -1,6 +1,6 @@
 package com.techinsights.domain.infrastructure.gemini.prompt
 
-import com.techinsights.domain.dto.gemini.ArticleInput
+import com.techinsights.domain.dto.summary.ArticleInput
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
