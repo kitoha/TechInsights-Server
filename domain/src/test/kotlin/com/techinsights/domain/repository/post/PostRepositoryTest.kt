@@ -14,12 +14,13 @@ import io.kotest.matchers.shouldBe
 import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
+import jakarta.persistence.EntityManager
 
 class PostRepositoryTest : FunSpec({
 
     val postJpaRepository = mockk<PostJpaRepository>()
     val queryFactory = mockk<JPAQueryFactory>()
-    val repository = PostRepositoryImpl(postJpaRepository, queryFactory)
+    val repository = PostRepositoryImpl(postJpaRepository, queryFactory, mockk<EntityManager>())
 
     val longQuery = mockk<JPAQuery<Long>>()
     val updateClause = mockk<JPAUpdateClause>()

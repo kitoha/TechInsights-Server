@@ -9,6 +9,7 @@ import java.time.LocalDateTime
 
 interface PostRepository {
   fun saveAll(posts: List<PostDto>): List<PostDto>
+  fun insertAllIgnoringDuplicates(posts: List<PostDto>): Int
   fun findAllByUrlIn(urls: List<String>): List<PostDto>
   fun findAllByIdIn(ids: List<String>): List<PostDto>
   fun getPostById(id: String): PostDto
