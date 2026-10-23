@@ -52,7 +52,7 @@ class GithubTrendingController(
         return ResponseEntity.ok(
             GithubSemanticSearchResponse(
                 query = trimmedQuery,
-                results = results,
+                results = results.map { GithubSearchResultResponse.fromDto(it) },
                 totalReturned = results.size,
                 processingTimeMs = processingTimeMs,
             )

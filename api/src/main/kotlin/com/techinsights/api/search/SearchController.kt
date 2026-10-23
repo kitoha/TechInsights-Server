@@ -1,8 +1,6 @@
 package com.techinsights.api.search
 
 import com.techinsights.domain.config.search.SemanticSearchProperties
-import com.techinsights.domain.dto.search.FullSearchResponse
-import com.techinsights.domain.dto.search.InstantSearchResponse
 import com.techinsights.domain.dto.search.SearchRequest
 import com.techinsights.domain.enums.search.SearchSortType
 import com.techinsights.domain.service.search.SearchService
@@ -29,7 +27,7 @@ class SearchController(
     @RequestParam @NotBlank(message = "query must not be blank") @Size(max = MAX_QUERY_LENGTH, message = "query must not exceed $MAX_QUERY_LENGTH characters") query: String
   ): ResponseEntity<InstantSearchResponse> {
     val response = searchService.instantSearch(query)
-    return ResponseEntity.ok(response)
+    return ResponseEntity.ok(InstantSearchResponse.fromDto(response))
   }
 
   @GetMapping
@@ -49,7 +47,7 @@ class SearchController(
     )
 
     val response = searchService.fullSearch(request)
-    return ResponseEntity.ok(response)
+    return ResponseEntity.ok(FullSearchResponse.fromDto(response))
   }
 
   @GetMapping("/semantic")
