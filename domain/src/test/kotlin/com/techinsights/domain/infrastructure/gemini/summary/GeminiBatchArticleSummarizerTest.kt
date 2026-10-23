@@ -7,7 +7,6 @@ import com.techinsights.domain.infrastructure.gemini.GeminiProperties
 import com.techinsights.domain.dto.summary.ArticleInput
 import com.techinsights.domain.dto.summary.SummaryResultWithId
 import com.techinsights.domain.enums.ErrorType
-import com.techinsights.domain.infrastructure.gemini.GeminiModelType
 import com.techinsights.domain.service.quota.DailyQuota
 import com.techinsights.domain.service.quota.DailyQuotaService
 import io.github.resilience4j.circuitbreaker.CircuitBreaker
@@ -60,7 +59,7 @@ class GeminiBatchArticleSummarizerTest : FunSpec({
         val expectedResults = articles.map { SummaryResultWithId(it.id, true) }
         
         coEvery { 
-            spySummarizer["callGeminiApi"](any<List<ArticleInput>>(), any<GeminiModelType>()) 
+            spySummarizer["callGeminiApi"](any<List<ArticleInput>>()) 
         } returns flowOf(*expectedResults.toTypedArray())
 
         val resultFlow = spySummarizer.summarizeBatch(articles)
@@ -78,7 +77,7 @@ class GeminiBatchArticleSummarizerTest : FunSpec({
         val partialResults = articles.take(2).map { SummaryResultWithId(it.id, true) }
         
         coEvery { 
-            spySummarizer["callGeminiApi"](any<List<ArticleInput>>(), any<GeminiModelType>()) 
+            spySummarizer["callGeminiApi"](any<List<ArticleInput>>()) 
         } returns flowOf(*partialResults.toTypedArray())
 
         val resultFlow = spySummarizer.summarizeBatch(articles)
@@ -102,7 +101,7 @@ class GeminiBatchArticleSummarizerTest : FunSpec({
         )
         
         coEvery { 
-            spySummarizer["callGeminiApi"](any<List<ArticleInput>>(), any<GeminiModelType>()) 
+            spySummarizer["callGeminiApi"](any<List<ArticleInput>>()) 
         } returns flowOf(*mixedResults.toTypedArray())
 
         val resultFlow = spySummarizer.summarizeBatch(articles)
@@ -121,7 +120,7 @@ class GeminiBatchArticleSummarizerTest : FunSpec({
         val spySummarizer = spyk(summarizer, recordPrivateCalls = true)
         
         coEvery { 
-            spySummarizer["callGeminiApi"](emptyList<ArticleInput>(), any<GeminiModelType>()) 
+            spySummarizer["callGeminiApi"](emptyList<ArticleInput>()) 
         } returns kotlinx.coroutines.flow.emptyFlow<SummaryResultWithId>()
 
         val resultFlow = spySummarizer.summarizeBatch(emptyList())
