@@ -19,11 +19,21 @@ class SearchQueryBuilder(
   private val post = QPost.post
   private val company = QCompany.company
 
-  fun buildSearchCondition(query: String, companyId: Long? = null): BooleanExpression {
-    val baseCondition = post.title.containsIgnoreCase(query)
+  /**
+   * 회사명 일치는 조인된 company.name LIKE 대신 미리 조회한 [matchedCompanyIds]로 매칭한다.
+   * 모든 OR 항이 posts의 인덱스(trigram, company_id)로 처리되도록 하기 위함이다.
+   */
+  fun buildSearchCondition(
+    query: String,
+    companyId: Long? = null,
+    matchedCompanyIds: Collection<Long> = emptyList()
+  ): BooleanExpression {
+    var baseCondition = post.title.containsIgnoreCase(query)
       .or(post.preview.containsIgnoreCase(query))
       .or(post.content.contains(query))
-      .or(company.name.containsIgnoreCase(query))
+    if (matchedCompanyIds.isNotEmpty()) {
+      baseCondition = baseCondition.or(post.company.id.`in`(matchedCompanyIds))
+    }
 
     return companyId?.let {
       baseCondition.and(post.company.id.eq(it))
@@ -55,8 +65,9 @@ class SearchQueryBuilder(
       .then(scoreWeights.content)
       .otherwise(0.0)
 
-    // 인기도 점수
-    val popularityScore = post.viewCount.multiply(scoreWeights.viewCountMultiplier)
+    // 인기도 점수 (로그 스케일: 조회수가 텍스트 관련도를 압도하지 않도록 상한을 둔다)
+    val popularityScore = Expressions.numberTemplate(Double::class.java, "ln(1.0 + {0})", post.viewCount)
+      .multiply(scoreWeights.viewCountMultiplier)
 
     // 최신성 점수
     val recencyScore = CaseBuilder()

@@ -10,6 +10,10 @@ import com.techinsights.domain.exception.user.DuplicateNicknameException
 import com.techinsights.domain.exception.user.InvalidNicknameException
 import com.techinsights.domain.exception.user.UserNotFoundException
 import com.techinsights.domain.exception.PostNotFoundException
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException
+import io.github.resilience4j.circuitbreaker.CircuitBreaker
+import io.github.resilience4j.ratelimiter.RateLimiter
+import io.github.resilience4j.ratelimiter.RequestNotPermitted
 import jakarta.validation.ConstraintViolation
 import jakarta.validation.ConstraintViolationException
 import io.kotest.core.spec.style.FunSpec
@@ -564,5 +568,31 @@ class GlobalExceptionHandlerTest : FunSpec({
             // then
             response.body?.path shouldBe path.removePrefix("uri=")
         }
+    }
+
+    test("handleRequestNotPermitted should return 429") {
+        // given
+        val exception = RequestNotPermitted.createRequestNotPermitted(RateLimiter.ofDefaults("test"))
+
+        // when
+        val response = handler.handleRequestNotPermitted(exception, mockRequest)
+
+        // then
+        response.statusCode shouldBe HttpStatus.TOO_MANY_REQUESTS
+        response.body?.errorCode shouldBe "TOO_MANY_REQUESTS"
+        response.body?.path shouldBe "/api/test"
+    }
+
+    test("handleCallNotPermitted should return 503") {
+        // given
+        val exception = CallNotPermittedException.createCallNotPermittedException(CircuitBreaker.ofDefaults("test"))
+
+        // when
+        val response = handler.handleCallNotPermitted(exception, mockRequest)
+
+        // then
+        response.statusCode shouldBe HttpStatus.SERVICE_UNAVAILABLE
+        response.body?.errorCode shouldBe "SERVICE_UNAVAILABLE"
+        response.body?.path shouldBe "/api/test"
     }
 })

@@ -1,7 +1,6 @@
 package com.techinsights.batch.support.mock
 
 import com.techinsights.domain.dto.embedding.EmbeddingRequest
-import com.techinsights.domain.enums.GeminiModelType
 import com.techinsights.domain.service.embedding.EmbeddingService
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Primary
@@ -21,7 +20,7 @@ class MockEmbeddingService : EmbeddingService {
         private const val EMBEDDING_DIMENSION = 768
     }
 
-    override fun generateEmbedding(request: EmbeddingRequest, modelType: GeminiModelType): List<Float> {
+    override fun generateEmbedding(request: EmbeddingRequest): List<Float> {
         val startTime = System.currentTimeMillis()
 
         Thread.sleep(API_RESPONSE_TIME_MS)
@@ -42,8 +41,7 @@ class MockEmbeddingService : EmbeddingService {
     }
 
     override fun generateEmbeddingBatch(
-        requests: List<EmbeddingRequest>,
-        modelType: GeminiModelType
+        requests: List<EmbeddingRequest>
     ): List<EmbeddingService.EmbeddingResult> {
         val startTime = System.currentTimeMillis()
 
@@ -71,8 +69,7 @@ class MockEmbeddingService : EmbeddingService {
     }
 
     override fun batchEmbedTexts(
-        promptStrings: List<String>,
-        modelType: GeminiModelType
+        promptStrings: List<String>
     ): List<List<Float>> {
         Thread.sleep(API_RESPONSE_TIME_MS + (promptStrings.size * 10))
         return promptStrings.map {

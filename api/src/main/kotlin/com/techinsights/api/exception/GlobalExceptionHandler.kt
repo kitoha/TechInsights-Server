@@ -7,6 +7,8 @@ import com.techinsights.domain.exception.UnauthorizedException
 import com.techinsights.api.auth.AuthException
 import com.techinsights.domain.exception.user.UserException
 import com.techinsights.domain.enums.exception.UserErrorCode
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException
+import io.github.resilience4j.ratelimiter.RequestNotPermitted
 import jakarta.validation.ConstraintViolationException
 import mu.KotlinLogging
 import org.springframework.http.HttpStatus
@@ -241,6 +243,42 @@ class GlobalExceptionHandler {
                 ErrorResponse(
                     errorCode = "NOT_FOUND",
                     message = "요청한 리소스를 찾을 수 없습니다.",
+                    path = extractPath(request)
+                )
+            )
+    }
+
+    @ExceptionHandler(RequestNotPermitted::class)
+    fun handleRequestNotPermitted(
+        e: RequestNotPermitted,
+        request: WebRequest
+    ): ResponseEntity<ErrorResponse> {
+        logger.warn { "Rate limit exceeded: ${e.message}" }
+
+        return ResponseEntity
+            .status(HttpStatus.TOO_MANY_REQUESTS)
+            .body(
+                ErrorResponse(
+                    errorCode = "TOO_MANY_REQUESTS",
+                    message = "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.",
+                    path = extractPath(request)
+                )
+            )
+    }
+
+    @ExceptionHandler(CallNotPermittedException::class)
+    fun handleCallNotPermitted(
+        e: CallNotPermittedException,
+        request: WebRequest
+    ): ResponseEntity<ErrorResponse> {
+        logger.warn { "Circuit breaker open: ${e.message}" }
+
+        return ResponseEntity
+            .status(HttpStatus.SERVICE_UNAVAILABLE)
+            .body(
+                ErrorResponse(
+                    errorCode = "SERVICE_UNAVAILABLE",
+                    message = "일시적으로 서비스를 이용할 수 없습니다. 잠시 후 다시 시도해주세요.",
                     path = extractPath(request)
                 )
             )

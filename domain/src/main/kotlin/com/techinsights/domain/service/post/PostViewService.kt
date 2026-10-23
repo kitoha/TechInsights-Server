@@ -20,25 +20,17 @@ class PostViewService(
 ) {
 
   @Transactional
-  fun recordView(postId: String, userOrIp: String, userAgent: String?) {
-    val viewDate = LocalDate.now()
-    val decodedPostId = Tsid.decode(postId)
+  fun recordView(postId: String, identifier: String, userAgent: String?) {
+    val postView = PostViewDto(
+      id = Tsid.generate(),
+      postId = postId,
+      userOrIp = identifier,
+      viewedDate = LocalDate.now(),
+      userAgent = userAgent
+    )
 
-    if (!postViewRepository.existsByPostIdAndUserOrIpAndViewedDate(
-        decodedPostId, userOrIp, viewDate
-      )
-    ) {
-
+    if (postViewRepository.insertIfAbsent(postView)) {
       val companyId = postRepository.getCompanyIdByPostId(postId)
-
-      val postView = PostViewDto(
-        id = Tsid.generate(),
-        postId = postId,
-        userOrIp = userOrIp,
-        viewedDate = viewDate,
-        userAgent = userAgent
-      )
-      postViewRepository.save(postView)
 
       applicationEventPublisher.publishEvent(
         ViewCountIncrementEvent(postId, companyId)

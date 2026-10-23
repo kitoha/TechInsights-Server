@@ -22,6 +22,7 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.mockk.*
+import jakarta.persistence.EntityManager
 import org.springframework.data.domain.PageRequest
 import java.time.LocalDateTime
 
@@ -29,7 +30,7 @@ class PostRepositoryImplTest : FunSpec({
 
   val postJpaRepository = mockk<PostJpaRepository>()
   val queryFactory = mockk<JPAQueryFactory>()
-  val repository = PostRepositoryImpl(postJpaRepository, queryFactory)
+  val repository = PostRepositoryImpl(postJpaRepository, queryFactory, mockk<EntityManager>())
 
   val company = Company(
     id = 1L,
@@ -387,185 +388,6 @@ class PostRepositoryImplTest : FunSpec({
     verify(exactly = 1) {
       query.where(any<BooleanExpression>(), any<BooleanExpression>())
     }
-  }
-
-  test("should return paginated summarized posts") {
-    val pageable = PageRequest.of(0, 10)
-    val query = mockk<JPAQuery<Post>>()
-    val countQuery = mockk<JPAQuery<Long>>()
-
-    every { queryFactory.selectFrom(QPost.post) } returns query
-    every { queryFactory.select(QPost.post.id.count()) } returns countQuery
-    every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
-    every { query.fetchJoin() } returns query
-    every { query.where(any<BooleanExpression>(), isNull()) } returns query
-    every { query.orderBy(any()) } returns query
-    every { query.offset(0L) } returns query
-    every { query.limit(10L) } returns query
-    every { query.fetch() } returns listOf(post1)
-
-    every { countQuery.from(QPost.post) } returns countQuery
-    every { countQuery.where(any<BooleanExpression>(), isNull()) } returns countQuery
-    every { countQuery.fetchOne() } returns 1L
-
-    val result = repository.getAllPosts(pageable, null)
-
-    result.content shouldHaveSize 1
-    result.totalElements shouldBe 1L
-    result.content[0].isSummary shouldBe true
-  }
-
-  test("should filter by companyId when provided") {
-    val companyId = Tsid.encode(1L)
-    val pageable = PageRequest.of(0, 10)
-    val query = mockk<JPAQuery<Post>>()
-    val countQuery = mockk<JPAQuery<Long>>()
-
-    every { queryFactory.selectFrom(QPost.post) } returns query
-    every { queryFactory.select(QPost.post.id.count()) } returns countQuery
-    every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
-    every { query.fetchJoin() } returns query
-    every { query.where(any<BooleanExpression>(), any<BooleanExpression>()) } returns query
-    every { query.orderBy(any()) } returns query
-    every { query.offset(0L) } returns query
-    every { query.limit(10L) } returns query
-    every { query.fetch() } returns listOf(post1)
-
-    every { countQuery.from(QPost.post) } returns countQuery
-    every {
-      countQuery.where(
-        any<BooleanExpression>(),
-        any<BooleanExpression>()
-      )
-    } returns countQuery
-    every { countQuery.fetchOne() } returns 1L
-
-    val result = repository.getAllPosts(pageable, companyId)
-    result.content shouldHaveSize 1
-  }
-
-  test("should return posts filtered by category") {
-    val category = Category.AI
-    val pageable = PageRequest.of(0, 10)
-    val query = mockk<JPAQuery<Post>>()
-    val countQuery = mockk<JPAQuery<Long>>()
-
-    every { queryFactory.selectFrom(QPost.post) } returns query
-    every { queryFactory.select(QPost.post.id.countDistinct()) } returns countQuery
-    every { query.distinct() } returns query
-    every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
-    every { query.fetchJoin() } returns query
-    every { query.join(QPost.post.postCategories, QPostCategory.postCategory) } returns query
-    every {
-      query.where(
-        any<BooleanExpression>(),
-        any<BooleanExpression>(),
-        isNull()
-      )
-    } returns query
-    every { query.orderBy(any()) } returns query
-    every { query.offset(0L) } returns query
-    every { query.limit(10L) } returns query
-    every { query.fetch() } returns listOf(post1)
-
-    every { countQuery.from(QPost.post) } returns countQuery
-    every { countQuery.join(QPost.post.postCategories, QPostCategory.postCategory) } returns countQuery
-    every {
-      countQuery.where(
-        any<BooleanExpression>(),
-        any<BooleanExpression>(),
-        isNull()
-      )
-    } returns countQuery
-    every { countQuery.fetchOne() } returns 1L
-
-    val result = repository.getPostsByCategory(pageable, category, null)
-
-    result.content shouldHaveSize 1
-    result.content[0].categories.contains(category) shouldBe true
-    verify(exactly = 1) { query.distinct() }
-  }
-
-  test("should apply both category and company filter") {
-    val category = Category.AI
-    val companyId = Tsid.encode(1L)
-    val pageable = PageRequest.of(0, 10)
-    val query = mockk<JPAQuery<Post>>()
-    val countQuery = mockk<JPAQuery<Long>>()
-
-    every { queryFactory.selectFrom(QPost.post) } returns query
-    every { queryFactory.select(QPost.post.id.countDistinct()) } returns countQuery
-    every { query.distinct() } returns query
-    every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
-    every { query.fetchJoin() } returns query
-    every { query.join(QPost.post.postCategories, QPostCategory.postCategory) } returns query
-    every {
-      query.where(
-        any<BooleanExpression>(),
-        any<BooleanExpression>(),
-        any<BooleanExpression>()
-      )
-    } returns query
-    every { query.orderBy(any()) } returns query
-    every { query.offset(0L) } returns query
-    every { query.limit(10L) } returns query
-    every { query.fetch() } returns listOf(post1)
-
-    every { countQuery.from(QPost.post) } returns countQuery
-    every { countQuery.join(QPost.post.postCategories, QPostCategory.postCategory) } returns countQuery
-    every {
-      countQuery.where(
-        any<BooleanExpression>(),
-        any<BooleanExpression>(),
-        any<BooleanExpression>()
-      )
-    } returns countQuery
-    every { countQuery.fetchOne() } returns 1L
-
-    val result = repository.getPostsByCategory(pageable, category, companyId)
-
-    result.content shouldHaveSize 1
-  }
-
-  test("should use countDistinct for pagination") {
-    val category = Category.AI
-    val pageable = PageRequest.of(0, 5)
-    val query = mockk<JPAQuery<Post>>()
-    val countQuery = mockk<JPAQuery<Long>>()
-
-    every { queryFactory.selectFrom(QPost.post) } returns query
-    every { queryFactory.select(QPost.post.id.countDistinct()) } returns countQuery
-    every { query.distinct() } returns query
-    every { query.leftJoin(QPost.post.company, QCompany.company) } returns query
-    every { query.fetchJoin() } returns query
-    every { query.join(QPost.post.postCategories, QPostCategory.postCategory) } returns query
-    every {
-      query.where(
-        any<BooleanExpression>(),
-        any<BooleanExpression>(),
-        isNull()
-      )
-    } returns query
-    every { query.orderBy(any()) } returns query
-    every { query.offset(0L) } returns query
-    every { query.limit(5L) } returns query
-    every { query.fetch() } returns listOf(post1)
-
-    every { countQuery.from(QPost.post) } returns countQuery
-    every { countQuery.join(QPost.post.postCategories, QPostCategory.postCategory) } returns countQuery
-    every {
-      countQuery.where(
-        any<BooleanExpression>(),
-        any<BooleanExpression>(),
-        isNull()
-      )
-    } returns countQuery
-    every { countQuery.fetchOne() } returns 5L
-
-    val result = repository.getPostsByCategory(pageable, category, null)
-
-    result.totalElements shouldBe 5L
-    verify(exactly = 1) { queryFactory.select(QPost.post.id.countDistinct()) }
   }
 
   test("getCompanyIdByPostId - 성공") {

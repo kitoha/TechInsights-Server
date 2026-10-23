@@ -26,16 +26,6 @@ class RefreshTokenRepositoryImplTest : FunSpec({
         clearAllMocks()
     }
 
-    test("해시값으로 리프레시 토큰을 찾을 수 있어야 한다") {
-        every { jpaRepository.findByTokenHash("hash-123") } returns Optional.of(refreshToken)
-
-        val result = repository.findByHash("hash-123")
-
-        result.isPresent shouldBe true
-        result.get().userId shouldBe 100L
-        verify(exactly = 1) { jpaRepository.findByTokenHash("hash-123") }
-    }
-
     test("사용자 ID와 기기 ID로 리프레시 토큰을 찾을 수 있어야 한다") {
         every { jpaRepository.findByUserIdAndDeviceId(100L, "device-1") } returns Optional.of(refreshToken)
 
@@ -53,5 +43,23 @@ class RefreshTokenRepositoryImplTest : FunSpec({
 
         result.id shouldBe 1L
         verify(exactly = 1) { jpaRepository.save(refreshToken) }
+    }
+
+    test("해시값으로 잠금 조회할 수 있어야 한다") {
+        every { jpaRepository.findByTokenHashForUpdate("hash-123") } returns Optional.of(refreshToken)
+
+        val result = repository.findByHashForUpdate("hash-123")
+
+        result.get().userId shouldBe 100L
+        verify(exactly = 1) { jpaRepository.findByTokenHashForUpdate("hash-123") }
+    }
+
+    test("이전 해시값으로 잠금 조회할 수 있어야 한다") {
+        every { jpaRepository.findByPreviousTokenHashForUpdate("prev-123") } returns Optional.of(refreshToken)
+
+        val result = repository.findByPreviousHashForUpdate("prev-123")
+
+        result.get().userId shouldBe 100L
+        verify(exactly = 1) { jpaRepository.findByPreviousTokenHashForUpdate("prev-123") }
     }
 })

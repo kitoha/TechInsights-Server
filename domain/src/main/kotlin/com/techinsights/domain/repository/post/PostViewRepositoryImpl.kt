@@ -1,14 +1,10 @@
 package com.techinsights.domain.repository.post
 
-import com.querydsl.jpa.impl.JPAQueryFactory
 import com.techinsights.domain.dto.post.PostViewDto
-import com.techinsights.domain.entity.post.QPostView
 import org.springframework.stereotype.Repository
-import java.time.LocalDate
 
 @Repository
 class PostViewRepositoryImpl(
-  private val jpaQueryFactory: JPAQueryFactory,
   private val postViewJpaRepository: PostViewJpaRepository
 ): PostViewRepository {
 
@@ -18,18 +14,15 @@ class PostViewRepositoryImpl(
     return PostViewDto.fromEntity(savedPostView)
   }
 
-  override fun existsByPostIdAndUserOrIpAndViewedDate(
-    postId: Long, userOrIp: String, viewedDate: LocalDate
-  ): Boolean {
-    val postView = QPostView.postView
-
-    return jpaQueryFactory.selectFrom(postView)
-      .where(
-        postView.postId.eq(postId),
-        postView.userOrIp.eq(userOrIp),
-        postView.viewedDate.eq(viewedDate)
-      )
-      .fetchFirst() != null
+  override fun insertIfAbsent(postViewDto: PostViewDto): Boolean {
+    val postView = postViewDto.toEntity()
+    return postViewJpaRepository.insertIfAbsent(
+      id = postView.id,
+      postId = postView.postId,
+      userOrIp = postView.userOrIp,
+      viewedDate = postView.viewedDate,
+      userAgent = postView.userAgent
+    ) > 0
   }
 
 }

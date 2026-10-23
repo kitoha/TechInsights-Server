@@ -1,7 +1,7 @@
 package com.techinsights.batch.github.readme.processor
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.techinsights.domain.dto.gemini.ArticleInput
+import com.techinsights.domain.dto.summary.ArticleInput
 import com.techinsights.domain.dto.github.GithubRepositoryDto
 import org.slf4j.LoggerFactory
 import org.springframework.batch.item.ItemProcessor

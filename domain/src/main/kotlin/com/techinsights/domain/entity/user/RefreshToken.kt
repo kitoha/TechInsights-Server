@@ -35,6 +35,12 @@ class RefreshToken(
         this.expiryAt = newExpiry
     }
 
+    fun replaceToken(newHash: String, newExpiry: Instant) {
+        this.previousTokenHash = null
+        this.tokenHash = newHash
+        this.expiryAt = newExpiry
+    }
+
     fun isRecentlyRotated(leewaySeconds: Long = 30): Boolean {
         val lastUpdated = updatedAt ?: return false
         val zoneId = java.time.ZoneId.systemDefault()

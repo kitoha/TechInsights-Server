@@ -9,11 +9,11 @@ interface PostLikeRepository {
     fun saveAndFlush(postLike: PostLike): PostLike
     fun findByPostIdAndUserId(postId: Long, userId: Long): PostLike?
     fun findByPostIdAndIpAddress(postId: Long, ipAddress: String): PostLike?
-    fun findAnonymousByPostIdAndIpAddress(postId: Long, ipAddress: String): PostLike?
+    fun findAnonymousByPostIdAndAnonymousId(postId: Long, anonymousId: String): PostLike?
     
     fun deleteByPostIdAndUserId(postId: Long, userId: Long): Long
     fun deleteByPostIdAndIpAddress(postId: Long, ipAddress: String): Long
-    fun deleteAnonymousByPostIdAndIpAddress(postId: Long, ipAddress: String): Long
+    fun deleteAnonymousByPostIdAndAnonymousId(postId: Long, anonymousId: String): Long
 
     fun findAllByUserId(userId: Long, pageable: Pageable): Page<PostLike>
     fun findAllByIpAddress(ipAddress: String, pageable: Pageable): Page<PostLike>

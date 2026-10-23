@@ -13,7 +13,6 @@ import io.kotest.matchers.shouldBe
 import io.mockk.*
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
-import org.springframework.data.domain.Sort
 import java.time.LocalDateTime
 
 class PostServiceTest : FunSpec({
@@ -46,48 +45,48 @@ class PostServiceTest : FunSpec({
   )
 
   test("게시글 목록 조회 - RECENT 정렬") {
-    val pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "publishedAt"))
+    val pageable = PageRequest.of(0, 10)
     val page = PageImpl(listOf(samplePostDto))
 
     every {
-      postRepository.getAllPosts(pageable, null)
+      postRepository.getAllPosts(pageable, null, PostSortType.RECENT)
     } returns page
 
     val result = postService.getPosts(0, 10, PostSortType.RECENT, Category.All, null)
 
     result.content shouldHaveSize 1
     result.content[0] shouldBe samplePostDto
-    verify(exactly = 1) { postRepository.getAllPosts(pageable, null) }
+    verify(exactly = 1) { postRepository.getAllPosts(pageable, null, PostSortType.RECENT) }
   }
 
   test("게시글 목록 조회 - POPULAR 정렬") {
-    val pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "viewCount"))
+    val pageable = PageRequest.of(0, 10)
     val page = PageImpl(listOf(samplePostDto))
 
     every {
-      postRepository.getPostsByCategory(pageable, Category.BackEnd, null)
+      postRepository.getPostsByCategory(pageable, Category.BackEnd, null, PostSortType.POPULAR)
     } returns page
 
     val result = postService.getPosts(0, 10, PostSortType.POPULAR, Category.BackEnd, null)
 
     result.content shouldHaveSize 1
     result.content[0] shouldBe samplePostDto
-    verify(exactly = 1) { postRepository.getPostsByCategory(pageable, Category.BackEnd, null) }
+    verify(exactly = 1) { postRepository.getPostsByCategory(pageable, Category.BackEnd, null, PostSortType.POPULAR) }
   }
 
   test("게시글 목록 조회 - 특정 회사 필터링") {
-    val pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "publishedAt"))
+    val pageable = PageRequest.of(0, 10)
     val page = PageImpl(listOf(samplePostDto))
 
     every {
-      postRepository.getAllPosts(pageable, "1")
+      postRepository.getAllPosts(pageable, "1", PostSortType.RECENT)
     } returns page
 
     val result = postService.getPosts(0, 10, PostSortType.RECENT, Category.All, "1")
 
     result.content shouldHaveSize 1
     result.content[0].company.id shouldBe "1"
-    verify(exactly = 1) { postRepository.getAllPosts(pageable, "1") }
+    verify(exactly = 1) { postRepository.getAllPosts(pageable, "1", PostSortType.RECENT) }
   }
 
   test("게시글 상세 조회 - 성공") {
