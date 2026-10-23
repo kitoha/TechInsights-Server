@@ -135,4 +135,14 @@ class SqlFixtures(private val jdbc: JdbcTemplate) {
   /** A 3072-dimension vector literal with [first] as its first component and zeros elsewhere. */
   fun vectorLiteral(first: Float, second: Float = 0f): String =
     (listOf(first, second) + List(3070) { 0f }).joinToString(",", "[", "]")
+
+  fun insertAnonymousRead(id: Long, anonymousId: String, postId: Long, readAt: LocalDateTime) {
+    jdbc.update(
+      """
+      INSERT INTO anonymous_user_read_history (id, anonymous_id, post_id, read_at, created_at, updated_at)
+      VALUES (?, ?, ?, ?, now(), now())
+      """.trimIndent(),
+      id, anonymousId, postId, readAt
+    )
+  }
 }
