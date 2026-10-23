@@ -55,8 +55,9 @@ class SearchQueryBuilder(
       .then(scoreWeights.content)
       .otherwise(0.0)
 
-    // 인기도 점수
-    val popularityScore = post.viewCount.multiply(scoreWeights.viewCountMultiplier)
+    // 인기도 점수 (로그 스케일: 조회수가 텍스트 관련도를 압도하지 않도록 상한을 둔다)
+    val popularityScore = Expressions.numberTemplate(Double::class.java, "ln(1.0 + {0})", post.viewCount)
+      .multiply(scoreWeights.viewCountMultiplier)
 
     // 최신성 점수
     val recencyScore = CaseBuilder()
