@@ -68,13 +68,13 @@ class UserService(
 
         nicknameValidator.validate(trimmedNickname)
 
-        if (userRepository.existsByNickname(trimmedNickname)) {
+        if (userRepository.existsByNicknameIgnoreCaseAndIdNot(trimmedNickname, userId)) {
             logger.warn { "중복된 닉네임 변경 시도: nickname=$trimmedNickname" }
             throw DuplicateNicknameException(trimmedNickname)
         }
 
         user.nickname = trimmedNickname
-        val updatedUser = userRepository.save(user)
+        val updatedUser = userRepository.saveNickname(user)
 
         logger.info { "닉네임 변경 완료: userId=$userId, newNickname=$trimmedNickname" }
         return updatedUser

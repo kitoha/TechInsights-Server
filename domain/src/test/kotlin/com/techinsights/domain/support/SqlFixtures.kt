@@ -46,10 +46,19 @@ class SqlFixtures(private val jdbc: JdbcTemplate) {
     }
   }
 
-  fun insertUser(id: Long) {
+  fun insertUser(
+    id: Long,
+    nickname: String? = null,
+    createdAt: LocalDateTime = LocalDateTime.of(2024, 1, 1, 0, 0),
+    deleted: Boolean = false
+  ) {
     jdbc.update(
-      "INSERT INTO users (id, email, name, provider_id) VALUES (?, ?, ?, ?)",
-      id, "user$id@example.com", "user-$id", "provider-$id"
+      """
+      INSERT INTO users (id, email, name, nickname, provider_id, created_at, updated_at, deleted_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      """.trimIndent(),
+      id, "user$id@example.com", "user-$id", nickname, "provider-$id", createdAt, createdAt,
+      if (deleted) createdAt else null
     )
   }
 

@@ -12,7 +12,13 @@ interface UserJpaRepository : JpaRepository<User, Long> {
     fun findByProviderAndProviderId(provider: ProviderType, providerId: String): Optional<User>
     fun findByEmail(email: String): Optional<User>
     fun findByNickname(nickname: String): Optional<User>
-    fun existsByNickname(nickname: String): Boolean
+
+    /** Case-insensitive and limited to active users, mirroring the `uk_users_nickname_lower` partial index. */
+    @Query("select count(u) > 0 from User u where lower(u.nickname) = lower(:nickname) and u.id <> :excludeUserId and u.deletedAt is null")
+    fun existsByNicknameIgnoreCaseAndIdNot(
+        @Param("nickname") nickname: String,
+        @Param("excludeUserId") excludeUserId: Long
+    ): Boolean
 
     @Modifying
     @Query(
