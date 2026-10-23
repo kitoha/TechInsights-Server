@@ -1,4 +1,4 @@
-package com.techinsights.domain.config.gemini
+package com.techinsights.domain.infrastructure.gemini
 
 import com.google.genai.Client
 import org.springframework.context.annotation.Bean

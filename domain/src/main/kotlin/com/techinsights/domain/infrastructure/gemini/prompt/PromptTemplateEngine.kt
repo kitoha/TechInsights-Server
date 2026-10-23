@@ -1,4 +1,4 @@
-package com.techinsights.domain.service.gemini
+package com.techinsights.domain.infrastructure.gemini.prompt
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Value

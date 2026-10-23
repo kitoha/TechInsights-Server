@@ -1,8 +1,9 @@
-package com.techinsights.domain.service.gemini
+package com.techinsights.domain.infrastructure.gemini.summary
 
+import com.techinsights.domain.infrastructure.gemini.prompt.GithubReadmePromptBuilder
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.google.genai.Client
-import com.techinsights.domain.config.gemini.GeminiProperties
+import com.techinsights.domain.infrastructure.gemini.GeminiProperties
 import com.techinsights.domain.dto.gemini.ArticleInput
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException
 import com.techinsights.domain.enums.ErrorType
