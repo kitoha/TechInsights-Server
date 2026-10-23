@@ -10,30 +10,24 @@ import io.kotest.core.spec.style.FunSpec
 import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.mockk
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import java.time.LocalDateTime
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class GithubCommunityControllerTest : FunSpec() {
 
     private lateinit var mockMvc: MockMvc
     private val githubTrendingService = mockk<GithubTrendingService>()
-    private val dispatcher = UnconfinedTestDispatcher()
 
     init {
         beforeTest {
             clearAllMocks()
 
             val controller = GithubCommunityController(
-                githubTrendingService = githubTrendingService,
-                ioDispatcher = dispatcher,
+                githubTrendingService = githubTrendingService
             )
             mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(GlobalExceptionHandler())
@@ -50,26 +44,22 @@ class GithubCommunityControllerTest : FunSpec() {
             )
             every { githubTrendingService.getRepositoryById(1L) } returns dto
 
-            val asyncResult = mockMvc.get("/api/v1/github/${1L.encode()}/community") {
+            mockMvc.get("/api/v1/github/${1L.encode()}/community") {
                 accept = MediaType.APPLICATION_JSON
-            }.andReturn()
-
-            mockMvc.perform(asyncDispatch(asyncResult))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.communityStatus").value("COMPLETED"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.communityMentionCount").value(42))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.communitySentiment").isNotEmpty)
+            }
+                .andExpect { match(MockMvcResultMatchers.status().isOk()) }
+                .andExpect { match(MockMvcResultMatchers.jsonPath("$.communityStatus").value("COMPLETED")) }
+                .andExpect { match(MockMvcResultMatchers.jsonPath("$.communityMentionCount").value(42)) }
+                .andExpect { match(MockMvcResultMatchers.jsonPath("$.communitySentiment").isNotEmpty) }
         }
 
         test("GET /api/v1/github/{id}/community - 존재하지 않는 레포 - 404 반환") {
             every { githubTrendingService.getRepositoryById(any()) } throws GithubRepositoryNotFoundException("not found")
 
-            val asyncResult = mockMvc.get("/api/v1/github/${1L.encode()}/community") {
+            mockMvc.get("/api/v1/github/${1L.encode()}/community") {
                 accept = MediaType.APPLICATION_JSON
-            }.andReturn()
-
-            mockMvc.perform(asyncDispatch(asyncResult))
-                .andExpect(MockMvcResultMatchers.status().isNotFound())
+            }
+                .andExpect { match(MockMvcResultMatchers.status().isNotFound()) }
         }
     }
 

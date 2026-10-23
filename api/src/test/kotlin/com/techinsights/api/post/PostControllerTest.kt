@@ -8,7 +8,6 @@ import com.techinsights.domain.utils.Tsid
 import io.kotest.core.spec.style.FunSpec
 import io.mockk.*
 import jakarta.servlet.http.Cookie
-import kotlinx.coroutines.Dispatchers
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
@@ -19,7 +18,6 @@ class PostControllerTest : FunSpec() {
   private lateinit var mockMvc: MockMvc
   private val postService = mockk<PostService>()
   private val postViewService = mockk<PostViewService>()
-  private val dispatcher = Dispatchers.Unconfined
   private val aidProperties = mockk<AidProperties>(relaxed = true)
 
   init {
@@ -28,8 +26,7 @@ class PostControllerTest : FunSpec() {
 
       val controller = PostController(
         postService,
-        postViewService,
-        dispatcher
+        postViewService
       )
       val requesterResolver = RequesterResolver(aidProperties)
       
