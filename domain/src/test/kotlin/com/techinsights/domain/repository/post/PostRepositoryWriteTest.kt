@@ -3,9 +3,12 @@ package com.techinsights.domain.repository.post
 import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.enums.Category
+import com.techinsights.domain.exception.PostAlreadyExistsException
+import com.techinsights.domain.exception.PostNotFoundException
 import com.techinsights.domain.support.RepositoryTestSpec
 import com.techinsights.domain.support.SqlFixtures
 import com.techinsights.domain.utils.Tsid
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import org.springframework.jdbc.core.JdbcTemplate
 import java.time.LocalDateTime
@@ -86,5 +89,41 @@ class PostRepositoryWriteTest(
     row["like_count"] shouldBe 9L
     row["summary_failure_count"] shouldBe 3
     jdbc.queryForList("SELECT category FROM post_categories WHERE post_id = 1", String::class.java) shouldBe listOf("BackEnd")
+  }
+
+  test("incrementViewCount adds one to the given post only") {
+    fixtures.insertPost(1L, viewCount = 5)
+    fixtures.insertPost(2L, viewCount = 5)
+
+    repository.incrementViewCount(1L)
+
+    jdbc.queryForObject("SELECT view_count FROM posts WHERE id = 1", Long::class.java) shouldBe 6L
+    jdbc.queryForObject("SELECT view_count FROM posts WHERE id = 2", Long::class.java) shouldBe 5L
+  }
+
+  test("saveAll inserts new posts") {
+    val saved = repository.saveAll(listOf(newPost(1L, "https://blog.example.com/1")))
+
+    saved.map { it.id } shouldBe listOf(Tsid.encode(1L))
+    countByUrl("https://blog.example.com/1") shouldBe 1
+  }
+
+  test("saveAll rejects an existing post instead of overwriting its counters") {
+    fixtures.insertPost(1L, viewCount = 42, likeCount = 9, summaryFailureCount = 3)
+
+    shouldThrow<PostAlreadyExistsException> {
+      repository.saveAll(listOf(newPost(1L, "https://blog.example.com/1")))
+    }
+
+    val row = jdbc.queryForMap("SELECT view_count, like_count, summary_failure_count FROM posts WHERE id = 1")
+    row["view_count"] shouldBe 42L
+    row["like_count"] shouldBe 9L
+    row["summary_failure_count"] shouldBe 3
+  }
+
+  test("updateSummaryResults throws when the post does not exist") {
+    shouldThrow<PostNotFoundException> {
+      repository.updateSummaryResults(listOf(newPost(404L, "https://blog.example.com/404").copy(isSummary = true)))
+    }
   }
 })
