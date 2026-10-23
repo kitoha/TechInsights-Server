@@ -10,17 +10,14 @@ import com.techinsights.domain.repository.user.UserRepository
 import com.techinsights.domain.utils.Tsid
 import com.techinsights.domain.validator.NicknameValidator
 import mu.KotlinLogging
-import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.LocalDateTime
 
 @Service
 @Transactional(readOnly = true)
 class UserService(
     private val userRepository: UserRepository,
-    private val nicknameValidator: NicknameValidator,
-    private val googleOAuthUserRecoveryService: GoogleOAuthUserRecoveryService
+    private val nicknameValidator: NicknameValidator
 ) {
     private val logger = KotlinLogging.logger {}
 
@@ -40,9 +37,14 @@ class UserService(
         return UserProfileDto.fromEntity(getUserById(userId))
     }
 
-    fun getAuthUserById(userId: Long): AuthUserDto {
-        val user = getUserById(userId)
-        return AuthUserDto.fromEntity(user)
+    /**
+     * 존재하지 않으면 예외 대신 null을 반환한다.
+     * 호출자의 트랜잭션에 참여할 때 예외가 프록시를 통과하면 해당 트랜잭션이 rollback-only로 표시되기 때문이다.
+     */
+    fun findAuthUserById(userId: Long): AuthUserDto? {
+        return userRepository.findById(userId)
+            .map(AuthUserDto::fromEntity)
+            .orElse(null)
     }
 
     /**
@@ -90,58 +92,20 @@ class UserService(
         name: String,
         profileImage: String?
     ): AuthUserDto {
-        val user = userRepository.findByProviderAndProviderId(ProviderType.GOOGLE, providerId)
-            .map { existingUser ->
-                applyGoogleProfile(existingUser, email, name, profileImage)
-            }
-            .orElseGet {
-                createGoogleUser(providerId, email, name, profileImage)
-            }
-
-        return try {
-            AuthUserDto.fromEntity(userRepository.save(user))
-        } catch (e: DataIntegrityViolationException) {
-            logger.warn { "Google OAuth upsert race detected: providerId=$providerId, recovering by re-query" }
-            googleOAuthUserRecoveryService.recoverFromConcurrentUpsertInNewTx(
-                providerId = providerId,
-                email = email,
-                name = name,
-                profileImage = profileImage,
-                cause = e
-            )
-        }
-    }
-
-    private fun applyGoogleProfile(
-        user: User,
-        email: String,
-        name: String,
-        profileImage: String?
-    ): User {
-        return user.apply {
-            this.email = email
-            this.name = name
-            this.profileImage = profileImage
-            this.login()
-        }
-    }
-
-    private fun createGoogleUser(
-        providerId: String,
-        email: String,
-        name: String,
-        profileImage: String?
-    ): User {
-        val randomNickname = "User_${Tsid.generate()}"
-        return User(
+        // Single atomic statement: concurrent logins of the same (provider, providerId) cannot race.
+        userRepository.upsertByProvider(
             id = Tsid.decode(Tsid.generate()),
             email = email,
             name = name,
-            nickname = randomNickname,
+            nickname = "User_${Tsid.generate()}",
             provider = ProviderType.GOOGLE,
             providerId = providerId,
-            profileImage = profileImage,
-            lastLoginAt = LocalDateTime.now()
+            profileImage = profileImage
         )
+
+        val user = userRepository.findByProviderAndProviderId(ProviderType.GOOGLE, providerId)
+            .orElseThrow { IllegalStateException("User not found after upsert: providerId=$providerId") }
+
+        return AuthUserDto.fromEntity(user)
     }
 }

@@ -11,9 +11,12 @@ import com.techinsights.domain.entity.post.Post
 import com.techinsights.domain.entity.post.QPost
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
 import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 
 class PostSearchQueryRepositoryTest : FunSpec({
@@ -50,12 +53,16 @@ class PostSearchQueryRepositoryTest : FunSpec({
     every { tupleQuery.from(post) } returns tupleQuery
     every { tupleQuery.join(post.company, company) } returns tupleQuery
     every { tupleQuery.fetchJoin() } returns tupleQuery
-    every { tupleQuery.where(any<BooleanExpression>(), post.isSummary.isTrue) } returns tupleQuery
+    val conditionSlot = slot<BooleanExpression>()
+    every { tupleQuery.where(capture(conditionSlot), post.isSummary.isTrue) } returns tupleQuery
     every { tupleQuery.orderBy(orderScore, post.viewCount.desc()) } returns tupleQuery
     every { tupleQuery.limit(limit.toLong()) } returns tupleQuery
     every { tupleQuery.fetch() } returns listOf(mockTuple)
 
-    val result = repository.findForInstantSearch(searchQuery, relevanceScore, limit)
+    val result = repository.findForInstantSearch(searchQuery, listOf(3L, 7L), relevanceScore, limit)
+
+    conditionSlot.captured.toString() shouldContain "post.company.id in [3, 7]"
+    conditionSlot.captured.toString() shouldNotContain "company.name"
 
     result.size shouldBe 1
     result[0].post shouldBe mockPost
@@ -71,6 +78,25 @@ class PostSearchQueryRepositoryTest : FunSpec({
       tupleQuery.limit(5L)
       tupleQuery.fetch()
     }
+  }
+
+  test("findForInstantSearch should not add a company arm when no company name matched") {
+    val relevanceScore = mockk<NumberExpression<Double>>()
+    val orderScore = mockk<OrderSpecifier<Double>>()
+    every { relevanceScore.desc() } returns orderScore
+    every { jpaQueryFactory.select(post, relevanceScore) } returns tupleQuery
+    every { tupleQuery.from(post) } returns tupleQuery
+    every { tupleQuery.join(post.company, company) } returns tupleQuery
+    every { tupleQuery.fetchJoin() } returns tupleQuery
+    val conditionSlot = slot<BooleanExpression>()
+    every { tupleQuery.where(capture(conditionSlot), post.isSummary.isTrue) } returns tupleQuery
+    every { tupleQuery.orderBy(orderScore, post.viewCount.desc()) } returns tupleQuery
+    every { tupleQuery.limit(5L) } returns tupleQuery
+    every { tupleQuery.fetch() } returns emptyList()
+
+    repository.findForInstantSearch("test", emptyList(), relevanceScore, 5)
+
+    conditionSlot.captured.toString() shouldNotContain "post.company.id"
   }
 
   test("findForFullSearch should execute paginated query and return projections") {

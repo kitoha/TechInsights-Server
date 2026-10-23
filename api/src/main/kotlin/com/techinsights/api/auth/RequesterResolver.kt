@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest
 import org.springframework.security.authentication.AnonymousAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 
+import com.techinsights.api.aid.AidInterceptor
 import com.techinsights.api.aid.AidProperties
 
 class RequesterResolver(
@@ -38,9 +39,11 @@ class RequesterResolver(
             }
         }
 
-        // Anonymous user - check cookie first
-        val anonymousId = httpRequest.cookies?.find { it.name == aidProperties.cookie.name }?.value
-            ?: clientIp // Fallback to IP if no cookie
+        // Anonymous user - the aid issued by AidInterceptor (covers the very first request), else the cookie.
+        // IP only for requests that never get an aid (bots, OPTIONS).
+        val anonymousId = httpRequest.getAttribute(AidInterceptor.AID_ATTRIBUTE) as? String
+            ?: httpRequest.cookies?.find { it.name == aidProperties.cookie.name }?.value?.takeIf { it.isNotBlank() }
+            ?: clientIp
 
         return Requester.Anonymous(anonymousId = anonymousId, ip = clientIp)
     }

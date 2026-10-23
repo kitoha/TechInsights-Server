@@ -2,17 +2,26 @@ package com.techinsights.domain.service.embedding
 
 import com.google.genai.Client
 import com.google.genai.types.EmbedContentConfig
+import com.techinsights.domain.config.cache.CacheConfig
 import com.techinsights.domain.dto.embedding.EmbeddingRequest
 import com.techinsights.domain.enums.GeminiModelType
+import io.github.resilience4j.ratelimiter.RateLimiterRegistry
+import org.springframework.cache.Cache
+import org.springframework.cache.CacheManager
 import org.springframework.stereotype.Service
 
 @Service
 class EmbeddingServiceImpl(
   private val geminiClient: Client,
-  rateLimiterRegistry: io.github.resilience4j.ratelimiter.RateLimiterRegistry
+  rateLimiterRegistry: RateLimiterRegistry,
+  cacheManager: CacheManager
 ) : EmbeddingService {
 
   private val rateLimiter = rateLimiterRegistry.rateLimiter("geminiEmbedding")
+  private val queryRateLimiter = rateLimiterRegistry.rateLimiter("geminiQueryEmbedding")
+  private val queryEmbeddingCache = requireNotNull(cacheManager.getCache(CacheConfig.QUERY_EMBEDDING)) {
+    "Cache ${CacheConfig.QUERY_EMBEDDING} is not registered"
+  }
 
   override fun generateEmbedding(request: EmbeddingRequest, modelType: GeminiModelType): List<Float> {
     return rateLimiter.executeSupplier {
@@ -27,13 +36,34 @@ class EmbeddingServiceImpl(
   }
 
   override fun generateQuestionEmbedding(question: String): List<Float> {
+    val normalizedQuestion = normalizeQuestion(question)
+    val vector = try {
+      queryEmbeddingCache.get(normalizedQuestion) { requestQuestionEmbedding(normalizedQuestion) }.orEmpty()
+    } catch (e: Cache.ValueRetrievalException) {
+      throw e.cause ?: e
+    }
+    if (vector.isEmpty()) queryEmbeddingCache.evict(normalizedQuestion)
+    return vector
+  }
+
+  private fun requestQuestionEmbedding(question: String): List<Float> {
     val request = EmbeddingRequest(
       content = question,
       categories = emptyList(),
       companyName = ""
     )
-    return generateEmbedding(request, GeminiModelType.GEMINI_EMBEDDING)
+    return queryRateLimiter.executeSupplier {
+      val response = geminiClient.models.embedContent(
+        GeminiModelType.GEMINI_EMBEDDING.get(),
+        request.toPromptString(),
+        buildEmbedConfig()
+      )
+      extractEmbeddingVector(response)
+    }
   }
+
+  private fun normalizeQuestion(question: String): String =
+    question.trim().replace(WHITESPACE, " ").lowercase()
 
   override fun generateEmbeddingBatch(
     requests: List<EmbeddingRequest>,
@@ -110,5 +140,9 @@ class EmbeddingServiceImpl(
     val embeddings = response.embeddings().orElse(emptyList())
     val first = embeddings.firstOrNull() ?: return emptyList()
     return first.values().orElse(emptyList())
+  }
+
+  companion object {
+    private val WHITESPACE = Regex("\\s+")
   }
 }

@@ -40,6 +40,26 @@ class PostBookmarkService(
         }
     }
 
+    /** Idempotent: ensures the bookmark exists. */
+    @Transactional
+    fun addBookmark(postId: String, requester: Requester) {
+        val userId = requireUserId(requester)
+        val postIdLong = requirePost(postId)
+
+        if (postBookmarkRepository.findByPostIdAndUserId(postIdLong, userId) == null) {
+            postBookmarkSaveHelper.saveIfAbsent(PostBookmark(Tsid.generateLong(), postIdLong, userId))
+        }
+    }
+
+    /** Idempotent: ensures the bookmark does not exist. */
+    @Transactional
+    fun removeBookmark(postId: String, requester: Requester) {
+        val userId = requireUserId(requester)
+        val postIdLong = requirePost(postId)
+
+        postBookmarkRepository.deleteByPostIdAndUserId(postIdLong, userId)
+    }
+
     @Transactional(readOnly = true)
     fun getMyBookmarks(userId: Long, pageable: Pageable): Page<PostDto> =
         postBookmarkRepository.findBookmarkedPosts(userId, pageable)
@@ -47,4 +67,17 @@ class PostBookmarkService(
     @Transactional(readOnly = true)
     fun countMyBookmarks(userId: Long): Long =
         postBookmarkRepository.countByUserId(userId)
+
+    private fun requireUserId(requester: Requester): Long = when (requester) {
+        is Requester.Authenticated -> requester.userId
+        is Requester.Anonymous -> throw UnauthorizedException()
+    }
+
+    private fun requirePost(postId: String): Long {
+        val postIdLong = postId.decode()
+        if (!postRepository.existsById(postIdLong)) {
+            throw PostNotFoundException("Post not found: $postId")
+        }
+        return postIdLong
+    }
 }

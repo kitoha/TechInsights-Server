@@ -31,7 +31,6 @@ dependencies {
     implementation(libs.micrometer.registry.prometheus)
     implementation(libs.kotlin.reflect)
     implementation(libs.jackson.module.kotlin)
-    implementation(libs.bundles.kotlinx.coroutines)
     implementation(libs.logstash.logback.encoder)
     implementation(libs.kotlin.logging)
     implementation(libs.jjwt.api)
