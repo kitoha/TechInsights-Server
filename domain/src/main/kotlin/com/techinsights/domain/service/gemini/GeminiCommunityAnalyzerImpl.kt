@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.techinsights.domain.service.quota.DailyQuota
+import com.techinsights.domain.service.quota.DailyQuotaService
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import kotlin.coroutines.CoroutineContext
@@ -28,13 +30,13 @@ class GeminiCommunityAnalyzerImpl(
     private val mapper: ObjectMapper,
     rateLimiterRegistry: RateLimiterRegistry,
     circuitBreakerRegistry: CircuitBreakerRegistry,
+    private val dailyQuotaService: DailyQuotaService,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO,
 ) : CommunityAnalyzer {
 
     private val log = LoggerFactory.getLogger(javaClass)
 
     private val rpmLimiter = rateLimiterRegistry.rateLimiter("geminiCommunityRpm")
-    private val rpdLimiter = rateLimiterRegistry.rateLimiter("geminiCommunityRpd")
     private val circuitBreaker = circuitBreakerRegistry.circuitBreaker("communityInsight")
 
     override fun analyze(items: List<CommunityAnalysisInput>): Flow<CommunityAnalysisResult> {
@@ -69,6 +71,13 @@ class GeminiCommunityAnalyzerImpl(
         val prompt = promptBuilder.buildPrompt(items)
         val config = buildGeminiConfig(items.size)
 
+        if (!dailyQuotaService.tryReserve(DailyQuota.COMMUNITY_ANALYSIS)) {
+            log.warn("Daily Gemini quota exhausted for community analysis. repos=${items.map { it.repoFullName }}")
+            items.forEach { item ->
+                send(CommunityAnalysisResult(id = item.repoFullName, success = false, error = "Daily Gemini quota exhausted"))
+            }
+            return@channelFlow
+        }
         acquireRateLimiterPermission()
 
         try {
@@ -144,7 +153,6 @@ class GeminiCommunityAnalyzerImpl(
 
     private suspend fun acquireRateLimiterPermission() {
         withContext(ioDispatcher) {
-            rpdLimiter.acquirePermission()
             rpmLimiter.acquirePermission()
         }
     }

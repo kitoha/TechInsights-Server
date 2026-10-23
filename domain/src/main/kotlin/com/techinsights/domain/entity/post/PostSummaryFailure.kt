@@ -1,6 +1,7 @@
 package com.techinsights.domain.entity.post
 
 import com.techinsights.domain.enums.SummaryErrorType
+import com.techinsights.domain.utils.Tsid
 import jakarta.persistence.*
 import java.time.LocalDateTime
 
@@ -8,8 +9,7 @@ import java.time.LocalDateTime
 @Table(name = "post_summary_failures")
 class PostSummaryFailure(
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long = 0,
+    val id: Long = Tsid.generateLong(),
 
     @Column(name = "post_id", nullable = false)
     val postId: Long,

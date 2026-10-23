@@ -17,7 +17,7 @@ class Post(
   val title: String,
   @Column(name = "preview", columnDefinition = "TEXT")
   var preview: String?,
-  @Column(name = "url", length = 1000)
+  @Column(name = "url", length = 2048)
   val url: String,
   @Column(name = "content")
   val content: String,

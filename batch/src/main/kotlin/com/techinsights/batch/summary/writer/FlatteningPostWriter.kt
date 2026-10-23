@@ -35,11 +35,10 @@ class FlatteningPostWriter(
         val failedPosts = allPosts.filter { !it.isSummary }
 
         if (summarizedPosts.isNotEmpty()) {
-            val savedPosts = postRepository.saveAll(summarizedPosts)
+            postRepository.updateSummaryResults(summarizedPosts)
 
-            val companyIds = savedPosts.map { it.company.id }.toSet()
-            companyIds.forEach { companyId ->
-                companyViewCountUpdater.incrementPostCount(companyId, 1)
+            summarizedPosts.groupingBy { it.company.id }.eachCount().forEach { (companyId, count) ->
+                companyViewCountUpdater.incrementPostCount(companyId, count)
             }
 
             log.info("Successfully saved ${summarizedPosts.size} summarized posts")
