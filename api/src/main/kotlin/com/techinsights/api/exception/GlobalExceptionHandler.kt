@@ -40,7 +40,7 @@ class GlobalExceptionHandler {
         e: UserException,
         request: WebRequest
     ): ResponseEntity<ProblemDetail> {
-        logger.warn { "User exception occurred: ${e.message} (${e.errorCode})" }
+        logger.warn { "User exception occurred: code=${e.errorCode}" }
 
         val status = when (e.errorCode) {
             UserErrorCode.USER_NOT_FOUND -> HttpStatus.NOT_FOUND
@@ -137,7 +137,7 @@ class GlobalExceptionHandler {
         e: MethodArgumentNotValidException,
         request: WebRequest
     ): ResponseEntity<ProblemDetail> {
-        logger.warn { "Validation failed: ${e.bindingResult.allErrors}" }
+        logger.warn { "Validation failed: fields=${e.bindingResult.fieldErrors.map { it.field }}" }
 
         val errors = e.bindingResult.fieldErrors
             .associate { it.field to (it.defaultMessage ?: "Invalid value") }
@@ -156,7 +156,7 @@ class GlobalExceptionHandler {
         e: ConstraintViolationException,
         request: WebRequest
     ): ResponseEntity<ProblemDetail> {
-        logger.warn { "Constraint violation: ${e.constraintViolations}" }
+        logger.warn { "Constraint violation: properties=${e.constraintViolations.map { it.propertyPath.toString() }}" }
 
         val errors = e.constraintViolations.associate {
             it.propertyPath.toString() to it.message
@@ -176,7 +176,7 @@ class GlobalExceptionHandler {
         e: HandlerMethodValidationException,
         request: WebRequest
     ): ResponseEntity<ProblemDetail> {
-        logger.warn { "Handler method validation failed: ${e.message}" }
+        logger.warn { "Handler method validation failed: parameters=${e.allValidationResults.map { it.methodParameter.parameterName }}" }
 
         val errors = e.allValidationResults
             .flatMap { result ->
@@ -287,7 +287,7 @@ class GlobalExceptionHandler {
         e: TypeMismatchException,
         request: WebRequest
     ): ResponseEntity<ProblemDetail> {
-        logger.warn { "Type mismatch: ${e.message}" }
+        logger.warn { "Type mismatch: property=${e.propertyName}, requiredType=${e.requiredType?.simpleName}" }
 
         return ProblemDetails.response(
             HttpStatus.BAD_REQUEST,
@@ -303,7 +303,7 @@ class GlobalExceptionHandler {
         e: HttpMessageNotReadableException,
         request: WebRequest
     ): ResponseEntity<ProblemDetail> {
-        logger.warn { "Unreadable request body: ${e.message}" }
+        logger.warn { "Unreadable request body: exception=${e::class.simpleName}" }
 
         return ProblemDetails.response(
             HttpStatus.BAD_REQUEST,

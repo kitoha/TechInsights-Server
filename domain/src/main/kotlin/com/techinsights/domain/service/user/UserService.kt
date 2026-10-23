@@ -57,28 +57,28 @@ class UserService(
      */
     @Transactional
     fun updateNickname(userId: Long, newNickname: String): User {
-        logger.info { "닉네임 변경 시도: userId=$userId, newNickname=$newNickname" }
+        logger.debug { "닉네임 변경 시도: userId=$userId" }
 
         val user = userRepository.findById(userId)
             .orElseThrow { UserNotFoundException(userId) }
 
         val trimmedNickname = newNickname.trim()
         if (user.nickname == trimmedNickname) {
-            logger.info { "기존 닉네임과 동일하여 변경하지 않음: userId=$userId" }
+            logger.debug { "기존 닉네임과 동일하여 변경하지 않음: userId=$userId" }
             return user
         }
 
         nicknameValidator.validate(trimmedNickname)
 
         if (userRepository.existsByNicknameIgnoreCaseAndIdNot(trimmedNickname, userId)) {
-            logger.warn { "중복된 닉네임 변경 시도: nickname=$trimmedNickname" }
+            logger.info { "중복된 닉네임으로 변경 거절: userId=$userId" }
             throw DuplicateNicknameException(trimmedNickname)
         }
 
         user.nickname = trimmedNickname
         val updatedUser = userRepository.saveNickname(user)
 
-        logger.info { "닉네임 변경 완료: userId=$userId, newNickname=$trimmedNickname" }
+        logger.info { "닉네임 변경 완료: userId=$userId" }
         return updatedUser
     }
 
