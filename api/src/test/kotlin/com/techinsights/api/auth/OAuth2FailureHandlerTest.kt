@@ -59,4 +59,48 @@ class OAuth2FailureHandlerTest : FunSpec({
 
         response.redirectedUrl shouldBe "https://www.techinsights.shop/?error=account_deactivated"
     }
+
+    context("인증 쿠키 삭제") {
+        val cookieProperties = AuthProperties(
+            jwt = AuthProperties.Jwt(
+                secretKey = Base64.getEncoder().encodeToString("this-is-a-very-secure-secret-key!!".toByteArray()),
+                accessTokenCookieName = "ti_at",
+                refreshTokenCookieName = "ti_rt",
+                cookieSecure = true,
+                cookieSameSite = "Lax",
+                cookieDomain = "techinsights.shop"
+            ),
+            oauth2 = AuthProperties.OAuth2(successRedirectUri = "https://www.techinsights.shop/")
+        )
+        val cookieHandler = OAuth2FailureHandler(cookieProperties)
+
+        listOf("account_deactivated", "access_denied").forEach { errorCode ->
+            test("$errorCode 실패 시 access/refresh 쿠키를 설정 때와 같은 속성으로 만료시킨다") {
+                val response = MockHttpServletResponse()
+
+                cookieHandler.onAuthenticationFailure(
+                    MockHttpServletRequest(), response, OAuth2AuthenticationException(OAuth2Error(errorCode))
+                )
+
+                val setCookies = response.getHeaders("Set-Cookie")
+                setCookies.size shouldBe 2
+                listOf("ti_at", "ti_rt").forEach { name ->
+                    val header = setCookies.single { it.startsWith("$name=;") }
+                    listOf("Max-Age=0", "Path=/", "Domain=techinsights.shop", "Secure", "HttpOnly", "SameSite=Lax")
+                        .forEach { attribute -> (header.contains(attribute)) shouldBe true }
+                }
+            }
+        }
+
+        test("cookieDomain 이 없으면 Domain 속성 없이 만료시킨다") {
+            val response = MockHttpServletResponse()
+
+            handler.onAuthenticationFailure(
+                MockHttpServletRequest(), response, OAuth2AuthenticationException(OAuth2Error("access_denied"))
+            )
+
+            response.getHeaders("Set-Cookie").size shouldBe 2
+            response.getHeaders("Set-Cookie").none { it.contains("Domain=") } shouldBe true
+        }
+    }
 })
