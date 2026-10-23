@@ -36,7 +36,13 @@ class OAuth2FailureHandler(
         redirectStrategy.sendRedirect(
             request,
             response,
-            "${authProperties.oauth2.successRedirectUri}?error=login_failed"
+            "${authProperties.oauth2.successRedirectUri}?error=${errorParameter(exception)}"
         )
+    }
+
+    private fun errorParameter(exception: AuthenticationException): String {
+        val deactivated = exception is OAuth2AuthenticationException &&
+            exception.error.errorCode == CustomOAuth2UserService.ACCOUNT_DEACTIVATED_ERROR_CODE
+        return if (deactivated) "account_deactivated" else "login_failed"
     }
 }

@@ -1,11 +1,14 @@
 package com.techinsights.api.auth
 
 import com.techinsights.domain.dto.user.AuthUserDto
+import com.techinsights.domain.exception.user.AccountDeactivatedException
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.*
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User
 
 import com.techinsights.domain.enums.UserRole
@@ -82,5 +85,19 @@ class CustomOAuth2UserServiceTest : FunSpec({
         verify(exactly = 1) {
             userService.upsertGoogleOAuthUser("google-123", "test@example.com", "New Name", "new-image.png")
         }
+    }
+
+    test("삭제/비활성 계정이면 OAuth2AuthenticationException(account_deactivated)으로 바꿔 던지고 사용자 정보를 만들지 않는다") {
+        val attributes = mapOf("sub" to "google-123", "email" to "test@example.com", "name" to "Tester")
+        val oAuth2User = DefaultOAuth2User(emptyList(), attributes, "sub")
+        every {
+            userService.upsertGoogleOAuthUser("google-123", "test@example.com", "Tester", null)
+        } throws AccountDeactivatedException()
+
+        val thrown = shouldThrow<OAuth2AuthenticationException> {
+            customOAuth2UserService.processOAuth2User(oAuth2User)
+        }
+
+        thrown.error.errorCode shouldBe "account_deactivated"
     }
 })

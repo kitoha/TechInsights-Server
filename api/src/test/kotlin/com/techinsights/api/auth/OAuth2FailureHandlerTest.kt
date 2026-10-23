@@ -49,4 +49,14 @@ class OAuth2FailureHandlerTest : FunSpec({
         // then
         response.redirectedUrl shouldBe "https://www.techinsights.shop/?error=login_failed"
     }
+
+    test("삭제/비활성 계정 로그인 거부는 error=account_deactivated 로 리다이렉트해야 한다") {
+        val request = MockHttpServletRequest()
+        val response = MockHttpServletResponse()
+        val exception = OAuth2AuthenticationException(OAuth2Error("account_deactivated"))
+
+        handler.onAuthenticationFailure(request, response, exception)
+
+        response.redirectedUrl shouldBe "https://www.techinsights.shop/?error=account_deactivated"
+    }
 })

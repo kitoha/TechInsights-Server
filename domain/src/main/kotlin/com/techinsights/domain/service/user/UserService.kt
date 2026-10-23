@@ -4,6 +4,8 @@ import com.techinsights.domain.dto.user.AuthUserDto
 import com.techinsights.domain.dto.user.UserProfileDto
 import com.techinsights.domain.entity.user.User
 import com.techinsights.domain.enums.ProviderType
+import com.techinsights.domain.enums.UserStatus
+import com.techinsights.domain.exception.user.AccountDeactivatedException
 import com.techinsights.domain.exception.user.DuplicateNicknameException
 import com.techinsights.domain.exception.user.UserNotFoundException
 import com.techinsights.domain.repository.user.UserRepository
@@ -92,6 +94,12 @@ class UserService(
         name: String,
         profileImage: String?
     ): AuthUserDto {
+        // A deleted / non-ACTIVE account is rejected before anything is written. The upsert itself also
+        // refuses to modify such a row, so a race between this check and the upsert cannot revive it.
+        if (userRepository.isDeactivatedAccount(ProviderType.GOOGLE, providerId)) {
+            throw AccountDeactivatedException()
+        }
+
         // Single atomic statement: concurrent logins of the same (provider, providerId) cannot race.
         userRepository.upsertByProvider(
             id = Tsid.decode(Tsid.generate()),
@@ -103,8 +111,17 @@ class UserService(
             profileImage = profileImage
         )
 
-        val user = userRepository.findByProviderAndProviderId(ProviderType.GOOGLE, providerId)
-            .orElseThrow { IllegalStateException("User not found after upsert: providerId=$providerId") }
+        val user = userRepository.findByProviderAndProviderId(ProviderType.GOOGLE, providerId).orElse(null)
+            ?: run {
+                // soft-deleted between the check and the upsert: the entity's restriction hides the row
+                if (userRepository.isDeactivatedAccount(ProviderType.GOOGLE, providerId)) {
+                    throw AccountDeactivatedException()
+                }
+                throw IllegalStateException("User not found after upsert: providerId=$providerId")
+            }
+        if (user.status != UserStatus.ACTIVE) {
+            throw AccountDeactivatedException()
+        }
 
         return AuthUserDto.fromEntity(user)
     }
