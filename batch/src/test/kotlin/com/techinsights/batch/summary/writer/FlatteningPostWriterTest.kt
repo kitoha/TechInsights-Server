@@ -51,7 +51,7 @@ class FlatteningPostWriterTest : FunSpec({
         }
         verify(exactly = 0) { postRepository.saveAll(any()) }
         verify(exactly = 1) {
-            companyViewCountUpdater.incrementPostCount("company-1", 1)
+            companyViewCountUpdater.incrementPostCount("company-1", 2)
         }
     }
 
@@ -123,7 +123,7 @@ class FlatteningPostWriterTest : FunSpec({
         verify(exactly = 0) { companyViewCountUpdater.incrementPostCount(any(), any()) }
     }
 
-    test("write should update company count for each unique company") {
+    test("write should increment each company by its real number of summarized posts") {
         // given
         val company1 = CompanyDto("company-1", "Company 1", "https://company1.com", "")
         val company2 = CompanyDto("company-2", "Company 2", "https://company2.com", "")
@@ -141,7 +141,7 @@ class FlatteningPostWriterTest : FunSpec({
         writer.write(chunk)
 
         // then
-        verify(exactly = 1) { companyViewCountUpdater.incrementPostCount("company-1", 1) }
+        verify(exactly = 1) { companyViewCountUpdater.incrementPostCount("company-1", 2) }
         verify(exactly = 1) { companyViewCountUpdater.incrementPostCount("company-2", 1) }
     }
 
@@ -219,7 +219,7 @@ class FlatteningPostWriterTest : FunSpec({
             postRepository.updateSummaryResults(match { it.size == 10 })
         }
         verify(exactly = 1) {
-            companyViewCountUpdater.incrementPostCount("company-1", 1)
+            companyViewCountUpdater.incrementPostCount("company-1", 10)
         }
     }
 
