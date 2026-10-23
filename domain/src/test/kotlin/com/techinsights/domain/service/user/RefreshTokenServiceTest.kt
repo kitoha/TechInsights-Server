@@ -10,6 +10,7 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
+import io.mockk.slot
 import io.mockk.verify
 import java.time.Instant
 import java.time.LocalDateTime
@@ -113,5 +114,43 @@ class RefreshTokenServiceTest : FunSpec({
 
         result shouldBe RefreshTokenRotationResult.Expired
         verify { repository.delete(row) }
+    }
+
+    context("upsertToken (login)") {
+        test("같은 기기의 기존 행을 교체할 때 previous_token_hash는 null이어야 한다") {
+            val row = token(tokenHash = "old", previousTokenHash = "older")
+            every { repository.findByUserAndDevice(100L, "dev") } returns Optional.of(row)
+
+            service.upsertToken(100L, "dev", "login-hash", newExpiry)
+
+            row.tokenHash shouldBe "login-hash"
+            row.previousTokenHash shouldBe null
+            row.expiryAt shouldBe newExpiry
+            verify { repository.save(row) }
+        }
+
+        test("기기 ID가 있고 기존 행이 없으면 새 행을 만들어야 한다") {
+            every { repository.findByUserAndDevice(100L, "dev") } returns Optional.empty()
+            val saved = slot<RefreshToken>()
+            every { repository.save(capture(saved)) } answers { saved.captured }
+
+            service.upsertToken(100L, "dev", "login-hash", newExpiry)
+
+            saved.captured.userId shouldBe 100L
+            saved.captured.deviceId shouldBe "dev"
+            saved.captured.tokenHash shouldBe "login-hash"
+            saved.captured.previousTokenHash shouldBe null
+        }
+
+        test("기기 ID가 없으면 기존 행을 조회하지 않고 항상 새 세션 행을 만들어야 한다") {
+            val saved = slot<RefreshToken>()
+            every { repository.save(capture(saved)) } answers { saved.captured }
+
+            service.upsertToken(100L, null, "login-hash", newExpiry)
+
+            saved.captured.deviceId shouldBe null
+            saved.captured.tokenHash shouldBe "login-hash"
+            verify(exactly = 0) { repository.findByUserAndDevice(any(), any()) }
+        }
     }
 })

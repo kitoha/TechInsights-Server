@@ -20,21 +20,15 @@ class RefreshTokenService(
         tokenHash: String,
         expiryAt: Instant
     ): RefreshTokenDto {
-        val tokenEntity = refreshTokenRepository.findByUserAndDevice(userId, deviceId)
-            .map { existing ->
-                existing.apply {
-                    updateToken(tokenHash, expiryAt)
-                }
-            }
-            .orElseGet {
-                RefreshToken(
-                    id = Tsid.decode(Tsid.generate()),
-                    userId = userId,
-                    tokenHash = tokenHash,
-                    deviceId = deviceId,
-                    expiryAt = expiryAt
-                )
-            }
+        val existing = deviceId?.let { refreshTokenRepository.findByUserAndDevice(userId, it).orElse(null) }
+        val tokenEntity = existing?.apply { replaceToken(tokenHash, expiryAt) }
+            ?: RefreshToken(
+                id = Tsid.decode(Tsid.generate()),
+                userId = userId,
+                tokenHash = tokenHash,
+                deviceId = deviceId,
+                expiryAt = expiryAt
+            )
 
         return RefreshTokenDto.fromEntity(refreshTokenRepository.save(tokenEntity))
     }
