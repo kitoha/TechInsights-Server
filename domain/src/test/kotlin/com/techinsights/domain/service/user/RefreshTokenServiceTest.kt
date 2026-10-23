@@ -153,4 +153,44 @@ class RefreshTokenServiceTest : FunSpec({
             verify(exactly = 0) { repository.findByUserAndDevice(any(), any()) }
         }
     }
+
+    context("deleteByHash (logout)") {
+        test("현재 해시와 일치하는 행을 삭제해야 한다") {
+            val row = token(tokenHash = "presented")
+            every { repository.findByHashForUpdate("presented") } returns Optional.of(row)
+
+            service.deleteByHash("presented")
+
+            verify { repository.delete(row) }
+        }
+
+        test("유예 시간 내 직전 해시와 일치하는 행도 삭제해야 한다") {
+            val row = token(tokenHash = "winner", previousTokenHash = "presented", updatedAt = LocalDateTime.now())
+            every { repository.findByHashForUpdate("presented") } returns Optional.empty()
+            every { repository.findByPreviousHashForUpdate("presented") } returns Optional.of(row)
+
+            service.deleteByHash("presented")
+
+            verify { repository.delete(row) }
+        }
+
+        test("유예 시간이 지난 직전 해시로는 행을 삭제하지 않아야 한다") {
+            val row = token(tokenHash = "winner", previousTokenHash = "presented", updatedAt = LocalDateTime.now().minusMinutes(5))
+            every { repository.findByHashForUpdate("presented") } returns Optional.empty()
+            every { repository.findByPreviousHashForUpdate("presented") } returns Optional.of(row)
+
+            service.deleteByHash("presented")
+
+            verify(exactly = 0) { repository.delete(any()) }
+        }
+
+        test("일치하는 행이 없으면 아무것도 삭제하지 않아야 한다") {
+            every { repository.findByHashForUpdate("unknown") } returns Optional.empty()
+            every { repository.findByPreviousHashForUpdate("unknown") } returns Optional.empty()
+
+            service.deleteByHash("unknown")
+
+            verify(exactly = 0) { repository.delete(any()) }
+        }
+    }
 })

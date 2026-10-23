@@ -76,9 +76,10 @@ class RefreshTokenService(
 
     @Transactional
     fun deleteByHash(hash: String) {
-        refreshTokenRepository.findByHash(hash).ifPresent {
-            refreshTokenRepository.delete(it)
-        }
+        val session = refreshTokenRepository.findByHashForUpdate(hash).orElse(null)
+            ?: refreshTokenRepository.findByPreviousHashForUpdate(hash).orElse(null)
+                ?.takeIf { it.isRecentlyRotated() }
+        session?.let { refreshTokenRepository.delete(it) }
     }
 
     @Transactional
