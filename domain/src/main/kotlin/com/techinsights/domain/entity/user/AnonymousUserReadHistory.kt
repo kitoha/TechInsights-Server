@@ -6,8 +6,10 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import java.time.LocalDateTime
+import org.hibernate.annotations.SQLRestriction
 
 @Entity
+@SQLRestriction("deleted_at IS NULL")
 class AnonymousUserReadHistory(
   @Id
   val id: Long = Tsid.generateLong(),
