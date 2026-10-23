@@ -6,6 +6,7 @@ import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.dto.search.SemanticSearchResult
 import com.techinsights.domain.enums.Category
 import com.techinsights.domain.service.search.SemanticSearchService
+import com.techinsights.domain.utils.Tsid
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -95,7 +96,7 @@ class SemanticSearchControllerTest : FunSpec() {
             val response = controller.semanticSearch(
                 query = "MSA",
                 size = null,
-                companyId = 1L
+                companyId = Tsid.encode(1L)
             )
 
             response.statusCode.value() shouldBe 200
