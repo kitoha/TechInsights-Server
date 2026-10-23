@@ -46,3 +46,11 @@ Use the idempotent endpoints: `PUT …/like` sets, `DELETE …/like` unsets (sam
 ## Paging
 
 All list endpoints share one cap, `MAX_PAGE_SIZE` (100, `config/PageLimits.kt`): `Pageable` params are clamped by a `PageableHandlerMethodArgumentResolverCustomizer`, manual `size` params use `@Min(1) @Max(MAX_PAGE_SIZE)` (400 `INVALID_PARAMETER` above the cap). New list endpoints must do the same.
+
+## Company ids
+
+Every company id in requests and responses is the encoded TSID **String** — never a numeric Long (TSIDs exceed JS `Number.MAX_SAFE_INTEGER`). This includes the `companyId` filter of `GET /api/v1/search` and `GET /api/v1/search/semantic`: the controller decodes it with `Tsid.decode` (services keep taking the decoded `Long`, as the rest of the search domain does); an invalid value is a 400 `INVALID_PARAMETER`. Numeric company ids are no longer accepted.
+
+## Company summaries path
+
+`GET /api/v1/companies/summaries` is canonical. `GET /api/v1/companiesSummaries` is `@Deprecated`, serves the same body, and adds `Deprecation: true` and `Sunset: Sun, 22 Nov 2026 00:00:00 GMT`; remove it after that date.
