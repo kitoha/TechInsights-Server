@@ -40,6 +40,26 @@ class GithubBookmarkService(
         }
     }
 
+    /** Idempotent: ensures the bookmark exists. */
+    @Transactional
+    fun addBookmark(repoId: String, requester: Requester) {
+        val userId = requireUserId(requester)
+        val repoIdLong = requireRepository(repoId)
+
+        if (githubBookmarkRepository.findByRepoIdAndUserId(repoIdLong, userId) == null) {
+            githubBookmarkSaveHelper.saveIfAbsent(GithubBookmark(Tsid.generateLong(), repoIdLong, userId))
+        }
+    }
+
+    /** Idempotent: ensures the bookmark does not exist. */
+    @Transactional
+    fun removeBookmark(repoId: String, requester: Requester) {
+        val userId = requireUserId(requester)
+        val repoIdLong = requireRepository(repoId)
+
+        githubBookmarkRepository.deleteByRepoIdAndUserId(repoIdLong, userId)
+    }
+
     @Transactional(readOnly = true)
     fun getMyBookmarks(userId: Long, pageable: Pageable): Page<GithubRepositoryDto> =
         githubBookmarkRepository.findBookmarkedRepos(userId, pageable)
@@ -47,4 +67,16 @@ class GithubBookmarkService(
     @Transactional(readOnly = true)
     fun countMyBookmarks(userId: Long): Long =
         githubBookmarkRepository.countByUserId(userId)
+
+    private fun requireUserId(requester: Requester): Long = when (requester) {
+        is Requester.Authenticated -> requester.userId
+        is Requester.Anonymous -> throw UnauthorizedException()
+    }
+
+    private fun requireRepository(repoId: String): Long {
+        val repoIdLong = repoId.decode()
+        githubRepositoryRepository.findById(repoIdLong)
+            ?: throw GithubRepositoryNotFoundException("GithubRepository not found: $repoId")
+        return repoIdLong
+    }
 }

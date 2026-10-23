@@ -3,7 +3,6 @@ package com.techinsights.batch.embedding.processor
 import com.techinsights.domain.dto.embedding.EmbeddingRequest
 import com.techinsights.domain.dto.embedding.PostEmbeddingDto
 import com.techinsights.domain.dto.post.PostDto
-import com.techinsights.domain.enums.GeminiModelType
 import com.techinsights.domain.service.embedding.EmbeddingService
 import org.slf4j.LoggerFactory
 import org.springframework.batch.item.ItemProcessor
@@ -37,10 +36,7 @@ class BatchPostEmbeddingProcessor(
                 )
             }
 
-            val results = embeddingService.generateEmbeddingBatch(
-                requests,
-                GeminiModelType.GEMINI_EMBEDDING
-            )
+            val results = embeddingService.generateEmbeddingBatch(requests)
 
             val embeddingDtos = mutableListOf<PostEmbeddingDto>()
             val failures = mutableListOf<String>()

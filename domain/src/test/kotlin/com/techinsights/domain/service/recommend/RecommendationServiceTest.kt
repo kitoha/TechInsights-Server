@@ -5,10 +5,12 @@ import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.embedding.PostEmbeddingDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.dto.user.AnonymousUserReadHistoryDto
+import com.techinsights.domain.dto.user.UserReadHistoryDto
 import com.techinsights.domain.enums.Category
 import com.techinsights.domain.repository.post.PostEmbeddingRepository
 import com.techinsights.domain.repository.post.PostRepository
 import com.techinsights.domain.repository.user.AnonymousUserReadHistoryRepository
+import com.techinsights.domain.repository.user.UserReadHistoryRepository
 import com.techinsights.domain.utils.Tsid
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -23,10 +25,12 @@ import java.time.LocalDateTime
 class RecommendationServiceTest : FunSpec({
   val postEmbeddingRepository = mockk<PostEmbeddingRepository>()
   val anonymousUserReadHistoryRepository = mockk<AnonymousUserReadHistoryRepository>()
+  val userReadHistoryRepository = mockk<UserReadHistoryRepository>()
   val postRepository = mockk<PostRepository>()
   val recommendationService = RecommendationService(
     postEmbeddingRepository,
     anonymousUserReadHistoryRepository,
+    userReadHistoryRepository,
     postRepository
   )
   val companyId = Tsid.encode(1)
@@ -64,7 +68,7 @@ class RecommendationServiceTest : FunSpec({
   )
 
   afterTest {
-    clearMocks(postRepository, anonymousUserReadHistoryRepository, postEmbeddingRepository)
+    clearMocks(postRepository, anonymousUserReadHistoryRepository, userReadHistoryRepository, postEmbeddingRepository)
   }
 
   test("추천 - 익명 사용자의 읽기 기록이 없는 경우 인기 게시글 반환") {
@@ -92,7 +96,7 @@ class RecommendationServiceTest : FunSpec({
     val topPosts = listOf(samplePostDto)
 
     every {
-      anonymousUserReadHistoryRepository.getRecentReadHistory(userId.toString(), pageRequest)
+      userReadHistoryRepository.getRecentReadHistory(userId, pageRequest)
     } returns emptyList()
     every { postRepository.findTopViewedPosts(5) } returns topPosts
 
@@ -140,6 +144,39 @@ class RecommendationServiceTest : FunSpec({
     result shouldHaveSize 1
     result[0].id shouldBe recommendedPostId
     verify(exactly = 1) { postEmbeddingRepository.findSimilarPostsExcluding(any(), listOf(1L), 5) }
+  }
+
+  test("추천 - 인증된 사용자는 사용자 ID 기준 읽기 기록으로 추천하고 익명 이력은 조회하지 않는다") {
+    val userId = 1L
+    val requester = Requester.Authenticated(userId, "127.0.0.1")
+    val pageRequest = PageRequest.of(0, 10)
+
+    every { userReadHistoryRepository.getRecentReadHistory(userId, pageRequest) } returns listOf(
+      UserReadHistoryDto(id = 1L, userId = userId, postId = "1", readAt = System.currentTimeMillis())
+    )
+    every { postEmbeddingRepository.findByPostIdIn(listOf(1L)) } returns listOf(sampleEmbeddingDto)
+    every {
+      postEmbeddingRepository.findSimilarPostsExcluding(any(), listOf(1L), 5)
+    } returns listOf(sampleEmbeddingDto.copy(postId = Tsid.encode(2)))
+    val recommendedPostId = Tsid.encode(2)
+    every { postRepository.findAllByIdIn(listOf(recommendedPostId)) } returns
+      listOf(samplePostDto.copy(id = recommendedPostId))
+
+    val result = recommendationService.getRecommendationsForUser(requester, 5)
+
+    result shouldHaveSize 1
+    result[0].id shouldBe recommendedPostId
+    verify(exactly = 0) { anonymousUserReadHistoryRepository.getRecentReadHistory(any(), any()) }
+  }
+
+  test("추천 - 익명 사용자는 익명 이력만 조회하고 사용자 이력은 조회하지 않는다") {
+    val requester = Requester.Anonymous("anonymous-123", "127.0.0.1")
+    every { anonymousUserReadHistoryRepository.getRecentReadHistory("anonymous-123", any()) } returns emptyList()
+    every { postRepository.findTopViewedPosts(5) } returns listOf(samplePostDto)
+
+    recommendationService.getRecommendationsForUser(requester, 5)
+
+    verify(exactly = 0) { userReadHistoryRepository.getRecentReadHistory(any(), any()) }
   }
 
   test("평균 벡터 계산 - 정상") {

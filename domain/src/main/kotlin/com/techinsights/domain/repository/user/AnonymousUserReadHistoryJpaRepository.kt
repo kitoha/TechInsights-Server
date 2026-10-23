@@ -5,5 +5,5 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface AnonymousUserReadHistoryJpaRepository : JpaRepository<AnonymousUserReadHistory, Long> {
-  fun findTopNByAnonymousIdOrderByReadAtDesc(anonymousId: String, pageable: Pageable): List<AnonymousUserReadHistory>
+  fun findByAnonymousIdOrderByReadAtDesc(anonymousId: String, pageable: Pageable): List<AnonymousUserReadHistory>
 }

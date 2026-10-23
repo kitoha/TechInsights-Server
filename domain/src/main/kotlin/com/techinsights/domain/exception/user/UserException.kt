@@ -34,3 +34,7 @@ class InvalidNicknameException(
     val invalidNickname: String = nickname
     val validationReason: String = reason
 }
+
+class AccountDeactivatedException(
+    message: String = "삭제되었거나 비활성화된 계정입니다."
+) : UserException(message, UserErrorCode.ACCOUNT_DEACTIVATED)

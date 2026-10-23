@@ -3,8 +3,8 @@ package com.techinsights.batch.summary.service
 import com.techinsights.batch.summary.dto.BatchRequest
 import com.techinsights.batch.summary.dto.BatchResult
 import com.techinsights.batch.summary.service.SummaryResultValidator.ValidationResult
-import com.techinsights.domain.dto.gemini.BatchSummaryResponse
-import com.techinsights.domain.dto.gemini.SummaryResultWithId
+import com.techinsights.domain.dto.summary.BatchSummaryResponse
+import com.techinsights.domain.dto.summary.SummaryResultWithId
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.enums.ErrorType
 import io.kotest.core.spec.style.FunSpec

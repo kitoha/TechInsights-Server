@@ -1,14 +1,21 @@
 package com.techinsights.api.auth
 
 import com.techinsights.domain.dto.user.AuthUserDto
+import com.techinsights.domain.exception.user.AccountDeactivatedException
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.*
+import java.sql.SQLException
+import org.hibernate.exception.ConstraintViolationException
+import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User
 
 import com.techinsights.domain.enums.UserRole
+import com.techinsights.domain.enums.UserStatus
 import com.techinsights.domain.service.user.UserService
 
 class CustomOAuth2UserServiceTest : FunSpec({
@@ -34,7 +41,8 @@ class CustomOAuth2UserServiceTest : FunSpec({
         } returns AuthUserDto(
             id = 100L,
             email = "test@example.com",
-            role = UserRole.USER
+            role = UserRole.USER,
+            status = UserStatus.ACTIVE
         )
 
         // when
@@ -66,7 +74,8 @@ class CustomOAuth2UserServiceTest : FunSpec({
         } returns AuthUserDto(
             id = 1L,
             email = "test@example.com",
-            role = UserRole.USER
+            role = UserRole.USER,
+            status = UserStatus.ACTIVE
         )
 
         // when
@@ -78,6 +87,62 @@ class CustomOAuth2UserServiceTest : FunSpec({
         
         verify(exactly = 1) {
             userService.upsertGoogleOAuthUser("google-123", "test@example.com", "New Name", "new-image.png")
+        }
+    }
+
+    test("삭제/비활성 계정이면 OAuth2AuthenticationException(account_deactivated)으로 바꿔 던지고 사용자 정보를 만들지 않는다") {
+        val attributes = mapOf("sub" to "google-123", "email" to "test@example.com", "name" to "Tester")
+        val oAuth2User = DefaultOAuth2User(emptyList(), attributes, "sub")
+        every {
+            userService.upsertGoogleOAuthUser("google-123", "test@example.com", "Tester", null)
+        } throws AccountDeactivatedException()
+
+        val thrown = shouldThrow<OAuth2AuthenticationException> {
+            customOAuth2UserService.processOAuth2User(oAuth2User)
+        }
+
+        thrown.error.errorCode shouldBe "account_deactivated"
+    }
+
+    context("email 유일 제약조건 위반") {
+        val attributes = mapOf("sub" to "google-new", "email" to "taken@example.com", "name" to "Tester")
+        val oAuth2User = DefaultOAuth2User(emptyList(), attributes, "sub")
+
+        fun integrityViolation(constraintName: String?) = DataIntegrityViolationException(
+            "could not execute statement",
+            ConstraintViolationException("duplicate key", SQLException("duplicate key"), constraintName)
+        )
+
+        test("users_email_key 위반은 OAuth2AuthenticationException 으로 바꿔 던진다 (토큰 발급 없음)") {
+            every {
+                userService.upsertGoogleOAuthUser("google-new", "taken@example.com", "Tester", null)
+            } throws integrityViolation("users_email_key")
+
+            val thrown = shouldThrow<OAuth2AuthenticationException> {
+                customOAuth2UserService.processOAuth2User(oAuth2User)
+            }
+
+            thrown.error.errorCode shouldBe "email_conflict"
+        }
+
+        test("다른 제약조건 위반은 그대로 다시 던진다") {
+            every {
+                userService.upsertGoogleOAuthUser("google-new", "taken@example.com", "Tester", null)
+            } throws integrityViolation("uk_users_provider_provider_id")
+
+            shouldThrow<DataIntegrityViolationException> {
+                customOAuth2UserService.processOAuth2User(oAuth2User)
+            }
+        }
+
+        test("제약조건 이름을 알 수 없는 무결성 위반도 그대로 다시 던진다") {
+            every {
+                userService.upsertGoogleOAuthUser("google-new", "taken@example.com", "Tester", null)
+            } throws DataIntegrityViolationException("unknown")
+
+            shouldThrow<DataIntegrityViolationException> {
+                customOAuth2UserService.processOAuth2User(oAuth2User)
+            }
         }
     }
 })
