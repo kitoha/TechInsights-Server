@@ -2,7 +2,10 @@ package com.techinsights.domain.repository.user
 
 import com.techinsights.domain.enums.ProviderType
 import com.techinsights.domain.support.RepositoryTestSpec
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
+import org.hibernate.exception.ConstraintViolationException
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
@@ -102,5 +105,30 @@ class UserUpsertRepositoryTest(
 
     repository.isDeactivatedAccount(ProviderType.GOOGLE, "g-1") shouldBe false
     repository.isDeactivatedAccount(ProviderType.GOOGLE, "unknown") shouldBe false
+  }
+
+  test("다른 provider_id 가 이미 쓰는 email 로 upsert 하면 users_email_key 제약조건 위반으로 실패하고 기존 행은 그대로다") {
+    insertUser(1, "g-1")
+    val before = row("g-1")
+
+    val thrown = shouldThrow<DataIntegrityViolationException> {
+      tx.execute {
+        repository.upsertByProvider(
+          id = 999L,
+          email = "old1@example.com",
+          name = "Other",
+          nickname = "User_other",
+          provider = ProviderType.GOOGLE,
+          providerId = "g-other",
+          profileImage = null
+        )
+      }
+    }
+
+    generateSequence<Throwable>(thrown) { it.cause }
+      .filterIsInstance<ConstraintViolationException>()
+      .map { it.constraintName }
+      .toList() shouldBe listOf("users_email_key")
+    row("g-1") shouldBe before
   }
 })

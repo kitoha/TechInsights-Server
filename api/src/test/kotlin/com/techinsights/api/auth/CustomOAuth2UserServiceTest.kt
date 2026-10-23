@@ -8,6 +8,9 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.*
+import java.sql.SQLException
+import org.hibernate.exception.ConstraintViolationException
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User
 
@@ -99,5 +102,47 @@ class CustomOAuth2UserServiceTest : FunSpec({
         }
 
         thrown.error.errorCode shouldBe "account_deactivated"
+    }
+
+    context("email 유일 제약조건 위반") {
+        val attributes = mapOf("sub" to "google-new", "email" to "taken@example.com", "name" to "Tester")
+        val oAuth2User = DefaultOAuth2User(emptyList(), attributes, "sub")
+
+        fun integrityViolation(constraintName: String?) = DataIntegrityViolationException(
+            "could not execute statement",
+            ConstraintViolationException("duplicate key", SQLException("duplicate key"), constraintName)
+        )
+
+        test("users_email_key 위반은 OAuth2AuthenticationException 으로 바꿔 던진다 (토큰 발급 없음)") {
+            every {
+                userService.upsertGoogleOAuthUser("google-new", "taken@example.com", "Tester", null)
+            } throws integrityViolation("users_email_key")
+
+            val thrown = shouldThrow<OAuth2AuthenticationException> {
+                customOAuth2UserService.processOAuth2User(oAuth2User)
+            }
+
+            thrown.error.errorCode shouldBe "email_conflict"
+        }
+
+        test("다른 제약조건 위반은 그대로 다시 던진다") {
+            every {
+                userService.upsertGoogleOAuthUser("google-new", "taken@example.com", "Tester", null)
+            } throws integrityViolation("uk_users_provider_provider_id")
+
+            shouldThrow<DataIntegrityViolationException> {
+                customOAuth2UserService.processOAuth2User(oAuth2User)
+            }
+        }
+
+        test("제약조건 이름을 알 수 없는 무결성 위반도 그대로 다시 던진다") {
+            every {
+                userService.upsertGoogleOAuthUser("google-new", "taken@example.com", "Tester", null)
+            } throws DataIntegrityViolationException("unknown")
+
+            shouldThrow<DataIntegrityViolationException> {
+                customOAuth2UserService.processOAuth2User(oAuth2User)
+            }
+        }
     }
 })
