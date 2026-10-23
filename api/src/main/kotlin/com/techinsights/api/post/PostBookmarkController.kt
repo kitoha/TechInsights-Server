@@ -8,9 +8,11 @@ import com.techinsights.domain.exception.UnauthorizedException
 import com.techinsights.domain.service.post.PostBookmarkService
 import org.springframework.data.domain.PageRequest
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController
 class PostBookmarkController(
     private val postBookmarkService: PostBookmarkService,
 ) {
+    @Deprecated("Not idempotent (a double click removes the bookmark). Use PUT/DELETE /{postId}/bookmark.")
     @PostMapping("/{postId}/bookmark")
     fun toggleBookmark(
         @PathVariable postId: String,
@@ -27,6 +30,24 @@ class PostBookmarkController(
     ): ResponseEntity<BookmarkResponse> {
         val bookmarked = postBookmarkService.toggleBookmark(postId, requester)
         return ResponseEntity.ok(BookmarkResponse(bookmarked))
+    }
+
+    @PutMapping("/{postId}/bookmark")
+    fun addBookmark(
+        @PathVariable postId: String,
+        requester: Requester,
+    ): ResponseEntity<BookmarkResponse> {
+        postBookmarkService.addBookmark(postId, requester)
+        return ResponseEntity.ok(BookmarkResponse(true))
+    }
+
+    @DeleteMapping("/{postId}/bookmark")
+    fun removeBookmark(
+        @PathVariable postId: String,
+        requester: Requester,
+    ): ResponseEntity<BookmarkResponse> {
+        postBookmarkService.removeBookmark(postId, requester)
+        return ResponseEntity.ok(BookmarkResponse(false))
     }
 
     @GetMapping("/me/bookmarks")
