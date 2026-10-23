@@ -1,6 +1,8 @@
 package com.techinsights.api.auth
 
 import com.techinsights.api.props.AuthProperties
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import mu.KotlinLogging
@@ -9,7 +11,6 @@ import org.springframework.http.ResponseCookie
 import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest
 import org.springframework.stereotype.Component
-import org.springframework.util.SerializationUtils
 import java.security.MessageDigest
 import java.time.Duration
 import java.util.Base64
@@ -22,6 +23,11 @@ class CookieOAuth2AuthorizationRequestRepository(
 ) : AuthorizationRequestRepository<OAuth2AuthorizationRequest> {
     private val oauth2Properties = authProperties.oauth2
     private val log = KotlinLogging.logger {}
+    private val objectMapper = jacksonObjectMapper()
+    private val signingKey = SecretKeySpec(
+        KeyPurpose.OAUTH_COOKIE_SIGNING.deriveKey(authProperties.jwt.secretKeyBytes),
+        SIGNATURE_ALGORITHM
+    )
 
     override fun loadAuthorizationRequest(request: HttpServletRequest): OAuth2AuthorizationRequest? {
         val cookieValue = request.cookies
@@ -32,12 +38,12 @@ class CookieOAuth2AuthorizationRequestRepository(
         val payload = verifyAndExtractPayload(cookieValue) ?: return invalidCookie(request)
 
         return runCatching {
-            @Suppress("DEPRECATION")
-            SerializationUtils.deserialize(Base64.getUrlDecoder().decode(payload)) as? OAuth2AuthorizationRequest
+            objectMapper.readValue<OAuth2AuthorizationRequestCookiePayload>(Base64.getUrlDecoder().decode(payload))
+                .toAuthorizationRequest()
         }.onFailure {
             log.warn {
-                "OAuth2 authorization request cookie could not be deserialized: " +
-                    "uri=${request.requestURI}, exception=${it::class.simpleName}, message=${it.message}"
+                "OAuth2 authorization request cookie could not be parsed: " +
+                    "uri=${request.requestURI}, exception=${it::class.simpleName}"
             }
         }.getOrNull()
     }
@@ -54,7 +60,9 @@ class CookieOAuth2AuthorizationRequestRepository(
 
         val encoded = Base64.getUrlEncoder()
             .withoutPadding()
-            .encodeToString(SerializationUtils.serialize(authorizationRequest))
+            .encodeToString(
+                objectMapper.writeValueAsBytes(OAuth2AuthorizationRequestCookiePayload.from(authorizationRequest))
+            )
         val signedValue = "$encoded.${sign(encoded)}"
 
         val secure = isSecureRequest(request)
@@ -155,7 +163,7 @@ class CookieOAuth2AuthorizationRequestRepository(
 
     private fun sign(value: String): String {
         val mac = Mac.getInstance(SIGNATURE_ALGORITHM)
-        mac.init(SecretKeySpec(authProperties.jwt.secretKeyBytes, SIGNATURE_ALGORITHM))
+        mac.init(signingKey)
         return Base64.getUrlEncoder().withoutPadding().encodeToString(mac.doFinal(value.toByteArray()))
     }
 

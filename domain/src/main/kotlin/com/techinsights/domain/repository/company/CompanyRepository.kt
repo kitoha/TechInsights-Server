@@ -19,4 +19,7 @@ interface CompanyRepository {
   fun getTopCompaniesByViews(pageable: Pageable): Page<CompanyDto>
   fun getTopCompaniesByPosts(pageable: Pageable): Page<CompanyDto>
   fun findAllWithLastPostedAt(): List<CompanyPostSummaryDto>
+  fun incrementTotalViewCount(companyId: Long)
+  fun incrementPostCount(companyId: Long, count: Int)
+  fun reconcilePostCounts(): Int
 }

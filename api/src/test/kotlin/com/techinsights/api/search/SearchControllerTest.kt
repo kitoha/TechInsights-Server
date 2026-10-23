@@ -9,7 +9,6 @@ import com.techinsights.domain.service.search.SearchService
 import com.techinsights.domain.service.search.SemanticSearchService
 import io.kotest.core.spec.style.FunSpec
 import io.mockk.*
-import kotlinx.coroutines.Dispatchers
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
@@ -21,7 +20,6 @@ class SearchControllerTest : FunSpec() {
     private val searchService = mockk<SearchService>()
     private val semanticSearchService = mockk<SemanticSearchService>(relaxed = true)
     private val properties = SemanticSearchProperties(defaultSize = 10, maxSize = 20)
-    private val ioDispatcher = Dispatchers.IO
 
     init {
         beforeTest {
@@ -30,8 +28,7 @@ class SearchControllerTest : FunSpec() {
             val controller = SearchController(
                 searchService = searchService,
                 semanticSearchService = semanticSearchService,
-                properties = properties,
-                ioDispatcher = ioDispatcher
+                properties = properties
             )
             mockMvc = MockMvcBuilders.standaloneSetup(controller).build()
         }
