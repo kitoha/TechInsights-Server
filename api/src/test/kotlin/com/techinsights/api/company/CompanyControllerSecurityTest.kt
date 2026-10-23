@@ -33,6 +33,8 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delet
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @WebMvcTest(
@@ -112,6 +114,8 @@ class CompanyControllerSecurityTest(
             mockMvc.perform(
                 delete("/api/v1/companies/test-id")
             ).andExpect(status().isUnauthorized)
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
         }
 
         test("USER 역할로 POST companies 요청 시 403을 반환해야 한다") {
@@ -130,6 +134,8 @@ class CompanyControllerSecurityTest(
                 delete("/api/v1/companies/test-id")
                     .with(user(userDetails))
             ).andExpect(status().isForbidden)
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"))
         }
 
         test("GET companies는 비인증 사용자도 접근 가능해야 한다") {
