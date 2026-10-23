@@ -1,5 +1,8 @@
 package com.techinsights.api.post
 
+import jakarta.validation.constraints.Max
+import jakarta.validation.constraints.Min
+import com.techinsights.api.config.MAX_PAGE_SIZE
 import com.techinsights.domain.dto.auth.Requester
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.enums.Category
@@ -22,7 +25,7 @@ class PostController(
 
   @GetMapping("/api/v1/posts")
   fun getPosts(@RequestParam(defaultValue = "0") page: Int,
-    @RequestParam(defaultValue = "10") size: Int,
+    @RequestParam(defaultValue = "10") @Min(1) @Max(MAX_PAGE_SIZE) size: Int,
     @RequestParam(defaultValue = "RECENT") sort: PostSortType,
     @RequestParam(defaultValue = "All") category: Category,
     @RequestParam(required = false) companyId: String?

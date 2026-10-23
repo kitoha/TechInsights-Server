@@ -1,5 +1,8 @@
 package com.techinsights.api.post
 
+import jakarta.validation.constraints.Max
+import jakarta.validation.constraints.Min
+import com.techinsights.api.config.MAX_PAGE_SIZE
 import com.techinsights.domain.dto.auth.Requester
 import com.techinsights.domain.exception.UnauthorizedException
 import com.techinsights.domain.service.post.PostBookmarkService
@@ -29,7 +32,7 @@ class PostBookmarkController(
     @GetMapping("/me/bookmarks")
     fun getMyBookmarks(
         @RequestParam(defaultValue = "0") page: Int,
-        @RequestParam(defaultValue = "10") size: Int,
+        @RequestParam(defaultValue = "10") @Min(1) @Max(MAX_PAGE_SIZE) size: Int,
         requester: Requester,
     ): ResponseEntity<PageResponse<PostResponse>> {
         val userId = when (requester) {

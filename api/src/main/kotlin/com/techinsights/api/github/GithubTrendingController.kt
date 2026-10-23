@@ -1,5 +1,6 @@
 package com.techinsights.api.github
 
+import com.techinsights.api.config.MAX_PAGE_SIZE
 import com.techinsights.domain.enums.GithubSortType
 import com.techinsights.domain.service.github.GithubSemanticSearchService
 import com.techinsights.domain.service.github.GithubTrendingService
@@ -23,7 +24,7 @@ class GithubTrendingController(
     @GetMapping("/api/v1/github/trending")
     fun getTrendingRepos(
         @RequestParam(required = false) cursor: String?,
-        @RequestParam(defaultValue = "20") @Min(1) @Max(100) size: Int,
+        @RequestParam(defaultValue = "20") @Min(1) @Max(MAX_PAGE_SIZE) size: Int,
         @RequestParam(defaultValue = "STARS") sort: GithubSortType,
         @RequestParam(required = false) language: String?,
     ): ResponseEntity<CursorPageResponse<GithubRepositoryResponse>> {
