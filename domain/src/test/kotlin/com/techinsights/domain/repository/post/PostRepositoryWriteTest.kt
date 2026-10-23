@@ -4,6 +4,7 @@ import com.techinsights.domain.dto.company.CompanyDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.enums.Category
 import com.techinsights.domain.exception.PostAlreadyExistsException
+import com.techinsights.domain.exception.PostNotFoundException
 import com.techinsights.domain.support.RepositoryTestSpec
 import com.techinsights.domain.support.SqlFixtures
 import com.techinsights.domain.utils.Tsid
@@ -118,5 +119,11 @@ class PostRepositoryWriteTest(
     row["view_count"] shouldBe 42L
     row["like_count"] shouldBe 9L
     row["summary_failure_count"] shouldBe 3
+  }
+
+  test("updateSummaryResults throws when the post does not exist") {
+    shouldThrow<PostNotFoundException> {
+      repository.updateSummaryResults(listOf(newPost(404L, "https://blog.example.com/404").copy(isSummary = true)))
+    }
   }
 })
