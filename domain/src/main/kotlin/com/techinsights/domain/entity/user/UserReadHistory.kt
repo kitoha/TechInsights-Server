@@ -6,9 +6,11 @@ import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.time.LocalDateTime
+import org.hibernate.annotations.SQLRestriction
 
 @Entity
 @Table(name = "user_read_history")
+@SQLRestriction("deleted_at IS NULL")
 class UserReadHistory(
   @Id
   val id: Long,
