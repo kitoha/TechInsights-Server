@@ -1,7 +1,9 @@
 package com.techinsights.api.post
 
 import com.techinsights.api.aid.AidProperties
+import com.techinsights.api.auth.CustomUserDetails
 import com.techinsights.api.auth.RequesterResolver
+import com.techinsights.domain.enums.UserRole
 import com.techinsights.domain.service.post.PostService
 import com.techinsights.domain.service.post.PostViewService
 import com.techinsights.domain.utils.Tsid
@@ -9,6 +11,8 @@ import io.kotest.core.spec.style.FunSpec
 import io.mockk.*
 import jakarta.servlet.http.Cookie
 import kotlinx.coroutines.Dispatchers
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
@@ -205,6 +209,28 @@ class PostControllerTest : FunSpec() {
 
       verify(exactly = 1) { postViewService.recordView(postId, "aid-123", any()) }
       verify(exactly = 1) { postViewService.trackAnonymousPostRead("aid-123", postId) }
+    }
+
+    test("POST /api/v1/posts/{postId}/view - 로그인 사용자는 사용자 ID로 읽기 이력을 기록하고 익명 이력은 기록하지 않는다") {
+      // given
+      val postId = Tsid.encode(1L)
+      val details = CustomUserDetails(userId = 42L, email = "u@example.com", role = UserRole.USER)
+      SecurityContextHolder.getContext().authentication =
+        UsernamePasswordAuthenticationToken(details, null, details.authorities)
+      every { postViewService.recordView(postId, "U_42", any()) } just Runs
+      every { postViewService.trackUserPostRead(42L, postId) } just Runs
+
+      try {
+        // when & then
+        mockMvc.post("/api/v1/posts/$postId/view").andExpect {
+          status { isOk() }
+        }
+      } finally {
+        SecurityContextHolder.clearContext()
+      }
+
+      verify(exactly = 1) { postViewService.trackUserPostRead(42L, postId) }
+      verify(exactly = 0) { postViewService.trackAnonymousPostRead(any(), any()) }
     }
 
     test("POST /api/v1/posts/{postId}/view - User-Agent 없이도 성공") {
