@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration
 import java.time.Duration
 
 @Configuration
-@EnableConfigurationProperties(RateLimiterProperties::class, CircuitBreakerProperties::class)
+@EnableConfigurationProperties(RateLimiterProperties::class, CircuitBreakerProperties::class, DailyQuotaProperties::class)
 class ResilienceConfig(
   private val rateLimiterProperties: RateLimiterProperties,
   private val circuitBreakerProperties: CircuitBreakerProperties
@@ -22,15 +22,13 @@ class ResilienceConfig(
     val registry = RateLimiterRegistry.of(geminiConfig)
 
     val geminiBatchRpmConfig = createRateLimiterConfig(rateLimiterProperties.geminiBatchRpm)
-    val geminiBatchRpdConfig = createRateLimiterConfig(rateLimiterProperties.geminiBatchRpd)
     val geminiEmbeddingConfig = createRateLimiterConfig(rateLimiterProperties.geminiEmbedding)
+    val geminiQueryEmbeddingConfig = createRateLimiterConfig(rateLimiterProperties.geminiQueryEmbedding)
     val githubConfig = createRateLimiterConfig(rateLimiterProperties.github)
     val geminiReadmeRpmConfig = createRateLimiterConfig(rateLimiterProperties.geminiReadmeRpm)
-    val geminiReadmeRpdConfig = createRateLimiterConfig(rateLimiterProperties.geminiReadmeRpd)
     val hnApiConfig = createRateLimiterConfig(rateLimiterProperties.hnApi)
     val redditApiConfig = createRateLimiterConfig(rateLimiterProperties.redditApi)
     val geminiCommunityRpmConfig = createRateLimiterConfig(rateLimiterProperties.geminiCommunityRpm)
-    val geminiCommunityRpdConfig = createRateLimiterConfig(rateLimiterProperties.geminiCommunityRpd)
     val ultraSafeConfig = createRateLimiterConfig(rateLimiterProperties.crawler.ultraSafe)
     val conservativeConfig = createRateLimiterConfig(rateLimiterProperties.crawler.conservative)
     val defaultConfig = createRateLimiterConfig(rateLimiterProperties.crawler.standard)
@@ -38,21 +36,21 @@ class ResilienceConfig(
     // 게시글 요약 관련 RateLimiter
     registry.rateLimiter("geminiArticleSummarizer", geminiConfig)
     registry.rateLimiter("geminiBatchRpm", geminiBatchRpmConfig)
-    registry.rateLimiter("geminiBatchRpd", geminiBatchRpdConfig)
     registry.rateLimiter("geminiEmbedding", geminiEmbeddingConfig)
+
+    // 요청 경로(검색 API) 임베딩 RateLimiter: 대기 없이 즉시 거절
+    registry.rateLimiter("geminiQueryEmbedding", geminiQueryEmbeddingConfig)
 
     // GitHub API RateLimiter
     registry.rateLimiter("githubApi", githubConfig)
 
     // README 요약 관련 RateLimiter
     registry.rateLimiter("geminiReadmeRpm", geminiReadmeRpmConfig)
-    registry.rateLimiter("geminiReadmeRpd", geminiReadmeRpdConfig)
 
     // Community Insight RateLimiter
     registry.rateLimiter("hnApi", hnApiConfig)
     registry.rateLimiter("redditApi", redditApiConfig)
     registry.rateLimiter("geminiCommunityRpm", geminiCommunityRpmConfig)
-    registry.rateLimiter("geminiCommunityRpd", geminiCommunityRpdConfig)
 
     // 크롤링 RateLimiter
     registry.addConfiguration("ultraSafe", ultraSafeConfig)

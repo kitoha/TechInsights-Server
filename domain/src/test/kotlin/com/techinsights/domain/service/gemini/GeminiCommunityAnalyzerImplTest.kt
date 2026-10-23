@@ -6,6 +6,8 @@ import com.techinsights.domain.config.gemini.GeminiProperties
 import com.techinsights.domain.dto.community.CommunityAnalysisInput
 import com.techinsights.domain.dto.community.CommunityPost
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException
+import com.techinsights.domain.service.quota.DailyQuota
+import com.techinsights.domain.service.quota.DailyQuotaService
 import io.github.resilience4j.circuitbreaker.CircuitBreaker
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
@@ -32,13 +34,13 @@ class GeminiCommunityAnalyzerImplTest : FunSpec({
     val rateLimiterRegistry = mockk<RateLimiterRegistry>()
     val circuitBreakerRegistry = mockk<CircuitBreakerRegistry>()
     val rpmLimiter = mockk<RateLimiter>(relaxed = true)
-    val rpdLimiter = mockk<RateLimiter>(relaxed = true)
+    val dailyQuotaService = mockk<DailyQuotaService>()
     val circuitBreaker = mockk<CircuitBreaker>()
 
     beforeTest {
         clearAllMocks()
         every { rateLimiterRegistry.rateLimiter("geminiCommunityRpm") } returns rpmLimiter
-        every { rateLimiterRegistry.rateLimiter("geminiCommunityRpd") } returns rpdLimiter
+        every { dailyQuotaService.tryReserve(any()) } returns true
         every { circuitBreakerRegistry.circuitBreaker("communityInsight") } returns circuitBreaker
         every { geminiProperties.maxTokensPerRequest } returns 100_000
         every { geminiProperties.maxOutputTokens } returns 65_536
@@ -55,6 +57,7 @@ class GeminiCommunityAnalyzerImplTest : FunSpec({
         mapper = jacksonObjectMapper(),
         rateLimiterRegistry = rateLimiterRegistry,
         circuitBreakerRegistry = circuitBreakerRegistry,
+        dailyQuotaService = dailyQuotaService,
         ioDispatcher = Dispatchers.Unconfined,
     )
 
@@ -91,13 +94,24 @@ class GeminiCommunityAnalyzerImplTest : FunSpec({
         results[0].success.shouldBeFalse()
     }
 
-    test("analyze()는 RPM과 RPD rate limiter를 모두 획득한다") {
+    test("analyze()는 RPM limiter를 획득하고 일일 쿼터를 예약한다") {
         every { circuitBreaker.executeCallable<Any>(any()) } returns listOf<Any>().iterator()
 
         buildAnalyzer().analyze(listOf(input())).toList()
 
         verify(exactly = 1) { rpmLimiter.acquirePermission() }
-        verify(exactly = 1) { rpdLimiter.acquirePermission() }
+        verify(exactly = 1) { dailyQuotaService.tryReserve(DailyQuota.COMMUNITY_ANALYSIS) }
+    }
+
+    test("analyze()는 일일 쿼터가 소진되면 Gemini를 호출하지 않고 모든 아이템을 실패로 반환한다") {
+        every { dailyQuotaService.tryReserve(DailyQuota.COMMUNITY_ANALYSIS) } returns false
+
+        val results = buildAnalyzer().analyze(listOf(input("owner/repo1"), input("owner/repo2"))).toList()
+
+        results shouldHaveSize 2
+        results.none { it.success } shouldBe true
+        verify(exactly = 0) { circuitBreaker.executeCallable<Any>(any()) }
+        verify(exactly = 0) { rpmLimiter.acquirePermission() }
     }
 
     test("analyze()는 아이템이 여러 개여도 Gemini 호출은 1회만 한다") {
@@ -106,7 +120,7 @@ class GeminiCommunityAnalyzerImplTest : FunSpec({
         buildAnalyzer().analyze(listOf(input("owner/repo1"), input("owner/repo2"), input("owner/repo3"))).toList()
 
         verify(exactly = 1) { rpmLimiter.acquirePermission() }
-        verify(exactly = 1) { rpdLimiter.acquirePermission() }
+        verify(exactly = 1) { dailyQuotaService.tryReserve(DailyQuota.COMMUNITY_ANALYSIS) }
         verify(exactly = 1) { circuitBreaker.executeCallable<Any>(any()) }
     }
 
