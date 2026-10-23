@@ -138,6 +138,13 @@ class CompanyControllerSecurityTest(
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"))
         }
 
+        test("회사 요약 조회는 정식/구 경로 모두 비인증 사용자도 접근 가능해야 한다") {
+            listOf("/api/v1/companies/summaries", "/api/v1/companiesSummaries").forEach { path ->
+                val result = mockMvc.perform(get(path)).andReturn()
+                assertThat(result.response.status).isNotEqualTo(401).isNotEqualTo(403)
+            }
+        }
+
         test("GET companies는 비인증 사용자도 접근 가능해야 한다") {
             val result = mockMvc.perform(get("/api/v1/companies")).andReturn()
             assertThat(result.response.status).isNotEqualTo(401)
