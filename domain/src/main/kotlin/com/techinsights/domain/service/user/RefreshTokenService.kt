@@ -66,7 +66,8 @@ class RefreshTokenService(
         val session = refreshTokenRepository.findByFamilyIdForUpdate(retired.familyId).orElse(null)
             ?: return RefreshTokenRotationResult.NotFound
 
-        if (retired.retiredAt.isBefore(now.minus(GRACE_PERIOD))) {
+        // Outside grace, or a second use of the same retired hash even inside grace, is reuse.
+        if (retired.retiredAt.isBefore(now.minus(GRACE_PERIOD)) || !refreshTokenRepository.claimGraceUse(presentedHash)) {
             refreshTokenRepository.delete(session)
             return RefreshTokenRotationResult.ReuseDetected
         }

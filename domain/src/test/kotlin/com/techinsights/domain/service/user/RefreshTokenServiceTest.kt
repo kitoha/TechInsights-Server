@@ -137,6 +137,63 @@ class RefreshTokenServiceTest(
     }
   }
 
+  context("유예 시간 재회전은 폐기 해시당 한 번만") {
+    test("같은 폐기 해시를 유예 시간 안에 두 번 제시하면 두 번째는 재사용으로 패밀리를 폐기한다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1")
+
+      rotate("h0", "h2") shouldBe RefreshTokenRotationResult.Rotated
+      rotate("h0", "h3") shouldBe RefreshTokenRotationResult.ReuseDetected
+
+      sessionCount(1) shouldBe 0
+      retiredCount() shouldBe 0
+    }
+
+    test("서로 다른 폐기 해시는 각각 한 번씩 유예 재회전할 수 있다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1")
+      rotate("h0", "h2") shouldBe RefreshTokenRotationResult.Rotated
+
+      rotate("h1", "h3") shouldBe RefreshTokenRotationResult.Rotated
+
+      sessionCount(1) shouldBe 1
+    }
+
+    test("유예 재회전을 쓴 폐기 해시는 다른 사용자의 세션에 영향을 주지 않고 해당 패밀리만 폐기한다") {
+      insertUser(1)
+      login(1, "a0", deviceId = "dev-a")
+      login(1, "b0", deviceId = "dev-b")
+      rotate("a0", "a1")
+      rotate("a0", "a2")
+
+      rotate("a0", "evil") shouldBe RefreshTokenRotationResult.ReuseDetected
+
+      currentHash(1) shouldBe listOf("b0")
+    }
+
+    test("동시에 같은 폐기 해시로 유예 재회전을 시도하면 정확히 하나만 성공한다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1")
+      val threads = 6
+      val ready = java.util.concurrent.CountDownLatch(threads)
+      val pool = java.util.concurrent.Executors.newFixedThreadPool(threads)
+      val results = (1..threads).map { i ->
+        pool.submit<RefreshTokenRotationResult> {
+          ready.countDown()
+          ready.await()
+          rotate("h0", "n$i")
+        }
+      }.map { it.get() }
+      pool.shutdown()
+
+      results.count { it == RefreshTokenRotationResult.Rotated } shouldBe 1
+      results.count { it != RefreshTokenRotationResult.Rotated } shouldBe threads - 1
+    }
+  }
+
   context("만료") {
     test("만료된 현재 토큰은 세션과 폐기 해시를 삭제하고 Expired를 반환한다") {
       insertUser(1)

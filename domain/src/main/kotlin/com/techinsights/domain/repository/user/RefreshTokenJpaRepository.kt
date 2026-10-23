@@ -38,6 +38,14 @@ interface RefreshTokenJpaRepository : JpaRepository<RefreshToken, Long> {
         @Param("retiredAt") retiredAt: Instant
     ): Int
 
+    /** Atomically claims the single grace re-rotation of a retired hash; 0 rows means it was already used. */
+    @Modifying
+    @Query(
+        value = "UPDATE refresh_token_retired_hashes SET grace_used = TRUE WHERE token_hash = :tokenHash AND grace_used = FALSE",
+        nativeQuery = true
+    )
+    fun claimGraceUse(@Param("tokenHash") tokenHash: String): Int
+
     @Modifying
     @Query(
         value = "DELETE FROM refresh_token_retired_hashes WHERE retired_at < :cutoff",
