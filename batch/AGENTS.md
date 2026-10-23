@@ -38,6 +38,7 @@ Triggered by GitHub Actions (`.github/workflows/batch-*.yml`) — not scheduled 
 | `embedding` | pgvector embeddings via Gemini |
 | `summary` | Post summarization via Gemini |
 | `github` | GitHub trending repos |
+| `maintenance` | DB cleanup tasklets (e.g. expired refresh tokens) |
 | `infrastructure` | DB / external client config |
 | `support` | Test mocks and utilities |
 | `common` | Shared listeners |

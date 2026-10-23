@@ -5,9 +5,11 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import org.hibernate.annotations.SQLRestriction
 
 @Entity
 @Table(name = "post_bookmarks")
+@SQLRestriction("deleted_at IS NULL")
 class PostBookmark(
     @Id val id: Long,
     @Column(name = "post_id", nullable = false) val postId: Long,

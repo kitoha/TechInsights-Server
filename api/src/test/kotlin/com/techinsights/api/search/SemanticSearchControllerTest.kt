@@ -15,20 +15,17 @@ import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import kotlinx.coroutines.Dispatchers
 import java.time.LocalDateTime
 
 class SemanticSearchControllerTest : FunSpec() {
 
     private val semanticSearchService = mockk<SemanticSearchService>()
     private val properties = SemanticSearchProperties(defaultSize = 10, maxSize = 20)
-    private val ioDispatcher = Dispatchers.Unconfined
 
     private val controller = SearchController(
         searchService = mockk(relaxed = true),
         semanticSearchService = semanticSearchService,
-        properties = properties,
-        ioDispatcher = ioDispatcher
+        properties = properties
     )
 
     private val sampleCompany = CompanyDto(

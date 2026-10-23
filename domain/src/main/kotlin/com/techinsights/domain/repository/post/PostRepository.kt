@@ -3,12 +3,16 @@ package com.techinsights.domain.repository.post
 import com.techinsights.domain.dto.category.CategorySummaryDto
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.enums.Category
+import com.techinsights.domain.enums.PostSortType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import java.time.LocalDateTime
 
 interface PostRepository {
+  /** Inserts NEW posts only; throws if an id already exists. Updates use targeted methods such as [updateSummaryResults]. */
   fun saveAll(posts: List<PostDto>): List<PostDto>
+  fun updateSummaryResults(posts: List<PostDto>)
+  fun insertAllIgnoringDuplicates(posts: List<PostDto>): Int
   fun findAllByUrlIn(urls: List<String>): List<PostDto>
   fun findAllByIdIn(ids: List<String>): List<PostDto>
   fun getPostById(id: String): PostDto
@@ -20,10 +24,11 @@ interface PostRepository {
   fun findTopViewedPosts(limit: Long): List<PostDto>
   fun getCategoryStatistics(): List<CategorySummaryDto>
   fun getAllPostSummary(): CategorySummaryDto
-  fun getAllPosts(pageable: Pageable, companyId: String?): Page<PostDto>
-  fun getPostsByCategory(pageable: Pageable, category: Category, companyId: String?): Page<PostDto>
+  fun getAllPosts(pageable: Pageable, companyId: String?, sort: PostSortType): Page<PostDto>
+  fun getPostsByCategory(pageable: Pageable, category: Category, companyId: String?, sort: PostSortType): Page<PostDto>
   fun updateEmbeddingStatusBulk(postIds: List<String>): Long
   fun incrementSummaryFailureCount(postId: String)
+  fun incrementViewCount(postId: Long)
   fun incrementLikeCount(postId: Long)
   fun decrementLikeCount(postId: Long)
   fun getLikeCount(postId: Long): Long

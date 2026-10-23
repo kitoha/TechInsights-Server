@@ -102,4 +102,55 @@ class GithubBookmarkServiceTest : FunSpec({
         result shouldBe 12L
         verify(exactly = 1) { githubBookmarkRepository.countByUserId(1L) }
     }
+
+    test("addBookmark - 익명 유저 요청 시 UnauthorizedException 발생") {
+        shouldThrow<UnauthorizedException> { service.addBookmark(repoId, anonymousUser) }
+        verify(exactly = 0) { githubRepositoryRepository.findById(any()) }
+    }
+
+    test("addBookmark - 존재하지 않는 레포지토리면 GithubRepositoryNotFoundException 발생") {
+        every { githubRepositoryRepository.findById(repoIdLong) } returns null
+
+        shouldThrow<GithubRepositoryNotFoundException> { service.addBookmark(repoId, authenticatedUser) }
+    }
+
+    test("addBookmark - 북마크가 없으면 저장한다") {
+        every { githubRepositoryRepository.findById(repoIdLong) } returns mockk()
+        every { githubBookmarkRepository.findByRepoIdAndUserId(repoIdLong, 1L) } returns null
+        every { githubBookmarkSaveHelper.saveIfAbsent(any()) } returns true
+
+        service.addBookmark(repoId, authenticatedUser)
+
+        verify(exactly = 1) { githubBookmarkSaveHelper.saveIfAbsent(any()) }
+    }
+
+    test("addBookmark - 이미 북마크된 경우 아무것도 하지 않는다 (멱등)") {
+        every { githubRepositoryRepository.findById(repoIdLong) } returns mockk()
+        every { githubBookmarkRepository.findByRepoIdAndUserId(repoIdLong, 1L) } returns
+            GithubBookmark(Tsid.generateLong(), repoIdLong, 1L)
+
+        service.addBookmark(repoId, authenticatedUser)
+
+        verify(exactly = 0) { githubBookmarkSaveHelper.saveIfAbsent(any()) }
+        verify(exactly = 0) { githubBookmarkRepository.deleteByRepoIdAndUserId(any(), any()) }
+    }
+
+    test("removeBookmark - 익명 유저 요청 시 UnauthorizedException 발생") {
+        shouldThrow<UnauthorizedException> { service.removeBookmark(repoId, anonymousUser) }
+    }
+
+    test("removeBookmark - 존재하지 않는 레포지토리면 GithubRepositoryNotFoundException 발생") {
+        every { githubRepositoryRepository.findById(repoIdLong) } returns null
+
+        shouldThrow<GithubRepositoryNotFoundException> { service.removeBookmark(repoId, authenticatedUser) }
+    }
+
+    test("removeBookmark - 북마크 유무와 관계없이 삭제를 시도한다 (멱등)") {
+        every { githubRepositoryRepository.findById(repoIdLong) } returns mockk()
+        every { githubBookmarkRepository.deleteByRepoIdAndUserId(repoIdLong, 1L) } returns 0L
+
+        service.removeBookmark(repoId, authenticatedUser)
+
+        verify(exactly = 1) { githubBookmarkRepository.deleteByRepoIdAndUserId(repoIdLong, 1L) }
+    }
 })

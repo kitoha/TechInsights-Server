@@ -6,7 +6,6 @@ import com.techinsights.domain.enums.PostSortType
 import com.techinsights.domain.repository.post.PostRepository
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
-import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -23,15 +22,11 @@ class PostService(
     category: Category,
     companyId: String?
   ): Page<PostDto> {
-    val sortSpec = when (sort) {
-      PostSortType.RECENT -> Sort.by(Sort.Direction.DESC, "publishedAt")
-      PostSortType.POPULAR -> Sort.by(Sort.Direction.DESC, "viewCount")
-    }
-    val pageable = PageRequest.of(page, size, sortSpec)
+    val pageable = PageRequest.of(page, size)
     return if (category == Category.All) {
-      postRepository.getAllPosts(pageable, companyId)
+      postRepository.getAllPosts(pageable, companyId, sort)
     } else {
-      postRepository.getPostsByCategory(pageable, category, companyId)
+      postRepository.getPostsByCategory(pageable, category, companyId, sort)
     }
   }
 
