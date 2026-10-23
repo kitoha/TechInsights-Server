@@ -75,7 +75,8 @@ web-client:
 
 spring:
   flyway:
-    enabled: false
+    enabled: true
+    locations: classpath:db/migration
   datasource:
     hikari:
       maximum-pool-size: 8
