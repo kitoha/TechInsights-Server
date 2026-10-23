@@ -14,6 +14,8 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
+import org.jsoup.nodes.Document
+import org.jsoup.nodes.Element
 import org.springframework.web.reactive.function.client.WebClient
 import java.time.LocalDateTime
 
@@ -88,8 +90,8 @@ class FeedParserTest : FunSpec({
     every { feedTypeResolver.resolve(any()) } returns strategy
     every { dateParser.parse(any()) } returns LocalDateTime.now()
     every { contentExtractor.extract(any(), any()) } returns "Full content"
-    every { thumbnailExtractor.extract(any<org.jsoup.nodes.Element>()) } returns null
-    every { thumbnailExtractor.extract(any<org.jsoup.nodes.Document>()) } returns null
+    every { thumbnailExtractor.extract(any<Element>()) } returns null
+    every { thumbnailExtractor.extract(any<Document>()) } returns null
 
     val posts = parser.parseList(companyDto, rssXml)
 
@@ -130,7 +132,7 @@ class FeedParserTest : FunSpec({
     every { feedTypeResolver.resolve(any()) } returns strategy
     every { dateParser.parse(any()) } returns LocalDateTime.now()
     every { contentExtractor.extract(any(), any()) } returns "Content"
-    every { thumbnailExtractor.extract(any<org.jsoup.nodes.Element>()) } returns null
+    every { thumbnailExtractor.extract(any<Element>()) } returns null
 
     val posts = parser.parseList(companyDto, rssXml)
 
@@ -181,7 +183,7 @@ class FeedParserTest : FunSpec({
     every { feedTypeResolver.resolve(any()) } returns strategy
     every { dateParser.parse(any()) } returns LocalDateTime.now()
     every { contentExtractor.extract(any(), any()) } returns "Content\u0000"
-    every { thumbnailExtractor.extract(any<org.jsoup.nodes.Element>()) } returns null
+    every { thumbnailExtractor.extract(any<Element>()) } returns null
 
     val posts = parser.parseList(companyDto, rssXml)
 

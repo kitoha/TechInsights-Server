@@ -2,6 +2,7 @@ package com.techinsights.api.aid
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import java.time.Duration
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseCookie
 import org.springframework.stereotype.Service
@@ -20,7 +21,7 @@ class AidServiceImpl(private val policy: CookiePolicy) : AidService {
       .httpOnly(true)
       .secure(policy.secure(req, p))
       .path("/")
-      .maxAge(java.time.Duration.ofDays(p.cookie.ttlDays))
+      .maxAge(Duration.ofDays(p.cookie.ttlDays))
       .sameSite(policy.sameSite(req, p))
     p.cookie.domain?.let(builder::domain)
     res.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString())

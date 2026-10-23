@@ -7,9 +7,11 @@ import com.techinsights.domain.utils.Tsid
 import jakarta.persistence.*
 import org.hibernate.annotations.BatchSize
 import java.time.LocalDateTime
+import org.hibernate.annotations.SQLRestriction
 
 @Entity
 @Table(name = "posts")
+@SQLRestriction("deleted_at IS NULL")
 class Post(
   @Id
   val id: Long,
@@ -17,7 +19,7 @@ class Post(
   val title: String,
   @Column(name = "preview", columnDefinition = "TEXT")
   var preview: String?,
-  @Column(name = "url", length = 1000)
+  @Column(name = "url", length = 2048)
   val url: String,
   @Column(name = "content")
   val content: String,

@@ -38,19 +38,20 @@ class FlatteningPostWriterTest : FunSpec({
         )
         val chunk = Chunk(listOf(posts))
 
-        every { postRepository.saveAll(any<List<PostDto>>()) } returns posts
+        every { postRepository.updateSummaryResults(any<List<PostDto>>()) } just Runs
 
         // when
         writer.write(chunk)
 
         // then
         verify(exactly = 1) {
-            postRepository.saveAll(match { list ->
+            postRepository.updateSummaryResults(match { list ->
                 list.size == 2 && list.all { it.isSummary }
             })
         }
+        verify(exactly = 0) { postRepository.saveAll(any()) }
         verify(exactly = 1) {
-            companyViewCountUpdater.incrementPostCount("company-1", 1)
+            companyViewCountUpdater.incrementPostCount("company-1", 2)
         }
     }
 
@@ -62,7 +63,7 @@ class FlatteningPostWriterTest : FunSpec({
         writer.write(chunk)
 
         // then
-        verify(exactly = 0) { postRepository.saveAll(any()) }
+        verify(exactly = 0) { postRepository.updateSummaryResults(any()) }
         verify(exactly = 0) { companyViewCountUpdater.incrementPostCount(any(), any()) }
     }
 
@@ -75,14 +76,14 @@ class FlatteningPostWriterTest : FunSpec({
         )
         val chunk = Chunk(listOf(batch1, batch2))
 
-        every { postRepository.saveAll(any<List<PostDto>>()) } returns (batch1 + batch2)
+        every { postRepository.updateSummaryResults(any<List<PostDto>>()) } just Runs
 
         // when
         writer.write(chunk)
 
         // then
         verify(exactly = 1) {
-            postRepository.saveAll(match { it.size == 3 })
+            postRepository.updateSummaryResults(match { it.size == 3 })
         }
     }
 
@@ -95,14 +96,14 @@ class FlatteningPostWriterTest : FunSpec({
         )
         val chunk = Chunk(listOf(posts))
 
-        every { postRepository.saveAll(any<List<PostDto>>()) } returns listOf(posts[0], posts[2])
+        every { postRepository.updateSummaryResults(any<List<PostDto>>()) } just Runs
 
         // when
         writer.write(chunk)
 
         // then
         verify(exactly = 1) {
-            postRepository.saveAll(match { it.size == 2 })
+            postRepository.updateSummaryResults(match { it.size == 2 })
         }
     }
 
@@ -118,11 +119,11 @@ class FlatteningPostWriterTest : FunSpec({
         writer.write(chunk)
 
         // then
-        verify(exactly = 0) { postRepository.saveAll(any()) }
+        verify(exactly = 0) { postRepository.updateSummaryResults(any()) }
         verify(exactly = 0) { companyViewCountUpdater.incrementPostCount(any(), any()) }
     }
 
-    test("write should update company count for each unique company") {
+    test("write should increment each company by its real number of summarized posts") {
         // given
         val company1 = CompanyDto("company-1", "Company 1", "https://company1.com", "")
         val company2 = CompanyDto("company-2", "Company 2", "https://company2.com", "")
@@ -134,13 +135,13 @@ class FlatteningPostWriterTest : FunSpec({
         )
         val chunk = Chunk(listOf(posts))
 
-        every { postRepository.saveAll(any<List<PostDto>>()) } returns posts
+        every { postRepository.updateSummaryResults(any<List<PostDto>>()) } just Runs
 
         // when
         writer.write(chunk)
 
         // then
-        verify(exactly = 1) { companyViewCountUpdater.incrementPostCount("company-1", 1) }
+        verify(exactly = 1) { companyViewCountUpdater.incrementPostCount("company-1", 2) }
         verify(exactly = 1) { companyViewCountUpdater.incrementPostCount("company-2", 1) }
     }
 
@@ -149,12 +150,12 @@ class FlatteningPostWriterTest : FunSpec({
         val posts = listOf(createPostDto("1", "Title", isSummary = true))
         val chunk = Chunk(listOf(posts))
 
-        every { postRepository.saveAll(any<List<PostDto>>()) } throws RuntimeException("DB Error")
+        every { postRepository.updateSummaryResults(any<List<PostDto>>()) } throws RuntimeException("DB Error")
 
         // when / then
         val exception = runCatching { writer.write(chunk) }.exceptionOrNull()
         exception.shouldBeInstanceOf<RuntimeException>()
-        verify(exactly = 1) { postRepository.saveAll(any()) }
+        verify(exactly = 1) { postRepository.updateSummaryResults(any()) }
     }
 
     test("write should handle multiple batches with different sizes") {
@@ -164,14 +165,14 @@ class FlatteningPostWriterTest : FunSpec({
         val batch3 = listOf(createPostDto("9", "Title 9", isSummary = true))
         val chunk = Chunk(listOf(batch1, batch2, batch3))
 
-        every { postRepository.saveAll(any<List<PostDto>>()) } returns (batch1 + batch2 + batch3)
+        every { postRepository.updateSummaryResults(any<List<PostDto>>()) } just Runs
 
         // when
         writer.write(chunk)
 
         // then
         verify(exactly = 1) {
-            postRepository.saveAll(match { it.size == 9 })
+            postRepository.updateSummaryResults(match { it.size == 9 })
         }
     }
 
@@ -187,14 +188,14 @@ class FlatteningPostWriterTest : FunSpec({
         val chunk = Chunk(listOf(posts))
 
         val summarizedPosts = posts.filter { it.isSummary }
-        every { postRepository.saveAll(any<List<PostDto>>()) } returns summarizedPosts
+        every { postRepository.updateSummaryResults(any<List<PostDto>>()) } just Runs
 
         // when
         writer.write(chunk)
 
         // then
         verify(exactly = 1) {
-            postRepository.saveAll(match { list ->
+            postRepository.updateSummaryResults(match { list ->
                 list.size == 3 &&
                 list.map { it.id } == listOf("1", "3", "5")
             })
@@ -208,17 +209,17 @@ class FlatteningPostWriterTest : FunSpec({
         }
         val chunk = Chunk(listOf(posts))
 
-        every { postRepository.saveAll(any<List<PostDto>>()) } returns posts
+        every { postRepository.updateSummaryResults(any<List<PostDto>>()) } just Runs
 
         // when
         writer.write(chunk)
 
         // then
         verify(exactly = 1) {
-            postRepository.saveAll(match { it.size == 10 })
+            postRepository.updateSummaryResults(match { it.size == 10 })
         }
         verify(exactly = 1) {
-            companyViewCountUpdater.incrementPostCount("company-1", 1)
+            companyViewCountUpdater.incrementPostCount("company-1", 10)
         }
     }
 
@@ -233,7 +234,7 @@ class FlatteningPostWriterTest : FunSpec({
         )
         val chunk = Chunk(listOf(posts))
 
-        every { postRepository.saveAll(any<List<PostDto>>()) } returns posts
+        every { postRepository.updateSummaryResults(any<List<PostDto>>()) } just Runs
         every { companyViewCountUpdater.incrementPostCount("company-1", 1) } throws RuntimeException("Update failed")
         every { companyViewCountUpdater.incrementPostCount("company-2", 1) } just Runs
 
@@ -249,14 +250,14 @@ class FlatteningPostWriterTest : FunSpec({
         val batch3 = emptyList<PostDto>()
         val chunk = Chunk(listOf(batch1, batch2, batch3))
 
-        every { postRepository.saveAll(any<List<PostDto>>()) } returns batch2
+        every { postRepository.updateSummaryResults(any<List<PostDto>>()) } just Runs
 
         // when
         writer.write(chunk)
 
         // then
         verify(exactly = 1) {
-            postRepository.saveAll(match { it.size == 1 })
+            postRepository.updateSummaryResults(match { it.size == 1 })
         }
     }
 
@@ -272,7 +273,7 @@ class FlatteningPostWriterTest : FunSpec({
         val chunk = Chunk(listOf(listOf(originalPost)))
 
         val capturedPosts = slot<List<PostDto>>()
-        every { postRepository.saveAll(capture(capturedPosts)) } returns listOf(originalPost)
+        every { postRepository.updateSummaryResults(capture(capturedPosts)) } just Runs
 
         // when
         writer.write(chunk)

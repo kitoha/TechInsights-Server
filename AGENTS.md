@@ -53,7 +53,9 @@ Requires a `.env` file at the project root with `DB_PASSWORD` and other secrets.
 
 - All tests use **Kotest `FunSpec`** style. New tests must follow this style.
 - Use **Mockk** for mocking (`mockk<T>()`, `every { } returns`, `verify { }`).
-- Tests are fully mocked — no database required to run unit tests.
+- Services and domain logic: Kotest + Mockk unit tests; mock repositories, not the database.
+- Repositories (QueryDSL, native SQL) and migrations: test against real PostgreSQL + pgvector with Testcontainers. Extend `RepositoryTestSpec` (`domain/src/test/.../support`); never mock `JPAQueryFactory` / `JPAQuery`.
+- Docker must be running for `./gradlew test`.
 - Coverage exclusions (enforced by Jacoco + SonarCloud): `config/**`, `dto/**`, `entity/**`, `*Application*.kt`.
 
 ## Database Migrations

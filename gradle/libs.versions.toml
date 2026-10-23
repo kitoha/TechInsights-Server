@@ -20,6 +20,7 @@ caffeine = "3.1.8"
 jsoup = "1.17.2"
 logstashLogbackEncoder = "8.0"
 jjwt = "0.12.6"
+testcontainers = "1.21.4"
 
 [libraries]
 # Spring Boot
@@ -31,6 +32,7 @@ spring-boot-starter-batch = { module = "org.springframework.boot:spring-boot-sta
 spring-boot-starter-webflux = { module = "org.springframework.boot:spring-boot-starter-webflux" }
 spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
+spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers" }
 spring-boot-starter-oauth2-client = { module = "org.springframework.boot:spring-boot-starter-oauth2-client" }
 
 # Monitoring
@@ -79,6 +81,7 @@ kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5", version.ref 
 kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
 kotest-property = { module = "io.kotest:kotest-property", version.ref = "kotest" }
 kotest-extensions-spring = { module = "io.kotest.extensions:kotest-extensions-spring", version.ref = "kotestExtensions" }
+testcontainers-postgresql = { module = "org.testcontainers:postgresql" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 spring-security-test = { module = "org.springframework.security:spring-security-test" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }

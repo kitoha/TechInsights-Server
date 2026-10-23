@@ -6,9 +6,11 @@ import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.time.LocalDate
+import org.hibernate.annotations.SQLRestriction
 
 @Entity
 @Table(name = "post_view")
+@SQLRestriction("deleted_at IS NULL")
 class PostView (
   @Id
   val id: Long,

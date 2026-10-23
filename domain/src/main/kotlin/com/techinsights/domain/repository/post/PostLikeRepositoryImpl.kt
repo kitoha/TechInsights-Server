@@ -25,8 +25,8 @@ class PostLikeRepositoryImpl(
         return postLikeJpaRepository.findByPostIdAndIpAddress(postId, ipAddress)
     }
 
-    override fun findAnonymousByPostIdAndIpAddress(postId: Long, ipAddress: String): PostLike? {
-        return postLikeJpaRepository.findByPostIdAndIpAddressAndUserIdIsNull(postId, ipAddress)
+    override fun findAnonymousByPostIdAndAnonymousId(postId: Long, anonymousId: String): PostLike? {
+        return postLikeJpaRepository.findByPostIdAndAnonymousIdAndUserIdIsNull(postId, anonymousId)
     }
 
     override fun deleteByPostIdAndUserId(postId: Long, userId: Long): Long {
@@ -37,8 +37,8 @@ class PostLikeRepositoryImpl(
         return postLikeJpaRepository.deleteByPostIdAndIpAddress(postId, ipAddress)
     }
 
-    override fun deleteAnonymousByPostIdAndIpAddress(postId: Long, ipAddress: String): Long {
-        return postLikeJpaRepository.deleteByPostIdAndIpAddressAndUserIdIsNull(postId, ipAddress)
+    override fun deleteAnonymousByPostIdAndAnonymousId(postId: Long, anonymousId: String): Long {
+        return postLikeJpaRepository.deleteByPostIdAndAnonymousIdAndUserIdIsNull(postId, anonymousId)
     }
 
     override fun findAllByUserId(userId: Long, pageable: Pageable): Page<PostLike> {

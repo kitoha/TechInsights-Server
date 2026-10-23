@@ -3,12 +3,14 @@ package com.techinsights.domain.entity.user
 import com.techinsights.domain.entity.BaseEntity
 import jakarta.persistence.*
 import java.time.Instant
+import org.hibernate.annotations.SQLRestriction
 
 @Entity
 @Table(name = "refresh_tokens", indexes = [
     Index(name = "idx_rt_hash", columnList = "token_hash", unique = true),
     Index(name = "idx_rt_user_device", columnList = "user_id, device_id")
 ])
+@SQLRestriction("deleted_at IS NULL")
 class RefreshToken(
     @Id
     val id: Long,
@@ -16,11 +18,11 @@ class RefreshToken(
     @Column(name = "user_id", nullable = false)
     val userId: Long,
 
+    @Column(name = "family_id", nullable = false, updatable = false)
+    val familyId: Long,
+
     @Column(name = "token_hash", nullable = false, columnDefinition = "TEXT")
     var tokenHash: String,
-
-    @Column(name = "previous_token_hash", nullable = true, columnDefinition = "TEXT")
-    var previousTokenHash: String? = null,
 
     @Column(name = "device_id", nullable = true, columnDefinition = "TEXT")
     val deviceId: String? = null,
@@ -29,17 +31,9 @@ class RefreshToken(
     var expiryAt: Instant
 ) : BaseEntity() {
 
-    fun updateToken(newHash: String, newExpiry: Instant) {
-        this.previousTokenHash = this.tokenHash
+    fun rotateTo(newHash: String, newExpiry: Instant) {
         this.tokenHash = newHash
         this.expiryAt = newExpiry
-    }
-
-    fun isRecentlyRotated(leewaySeconds: Long = 30): Boolean {
-        val lastUpdated = updatedAt ?: return false
-        val zoneId = java.time.ZoneId.systemDefault()
-        val updatedInstant = lastUpdated.atZone(zoneId).toInstant()
-        return updatedInstant.isAfter(java.time.Instant.now().minusSeconds(leewaySeconds))
     }
 
     fun isExpired(): Boolean = Instant.now().isAfter(expiryAt)

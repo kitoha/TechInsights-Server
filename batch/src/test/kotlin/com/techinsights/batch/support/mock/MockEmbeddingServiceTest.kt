@@ -1,14 +1,13 @@
 package com.techinsights.batch.support.mock
 
 import com.techinsights.domain.dto.embedding.EmbeddingRequest
-import com.techinsights.domain.enums.GeminiModelType
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 
 class MockEmbeddingServiceTest : FunSpec({
 
-    val mockEmbeddingService = MockEmbeddingService()
+    val mockEmbeddingService = MockEmbeddingService(apiResponseTimeMs = 0, perItemResponseTimeMs = 0)
 
     test("generateEmbedding should return 768 dimension vector") {
         // given
@@ -17,10 +16,9 @@ class MockEmbeddingServiceTest : FunSpec({
             categories = listOf("AI", "Backend"),
             content = "Test content for embedding generation"
         )
-        val modelType = GeminiModelType.GEMINI_EMBEDDING
 
         // when
-        val result = mockEmbeddingService.generateEmbedding(request, modelType)
+        val result = mockEmbeddingService.generateEmbedding(request)
 
         // then
         result.size shouldBe 768
@@ -33,10 +31,9 @@ class MockEmbeddingServiceTest : FunSpec({
             categories = listOf("Frontend", "DevOps"),
             content = "Another test content"
         )
-        val modelType = GeminiModelType.GEMINI_EMBEDDING
 
         // when
-        val result = mockEmbeddingService.generateEmbedding(request, modelType)
+        val result = mockEmbeddingService.generateEmbedding(request)
 
         // then
         result.forEach { value ->
@@ -53,8 +50,8 @@ class MockEmbeddingServiceTest : FunSpec({
         )
 
         // when
-        val result1 = mockEmbeddingService.generateEmbedding(request, GeminiModelType.GEMINI_EMBEDDING)
-        val result2 = mockEmbeddingService.generateEmbedding(request, GeminiModelType.GEMINI_EMBEDDING)
+        val result1 = mockEmbeddingService.generateEmbedding(request)
+        val result2 = mockEmbeddingService.generateEmbedding(request)
 
         // then
         result1.size shouldBe 768
@@ -70,10 +67,9 @@ class MockEmbeddingServiceTest : FunSpec({
             categories = listOf("Test"),
             content = ""
         )
-        val modelType = GeminiModelType.GEMINI_EMBEDDING
 
         // when
-        val result = mockEmbeddingService.generateEmbedding(request, modelType)
+        val result = mockEmbeddingService.generateEmbedding(request)
 
         // then
         result.size shouldBe 768
@@ -87,10 +83,9 @@ class MockEmbeddingServiceTest : FunSpec({
             categories = listOf("Performance"),
             content = longContent
         )
-        val modelType = GeminiModelType.GEMINI_EMBEDDING
 
         // when
-        val result = mockEmbeddingService.generateEmbedding(request, modelType)
+        val result = mockEmbeddingService.generateEmbedding(request)
 
         // then
         result.size shouldBe 768
@@ -103,10 +98,9 @@ class MockEmbeddingServiceTest : FunSpec({
             categories = listOf("Test"),
             content = "Test"
         )
-        val modelType = GeminiModelType.GEMINI_EMBEDDING
 
         // when
-        val result = mockEmbeddingService.generateEmbedding(request, modelType)
+        val result = mockEmbeddingService.generateEmbedding(request)
 
         // then
         result[0] shouldBe 0.0f
@@ -123,7 +117,7 @@ class MockEmbeddingServiceTest : FunSpec({
             )
 
             // when
-            val results = mockEmbeddingService.generateEmbeddingBatch(requests, GeminiModelType.GEMINI_EMBEDDING)
+            val results = mockEmbeddingService.generateEmbeddingBatch(requests)
 
             // then
             results.size shouldBe 2
@@ -137,7 +131,7 @@ class MockEmbeddingServiceTest : FunSpec({
             )
 
             // when
-            val results = mockEmbeddingService.generateEmbeddingBatch(requests, GeminiModelType.GEMINI_EMBEDDING)
+            val results = mockEmbeddingService.generateEmbeddingBatch(requests)
 
             // then
             results.forEach { result ->

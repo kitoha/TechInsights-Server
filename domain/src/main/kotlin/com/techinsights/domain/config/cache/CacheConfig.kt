@@ -31,11 +31,20 @@ class CacheConfig {
                 .softValues()
                 .build(),
         )
+        manager.registerCustomCache(
+            QUERY_EMBEDDING,
+            Caffeine.newBuilder()
+                .expireAfterWrite(Duration.ofHours(1))
+                .maximumSize(500)
+                .softValues()
+                .build(),
+        )
         return manager
     }
 
     companion object {
         const val GITHUB_TRENDING = "githubTrending"
         const val GITHUB_SEARCH = "githubSearch"
+        const val QUERY_EMBEDDING = "queryEmbedding"
     }
 }

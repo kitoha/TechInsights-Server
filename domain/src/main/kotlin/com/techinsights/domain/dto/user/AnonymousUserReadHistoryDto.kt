@@ -1,6 +1,7 @@
 package com.techinsights.domain.dto.user
 
 import com.techinsights.domain.entity.user.AnonymousUserReadHistory
+import java.time.ZoneId
 
 class AnonymousUserReadHistoryDto(
   val id: Long?,
@@ -16,7 +17,7 @@ class AnonymousUserReadHistoryDto(
         id = entity.id,
         anonymousId = entity.anonymousId,
         postId = entity.postId.toString(),
-        readAt = entity.readAt.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        readAt = entity.readAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
       )
     }
   }

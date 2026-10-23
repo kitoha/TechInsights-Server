@@ -2,9 +2,11 @@ package com.techinsights.domain.entity.company
 
 import com.techinsights.domain.entity.BaseEntity
 import jakarta.persistence.*
+import org.hibernate.annotations.SQLRestriction
 
 @Entity
 @Table(name = "company", uniqueConstraints = [UniqueConstraint(columnNames = ["name"])])
+@SQLRestriction("deleted_at IS NULL")
 class Company(
   @Id
   val id : Long,

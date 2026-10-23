@@ -3,7 +3,7 @@ package com.techinsights.batch.github.community.analyze.writer
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.techinsights.domain.dto.community.CommunityAnalysisInput
 import com.techinsights.domain.dto.community.CommunityPost
-import com.techinsights.domain.service.gemini.CommunityAnalyzer
+import com.techinsights.domain.service.summary.CommunityAnalyzer
 import com.techinsights.domain.dto.community.CommunityAnalysisResult
 import kotlinx.coroutines.flow.toCollection
 import kotlinx.coroutines.runBlocking

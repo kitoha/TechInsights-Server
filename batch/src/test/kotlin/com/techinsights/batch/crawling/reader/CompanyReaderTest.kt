@@ -7,6 +7,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import java.util.Collections
 
 class CompanyReaderTest : FunSpec({
 
@@ -46,7 +47,7 @@ class CompanyReaderTest : FunSpec({
         
         every { companyRepository.findAll() } returns companies
 
-        val results = java.util.Collections.synchronizedList(mutableListOf<CompanyDto>())
+        val results = Collections.synchronizedList(mutableListOf<CompanyDto>())
         val threads = (1..10).map {
             Thread {
                 while (true) {

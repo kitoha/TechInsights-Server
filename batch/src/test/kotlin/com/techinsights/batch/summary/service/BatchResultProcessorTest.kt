@@ -1,10 +1,11 @@
 package com.techinsights.batch.summary.service
 
+import com.techinsights.batch.summary.dto.BatchFailure
 import com.techinsights.batch.summary.dto.BatchRequest
 import com.techinsights.batch.summary.dto.BatchResult
 import com.techinsights.batch.summary.service.SummaryResultValidator.ValidationResult
-import com.techinsights.domain.dto.gemini.BatchSummaryResponse
-import com.techinsights.domain.dto.gemini.SummaryResultWithId
+import com.techinsights.domain.dto.summary.BatchSummaryResponse
+import com.techinsights.domain.dto.summary.SummaryResultWithId
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.enums.ErrorType
 import io.kotest.core.spec.style.FunSpec
@@ -40,7 +41,7 @@ class BatchResultProcessorTest : FunSpec({
         
         every { assembler.assembleResult(any(), any(), any(), any()) } answers {
             val successList = arg<List<PostDto>>(1)
-            val failureList = arg<List<com.techinsights.batch.summary.dto.BatchFailure>>(2)
+            val failureList = arg<List<BatchFailure>>(2)
             
             mockk<BatchResult> {
                 every { successes } returns successList
@@ -66,7 +67,7 @@ class BatchResultProcessorTest : FunSpec({
         every { validator.validate("1", any(), any(), any()) } returns ValidationResult(false, listOf("Invalid content"))
         
         every { assembler.assembleResult(any(), any(), any(), any()) } answers {
-            val failureList = arg<List<com.techinsights.batch.summary.dto.BatchFailure>>(2)
+            val failureList = arg<List<BatchFailure>>(2)
             mockk { every { failures } returns failureList }
         }
 
