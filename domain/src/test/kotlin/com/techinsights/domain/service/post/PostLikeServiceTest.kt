@@ -83,14 +83,18 @@ class PostLikeServiceTest : FunSpec({
         val requester = Requester.Anonymous(anonymousId, ipAddress)
 
         every { postRepository.existsById(any()) } returns true
-        every { postLikeRepository.findAnonymousByPostIdAndIpAddress(postId, ipAddress) } returns null
+        every { postLikeRepository.findAnonymousByPostIdAndAnonymousId(postId, anonymousId) } returns null
         every { postLikeSaveHelper.saveIfAbsent(any()) } returns true
         every { postRepository.incrementLikeCount(postId) } returns Unit
 
         val result = postLikeService.toggleLike(postIdStr, requester)
 
         result shouldBe true
-        verify(exactly = 1) { postLikeSaveHelper.saveIfAbsent(any()) }
+        verify(exactly = 1) {
+            postLikeSaveHelper.saveIfAbsent(
+                match { it.anonymousId == anonymousId && it.userId == null && it.ipAddress == ipAddress }
+            )
+        }
         verify(exactly = 1) { postRepository.incrementLikeCount(postId) }
     }
 
@@ -103,14 +107,14 @@ class PostLikeServiceTest : FunSpec({
         val existingLike = mockk<PostLike>()
 
         every { postRepository.existsById(any()) } returns true
-        every { postLikeRepository.findAnonymousByPostIdAndIpAddress(postId, ipAddress) } returns existingLike
-        every { postLikeRepository.deleteAnonymousByPostIdAndIpAddress(postId, ipAddress) } returns 1L
+        every { postLikeRepository.findAnonymousByPostIdAndAnonymousId(postId, anonymousId) } returns existingLike
+        every { postLikeRepository.deleteAnonymousByPostIdAndAnonymousId(postId, anonymousId) } returns 1L
         every { postRepository.decrementLikeCount(postId) } returns Unit
 
         val result = postLikeService.toggleLike(postIdStr, requester)
 
         result shouldBe false
-        verify(exactly = 1) { postLikeRepository.deleteAnonymousByPostIdAndIpAddress(postId, ipAddress) }
+        verify(exactly = 1) { postLikeRepository.deleteAnonymousByPostIdAndAnonymousId(postId, anonymousId) }
         verify(exactly = 1) { postRepository.decrementLikeCount(postId) }
     }
 
@@ -225,7 +229,7 @@ class PostLikeServiceTest : FunSpec({
 
         every { postRepository.existsById(any()) } returns true
         every { postRepository.getLikeCount(postId) } returns 5L
-        every { postLikeRepository.findAnonymousByPostIdAndIpAddress(postId, ipAddress) } returns existingLike
+        every { postLikeRepository.findAnonymousByPostIdAndAnonymousId(postId, anonymousId) } returns existingLike
 
         val result = postLikeService.getLikeStatus(postIdStr, requester)
 
@@ -242,7 +246,7 @@ class PostLikeServiceTest : FunSpec({
 
         every { postRepository.existsById(any()) } returns true
         every { postRepository.getLikeCount(postId) } returns 5L
-        every { postLikeRepository.findAnonymousByPostIdAndIpAddress(postId, ipAddress) } returns null
+        every { postLikeRepository.findAnonymousByPostIdAndAnonymousId(postId, anonymousId) } returns null
 
         val result = postLikeService.getLikeStatus(postIdStr, requester)
 
