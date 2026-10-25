@@ -135,7 +135,7 @@ class GeminiBatchArticleSummarizerTest : FunSpec({
         val results = summarizer.summarizeBatch(articles, GeminiModelType.GEMINI_2_5_FLASH_LITE).toList()
 
         results shouldHaveSize 2
-        results.all { !it.success && it.errorType == ErrorType.RATE_LIMIT } shouldBe true
+        results.all { !it.success && it.errorType == ErrorType.QUOTA_EXHAUSTED } shouldBe true
         verify(exactly = 0) { circuitBreaker.executeCallable<Any>(any()) }
         verify(exactly = 0) { rateLimiter.acquirePermission() }
     }

@@ -94,7 +94,7 @@ class GeminiBatchArticleSummarizer(
         if (!dailyQuotaService.tryReserve(DailyQuota.BATCH_SUMMARY)) {
             log.warn("Daily Gemini quota exhausted for article summary. Articles: ${articles.map { it.id }}")
             articles.forEach { article ->
-                send(SummaryResultWithId(article.id, false, error = "Daily Gemini quota exhausted", errorType = ErrorType.RATE_LIMIT))
+                send(SummaryResultWithId(article.id, false, error = "Daily Gemini quota exhausted", errorType = ErrorType.QUOTA_EXHAUSTED))
             }
             return@channelFlow
         }

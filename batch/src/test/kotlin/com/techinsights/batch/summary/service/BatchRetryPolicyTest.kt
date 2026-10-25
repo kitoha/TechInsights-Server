@@ -37,4 +37,9 @@ class BatchRetryPolicyTest : FunSpec({
     test("calculateBackoffDelay should return correct delay for Timeout") {
         policy.calculateBackoffDelay(ErrorType.TIMEOUT, 0) shouldBe 200
     }
+
+    test("quota exhaustion is not retried") {
+        policy.isRetryableError(ErrorType.QUOTA_EXHAUSTED) shouldBe false
+        policy.shouldRetry(ErrorType.QUOTA_EXHAUSTED, 0) shouldBe false
+    }
 })
