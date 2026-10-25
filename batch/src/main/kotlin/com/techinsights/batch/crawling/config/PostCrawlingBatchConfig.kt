@@ -8,6 +8,7 @@ import com.techinsights.batch.common.listener.LoggingJobExecutionListener
 import com.techinsights.batch.crawling.processor.RawPostProcessor
 import com.techinsights.batch.crawling.reader.CompanyReader
 import com.techinsights.batch.crawling.writer.RawPostWriter
+import java.util.concurrent.ThreadPoolExecutor
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step
 import org.springframework.batch.core.job.builder.JobBuilder
@@ -53,7 +54,7 @@ class PostCrawlingBatchConfig (
           runnable.run()
         }
       }
-      setRejectedExecutionHandler(java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy())
+      setRejectedExecutionHandler(ThreadPoolExecutor.CallerRunsPolicy())
       initialize()
     }
   }

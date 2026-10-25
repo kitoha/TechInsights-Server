@@ -1,8 +1,10 @@
 package com.techinsights.batch.infrastructure.config
 
 import com.techinsights.batch.infrastructure.config.props.WebClientProperties
+import io.netty.channel.ChannelOption
 import io.netty.handler.timeout.ReadTimeoutHandler
 import io.netty.handler.timeout.WriteTimeoutHandler
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.client.reactive.ReactorClientHttpConnector
@@ -10,18 +12,19 @@ import org.springframework.web.reactive.function.client.ExchangeFilterFunction
 import org.springframework.web.reactive.function.client.ExchangeStrategies
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.WebClientResponseException
+import reactor.netty.http.client.HttpClient
 import reactor.util.retry.Retry
 import java.time.Duration
 
 @Configuration
-@org.springframework.boot.context.properties.EnableConfigurationProperties(WebClientProperties::class)
+@EnableConfigurationProperties(WebClientProperties::class)
 class WebConfig(
   private val properties: WebClientProperties
 ) {
   @Bean
   fun webClient(): WebClient {
-    val httpClient = reactor.netty.http.client.HttpClient.create()
-      .option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS, properties.connectTimeoutMillis)
+    val httpClient = HttpClient.create()
+      .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, properties.connectTimeoutMillis)
       .responseTimeout(Duration.ofSeconds(properties.responseTimeoutSeconds))
       .doOnConnected { conn ->
         conn.addHandlerLast(ReadTimeoutHandler(properties.readTimeoutSeconds.toInt()))

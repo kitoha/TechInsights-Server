@@ -1,5 +1,6 @@
 package com.techinsights.domain.infrastructure.gemini.embedding
 
+import com.google.genai.types.EmbedContentResponse
 import com.techinsights.domain.service.embedding.EmbeddingService
 import com.google.genai.Client
 import com.google.genai.types.EmbedContentConfig
@@ -165,7 +166,7 @@ class EmbeddingServiceImpl(
       .build()
   }
 
-  private fun extractEmbeddingVector(response: com.google.genai.types.EmbedContentResponse): List<Float> {
+  private fun extractEmbeddingVector(response: EmbedContentResponse): List<Float> {
     val embeddings = response.embeddings().orElse(emptyList())
     val first = embeddings.firstOrNull() ?: return emptyList()
     return first.values().orElse(emptyList())

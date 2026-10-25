@@ -2,6 +2,7 @@ package com.techinsights.domain.repository.post
 
 import com.querydsl.core.types.OrderSpecifier
 import com.querydsl.core.types.Projections
+import com.querydsl.core.types.dsl.BooleanExpression
 import java.time.LocalDateTime
 import com.querydsl.jpa.impl.JPAQueryFactory
 import com.techinsights.domain.dto.category.CategorySummaryDto
@@ -169,7 +170,7 @@ class PostRepositoryImpl(
 
   override fun findOldestNotSummarized(
     limit: Long,
-    lastPublishedAt: java.time.LocalDateTime?,
+    lastPublishedAt: LocalDateTime?,
     lastId: Long?
   ): List<PostDto> {
     val post = QPost.post
@@ -190,7 +191,7 @@ class PostRepositoryImpl(
 
   override fun findOldestSummarizedAndNotEmbedded(
     limit: Long,
-    lastPublishedAt: java.time.LocalDateTime?,
+    lastPublishedAt: LocalDateTime?,
     lastId: Long?
   ): List<PostDto> {
     val post = QPost.post
@@ -210,7 +211,7 @@ class PostRepositoryImpl(
 
   override fun findOldestSummarized(
     limit: Long,
-    lastPublishedAt: java.time.LocalDateTime?,
+    lastPublishedAt: LocalDateTime?,
     lastId: Long?
   ): List<PostDto> {
     val post = QPost.post
@@ -391,9 +392,9 @@ class PostRepositoryImpl(
 
   private fun buildCursorCondition(
     post: QPost,
-    lastPublishedAt: java.time.LocalDateTime?,
+    lastPublishedAt: LocalDateTime?,
     lastId: Long?
-  ): com.querydsl.core.types.dsl.BooleanExpression? {
+  ): BooleanExpression? {
     if (lastPublishedAt == null || lastId == null) {
       return null
     }

@@ -1,5 +1,6 @@
 package com.techinsights.batch.crawling.extract
 
+import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.springframework.stereotype.Component
 
@@ -11,7 +12,7 @@ class PictureSourceHtmlThumbnailExtractor : ThumbnailExtractorStrategy {
       .mapNotNull { it.attr("srcset").split(",").lastOrNull()?.trim()?.split(" ")?.firstOrNull() }
       .firstOrNull { it.isNotBlank() }
       ?.let { srcSet ->
-        org.jsoup.Jsoup.parse("<img src='$srcSet'/>", context.baseUri())
+        Jsoup.parse("<img src='$srcSet'/>", context.baseUri())
           .selectFirst("img")?.absUrl("src") ?: srcSet
       }
   }

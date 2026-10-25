@@ -5,6 +5,8 @@ import com.techinsights.batch.summary.dto.BatchRequest
 import com.techinsights.batch.summary.dto.BatchResult
 import com.techinsights.domain.dto.summary.ArticleInput
 import com.techinsights.domain.dto.summary.BatchSummaryResponse
+import com.techinsights.domain.dto.summary.SummaryResultWithId
+import com.techinsights.domain.enums.ErrorType
 import com.techinsights.domain.service.summary.BatchArticleSummarizer
 import io.github.resilience4j.circuitbreaker.CircuitBreaker
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
@@ -76,7 +78,7 @@ class AsyncBatchSummarizationService(
         return resultProcessor.createFailureResult(
             request,
             "Circuit breaker open - API unavailable",
-            com.techinsights.domain.enums.ErrorType.API_ERROR
+            ErrorType.API_ERROR
         )
     }
 
@@ -151,7 +153,7 @@ class AsyncBatchSummarizationService(
 
         val summaryFlow = batchSummarizer.summarizeBatch(inputs)
 
-        val results = mutableListOf<com.techinsights.domain.dto.summary.SummaryResultWithId>()
+        val results = mutableListOf<SummaryResultWithId>()
         summaryFlow.collect { result ->
             results.add(result)
         }
