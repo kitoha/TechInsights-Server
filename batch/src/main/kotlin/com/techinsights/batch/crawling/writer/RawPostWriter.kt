@@ -20,8 +20,8 @@ class RawPostWriter(
 
     try {
       val newPosts = chunk.items.flatten()
-        .distinctBy { it.url }
         .filter { it.content.isNotBlank() }
+        .distinctBy { it.url }
 
       if (newPosts.isNotEmpty()) {
         val insertedCount = postRepository.insertAllIgnoringDuplicates(newPosts)

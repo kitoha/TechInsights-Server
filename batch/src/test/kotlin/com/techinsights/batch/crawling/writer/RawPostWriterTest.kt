@@ -45,6 +45,17 @@ class RawPostWriterTest : FunSpec({
     captured.captured.map { it.id } shouldContainExactly listOf("1", "3")
   }
 
+  test("write should keep a valid duplicate when the first post with that url has blank content") {
+    val blankFirst = createPost("1", "https://a.com/same", content = " ")
+    val validSecond = createPost("2", "https://a.com/same")
+    val captured = slot<List<PostDto>>()
+    every { postRepository.insertAllIgnoringDuplicates(capture(captured)) } returns 1
+
+    writer.write(Chunk(listOf(listOf(blankFirst, validSecond))))
+
+    captured.captured.map { it.id } shouldContainExactly listOf("2")
+  }
+
   test("write should skip posts with blank content") {
     val blank = createPost("1", "https://a.com/1", content = " ")
     val valid = createPost("2", "https://a.com/2")
