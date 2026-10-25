@@ -5,6 +5,7 @@ import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.repository.post.PostEmbeddingRepository
 import com.techinsights.domain.repository.post.PostRepository
 import com.techinsights.domain.repository.user.AnonymousUserReadHistoryRepository
+import com.techinsights.domain.repository.user.UserReadHistoryRepository
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service
 class RecommendationService(
   private val postEmbeddingRepository: PostEmbeddingRepository,
   private val anonymousUserReadHistoryRepository: AnonymousUserReadHistoryRepository,
+  private val userReadHistoryRepository: UserReadHistoryRepository,
   private val postRepository: PostRepository
 ) {
 
@@ -22,17 +24,14 @@ class RecommendationService(
    */
   fun getRecommendationsForUser(requester: Requester, count: Long = 5): List<PostDto> {
 
-    val identifier = requester.identifier
-
     val pageRequest = PageRequest.of(0, 10)
-    
-    // TODO: If requester is Authenticated, we should use UserReadHistoryRepository
-    val recentReadHistory = anonymousUserReadHistoryRepository.getRecentReadHistory(
-      anonymousId = identifier,
-      pageable = pageRequest
-    )
 
-    val recentPostIds = recentReadHistory.map { it.postId }
+    val recentPostIds = when (requester) {
+      is Requester.Authenticated ->
+        userReadHistoryRepository.getRecentReadHistory(requester.userId, pageRequest).map { it.postId }
+      is Requester.Anonymous ->
+        anonymousUserReadHistoryRepository.getRecentReadHistory(requester.anonymousId, pageRequest).map { it.postId }
+    }
 
     if (recentPostIds.isEmpty()) {
       return postRepository.findTopViewedPosts(count)

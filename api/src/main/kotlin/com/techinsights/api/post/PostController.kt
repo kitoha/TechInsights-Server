@@ -69,8 +69,9 @@ class PostController(
 
     postViewService.recordView(postId, identifier, userAgent)
 
-    if (requester is Requester.Anonymous) {
-      postViewService.trackAnonymousPostRead(requester.identifier, postId)
+    when (requester) {
+      is Requester.Authenticated -> postViewService.trackUserPostRead(requester.userId, postId)
+      is Requester.Anonymous -> postViewService.trackAnonymousPostRead(requester.identifier, postId)
     }
 
     return ResponseEntity.ok().build()

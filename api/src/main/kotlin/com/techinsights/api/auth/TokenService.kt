@@ -26,11 +26,12 @@ class TokenService(
         
         val expiryAt = Instant.now().plus(authProperties.jwt.refreshTokenExpiration)
 
-        refreshTokenService.upsertToken(
+        refreshTokenService.startSession(
             userId = userId,
             deviceId = deviceId,
             tokenHash = refreshTokenHash,
-            expiryAt = expiryAt
+            expiryAt = expiryAt,
+            maxSessions = authProperties.jwt.maxSessionsPerUser
         )
         
         return TokenResponse(accessToken, refreshTokenString)
@@ -64,10 +65,8 @@ class TokenService(
             RefreshTokenRotationResult.Rotated -> TokenResponse(accessToken, newRefreshToken)
             RefreshTokenRotationResult.Expired -> throw ExpiredTokenException()
             RefreshTokenRotationResult.NotFound -> throw InvalidTokenException("유효하지 않은 토큰입니다.")
-            RefreshTokenRotationResult.ReuseDetected -> {
-                refreshTokenService.deleteAllByUserId(userId)
-                throw TokenTamperedException("재사용된 토큰이 감지되었습니다. 모든 세션이 로그아웃됩니다.")
-            }
+            RefreshTokenRotationResult.ReuseDetected ->
+                throw TokenTamperedException("재사용된 토큰이 감지되었습니다. 해당 세션이 로그아웃됩니다.")
         }
     }
 
