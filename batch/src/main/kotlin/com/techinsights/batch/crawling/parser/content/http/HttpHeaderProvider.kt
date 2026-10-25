@@ -1,5 +1,6 @@
 package com.techinsights.batch.crawling.parser.content.http
 
+import java.net.URI
 import org.springframework.stereotype.Component
 
 @Component
@@ -25,7 +26,7 @@ class HttpHeaderProvider {
 
     private fun extractBaseUrl(url: String): String {
         return try {
-            val uri = java.net.URI(url)
+            val uri = URI(url)
             "${uri.scheme}://${uri.host}"
         } catch (e: Exception) {
             "https://www.google.com" // Fallback safer referer

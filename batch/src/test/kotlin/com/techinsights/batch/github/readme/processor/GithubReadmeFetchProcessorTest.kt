@@ -8,6 +8,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldHaveLength
 import io.mockk.*
+import org.springframework.http.HttpHeaders
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import reactor.core.publisher.Mono
@@ -55,14 +56,14 @@ class GithubReadmeFetchProcessorTest : FunSpec({
     }
 
     test("404 응답 시 null을 반환한다") {
-        val error = Mono.error<String>(WebClientResponseException.create(404, "Not Found", org.springframework.http.HttpHeaders.EMPTY, ByteArray(0), null))
+        val error = Mono.error<String>(WebClientResponseException.create(404, "Not Found", HttpHeaders.EMPTY, ByteArray(0), null))
         val result = buildProcessor(error).process(createDto("owner/no-readme-repo"))
 
         result.shouldBeNull()
     }
 
     test("description이 있으면 README가 없어도 ArticleInput을 반환한다") {
-        val error = Mono.error<String>(WebClientResponseException.create(404, "Not Found", org.springframework.http.HttpHeaders.EMPTY, ByteArray(0), null))
+        val error = Mono.error<String>(WebClientResponseException.create(404, "Not Found", HttpHeaders.EMPTY, ByteArray(0), null))
         val result = buildProcessor(error).process(createDto("owner/no-readme-repo", description = "A great tool for developers"))
 
         result.shouldNotBeNull()
