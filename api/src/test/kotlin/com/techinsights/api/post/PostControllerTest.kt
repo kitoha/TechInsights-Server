@@ -4,6 +4,10 @@ import com.techinsights.api.aid.AidInterceptor
 import com.techinsights.api.aid.AidProperties
 import com.techinsights.api.auth.CustomUserDetails
 import com.techinsights.api.auth.RequesterResolver
+import com.techinsights.domain.dto.company.CompanyDto
+import com.techinsights.domain.dto.post.PostDto
+import com.techinsights.domain.enums.Category
+import com.techinsights.domain.enums.PostSortType
 import com.techinsights.domain.enums.UserRole
 import com.techinsights.domain.service.post.PostService
 import com.techinsights.domain.service.post.PostViewService
@@ -11,6 +15,9 @@ import com.techinsights.domain.utils.Tsid
 import io.kotest.core.spec.style.FunSpec
 import io.mockk.*
 import jakarta.servlet.http.Cookie
+import java.time.LocalDateTime
+import org.springframework.data.domain.PageImpl
+import org.springframework.http.MediaType
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.test.web.servlet.MockMvc
@@ -43,7 +50,7 @@ class PostControllerTest : FunSpec() {
     test("GET /api/v1/posts - should return paginated posts with default parameters") {
       // given
       val posts = listOf(createMockPostDto("1"), createMockPostDto("2"))
-      val page = org.springframework.data.domain.PageImpl(posts)
+      val page = PageImpl(posts)
 
       every {
         postService.getPosts(0, 10, any(), any(), null)
@@ -51,7 +58,7 @@ class PostControllerTest : FunSpec() {
 
       // when & then
       mockMvc.get("/api/v1/posts") {
-        accept = org.springframework.http.MediaType.APPLICATION_JSON
+        accept = MediaType.APPLICATION_JSON
       }.andExpect {
         status { isOk() }
       }
@@ -64,7 +71,7 @@ class PostControllerTest : FunSpec() {
     test("GET /api/v1/posts - should accept custom pagination parameters") {
       // given
       val posts = listOf(createMockPostDto("1"))
-      val page = org.springframework.data.domain.PageImpl(posts)
+      val page = PageImpl(posts)
 
       every {
         postService.getPosts(2, 20, any(), any(), null)
@@ -74,7 +81,7 @@ class PostControllerTest : FunSpec() {
       mockMvc.get("/api/v1/posts") {
         param("page", "2")
         param("size", "20")
-        accept = org.springframework.http.MediaType.APPLICATION_JSON
+        accept = MediaType.APPLICATION_JSON
       }.andExpect {
         status { isOk() }
       }
@@ -87,22 +94,22 @@ class PostControllerTest : FunSpec() {
     test("GET /api/v1/posts - should filter by category") {
       // given
       val posts = listOf(createMockPostDto("1"))
-      val page = org.springframework.data.domain.PageImpl(posts)
+      val page = PageImpl(posts)
 
       every {
-        postService.getPosts(0, 10, any(), com.techinsights.domain.enums.Category.AI, null)
+        postService.getPosts(0, 10, any(), Category.AI, null)
       } returns page
 
       // when & then
       mockMvc.get("/api/v1/posts") {
         param("category", "AI")
-        accept = org.springframework.http.MediaType.APPLICATION_JSON
+        accept = MediaType.APPLICATION_JSON
       }.andExpect {
         status { isOk() }
       }
 
       verify(exactly = 1) {
-        postService.getPosts(0, 10, any(), com.techinsights.domain.enums.Category.AI, null)
+        postService.getPosts(0, 10, any(), Category.AI, null)
       }
     }
 
@@ -110,7 +117,7 @@ class PostControllerTest : FunSpec() {
       // given
       val companyId = "company123"
       val posts = listOf(createMockPostDto("1"))
-      val page = org.springframework.data.domain.PageImpl(posts)
+      val page = PageImpl(posts)
 
       every {
         postService.getPosts(0, 10, any(), any(), companyId)
@@ -119,7 +126,7 @@ class PostControllerTest : FunSpec() {
       // when & then
       mockMvc.get("/api/v1/posts") {
         param("companyId", companyId)
-        accept = org.springframework.http.MediaType.APPLICATION_JSON
+        accept = MediaType.APPLICATION_JSON
       }.andExpect {
         status { isOk() }
       }
@@ -132,22 +139,22 @@ class PostControllerTest : FunSpec() {
     test("GET /api/v1/posts - should sort by POPULAR") {
       // given
       val posts = listOf(createMockPostDto("1"))
-      val page = org.springframework.data.domain.PageImpl(posts)
+      val page = PageImpl(posts)
 
       every {
-        postService.getPosts(0, 10, com.techinsights.domain.enums.PostSortType.POPULAR, any(), null)
+        postService.getPosts(0, 10, PostSortType.POPULAR, any(), null)
       } returns page
 
       // when & then
       mockMvc.get("/api/v1/posts") {
         param("sort", "POPULAR")
-        accept = org.springframework.http.MediaType.APPLICATION_JSON
+        accept = MediaType.APPLICATION_JSON
       }.andExpect {
         status { isOk() }
       }
 
       verify(exactly = 1) {
-        postService.getPosts(0, 10, com.techinsights.domain.enums.PostSortType.POPULAR, any(), null)
+        postService.getPosts(0, 10, PostSortType.POPULAR, any(), null)
       }
     }
 
@@ -160,7 +167,7 @@ class PostControllerTest : FunSpec() {
 
       // when & then
       mockMvc.get("/api/v1/posts/$postId") {
-        accept = org.springframework.http.MediaType.APPLICATION_JSON
+        accept = MediaType.APPLICATION_JSON
       }.andExpect {
         status { isOk() }
       }
@@ -312,8 +319,8 @@ class PostControllerTest : FunSpec() {
     }
   }
 
-  private fun createMockPostDto(id: String): com.techinsights.domain.dto.post.PostDto {
-    val companyDto = com.techinsights.domain.dto.company.CompanyDto(
+  private fun createMockPostDto(id: String): PostDto {
+    val companyDto = CompanyDto(
       id = "company1",
       name = "Test Company",
       blogUrl = "https://test.com/blog",
@@ -321,17 +328,17 @@ class PostControllerTest : FunSpec() {
       rssSupported = true
     )
     
-    return com.techinsights.domain.dto.post.PostDto(
+    return PostDto(
       id = id,
       title = "Test Post",
       preview = "Preview",
       url = "https://test.com/post",
       content = "Test Content",
-      publishedAt = java.time.LocalDateTime.now(),
+      publishedAt = LocalDateTime.now(),
       thumbnail = null,
       company = companyDto,
       viewCount = 100,
-      categories = setOf(com.techinsights.domain.enums.Category.AI),
+      categories = setOf(Category.AI),
       isSummary = true,
       isEmbedding = true
     )

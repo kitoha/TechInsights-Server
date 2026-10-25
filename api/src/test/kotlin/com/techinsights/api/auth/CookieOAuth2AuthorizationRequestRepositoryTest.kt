@@ -185,9 +185,9 @@ class CookieOAuth2AuthorizationRequestRepositoryTest : FunSpec({
     }
 
     fun signedCookie(payloadBytes: ByteArray): String {
-        val mac = javax.crypto.Mac.getInstance("HmacSHA256")
+        val mac = Mac.getInstance("HmacSHA256")
         mac.init(
-            javax.crypto.spec.SecretKeySpec(
+            SecretKeySpec(
                 KeyPurpose.OAUTH_COOKIE_SIGNING.deriveKey(authProperties.jwt.secretKeyBytes),
                 "HmacSHA256"
             )
@@ -238,8 +238,8 @@ class CookieOAuth2AuthorizationRequestRepositoryTest : FunSpec({
     }
 
     test("서명은 유효하지만 Java 직렬화된 구 쿠키는 없는 것으로 취급해야 한다") {
-        val bytes = java.io.ByteArrayOutputStream().also {
-            java.io.ObjectOutputStream(it).use { out -> out.writeObject(authorizationRequest()) }
+        val bytes = ByteArrayOutputStream().also {
+            ObjectOutputStream(it).use { out -> out.writeObject(authorizationRequest()) }
         }.toByteArray()
 
         loadFrom(signedCookie(bytes)) shouldBe null
