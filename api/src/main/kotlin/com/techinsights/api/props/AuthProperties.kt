@@ -33,6 +33,12 @@ data class AuthProperties(
 
         val secretKeyBytes: ByteArray = Base64.getDecoder().decode(secretKey)
 
+        override fun toString(): String =
+            "Jwt(accessTokenExpiration=$accessTokenExpiration, refreshTokenExpiration=$refreshTokenExpiration, issuer=$issuer, " +
+                "accessTokenCookieName=$accessTokenCookieName, refreshTokenCookieName=$refreshTokenCookieName, " +
+                "cookieSecure=$cookieSecure, cookieSameSite=$cookieSameSite, cookieDomain=$cookieDomain, " +
+                "maxSessionsPerUser=$maxSessionsPerUser)"
+
         private fun isValidBase64(value: String): Boolean =
             runCatching { Base64.getDecoder().decode(value); true }.getOrDefault(false)
     }
