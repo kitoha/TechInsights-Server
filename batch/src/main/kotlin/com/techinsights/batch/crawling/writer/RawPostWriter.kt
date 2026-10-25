@@ -19,27 +19,16 @@ class RawPostWriter(
     }
 
     try {
-      val allPosts = chunk.items.flatten()
-
-      val originalUrls = allPosts.map { it.url }
-      val existUrls = postRepository.findAllByUrlIn(originalUrls).map { it.url }.toSet()
-
-      val filteredPosts = allPosts.filter { it.url !in existUrls }
+      val newPosts = chunk.items.flatten()
         .filter { it.content.isNotBlank() }
+        .distinctBy { it.url }
 
-      if (filteredPosts.isNotEmpty()) {
+      if (newPosts.isNotEmpty()) {
+        val insertedCount = postRepository.insertAllIgnoringDuplicates(newPosts)
 
-        val savedPosts = postRepository.saveAll(filteredPosts)
-
-        val titles = savedPosts.take(3).joinToString(", ") { "'${it.title}'" }
-        val moreCount = if (savedPosts.size > 3) " and ${savedPosts.size - 3} more" else ""
-
-        log.info("[Writer] Saved {} new posts: {}{}", savedPosts.size, titles, moreCount)
+        log.info("[Writer] Inserted {} new posts out of {} candidates", insertedCount, newPosts.size)
       } else {
-        log.info("[Writer] No new posts to save (Duplicate: {}, Empty: {})",
-          existUrls.size,
-          allPosts.size - existUrls.size
-        )
+        log.info("[Writer] No new posts to save (all candidates were duplicates or empty)")
       }
 
     } catch (e: Exception) {
@@ -52,4 +41,4 @@ class RawPostWriter(
     private val log = LoggerFactory.getLogger(RawPostWriter::class.java)
   }
 
-}
+}

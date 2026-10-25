@@ -3,6 +3,7 @@ package com.techinsights.batch.summary.config
 import com.techinsights.batch.common.listener.LoggingJobExecutionListener
 import com.techinsights.batch.summary.processor.AsyncBatchPostSummaryProcessor
 import com.techinsights.batch.summary.reader.BatchAwarePostReader
+import com.techinsights.batch.summary.tasklet.CompanyPostCountReconcileTasklet
 import com.techinsights.batch.summary.writer.FlatteningPostWriter
 import com.techinsights.domain.dto.post.PostDto
 import org.springframework.batch.core.Job
@@ -23,16 +24,19 @@ class OptimizedSummaryJobConfig(
     private val batchAwarePostReader: BatchAwarePostReader,
     private val asyncBatchProcessor: AsyncBatchPostSummaryProcessor,
     private val flatteningPostWriter: FlatteningPostWriter,
+    private val companyPostCountReconcileTasklet: CompanyPostCountReconcileTasklet,
     private val loggingJobExecutionListener: LoggingJobExecutionListener
 ) {
 
     @Bean
     fun optimizedSummaryJob(
-        @Qualifier("optimizedSummaryStep") step: Step
+        @Qualifier("optimizedSummaryStep") step: Step,
+        @Qualifier("companyPostCountReconcileStep") reconcileStep: Step
     ): Job = JobBuilder("optimizedSummaryJob", jobRepository)
         .incrementer(RunIdIncrementer())
         .listener(loggingJobExecutionListener)
         .start(step)
+        .next(reconcileStep)
         .build()
 
     @Bean
@@ -45,6 +49,12 @@ class OptimizedSummaryJobConfig(
             .faultTolerant()
             .skipLimit(20)
             .skip(Exception::class.java)
+            .build()
+
+    @Bean
+    fun companyPostCountReconcileStep(): Step =
+        StepBuilder("companyPostCountReconcileStep", jobRepository)
+            .tasklet(companyPostCountReconcileTasklet, transactionManager)
             .build()
 
     companion object {

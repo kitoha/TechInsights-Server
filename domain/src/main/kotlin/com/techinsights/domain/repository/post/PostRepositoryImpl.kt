@@ -11,6 +11,7 @@ import com.techinsights.domain.entity.post.QPostCategory
 import com.techinsights.domain.enums.Category
 import com.techinsights.domain.exception.PostNotFoundException
 import com.techinsights.domain.utils.Tsid
+import jakarta.persistence.EntityManager
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
@@ -20,16 +21,79 @@ import org.springframework.transaction.annotation.Transactional
 @Repository
 class PostRepositoryImpl(
   private val postJpaRepository: PostJpaRepository,
-  private val queryFactory: JPAQueryFactory
+  private val queryFactory: JPAQueryFactory,
+  private val entityManager: EntityManager
 ) : PostRepository {
 
   companion object {
     private const val MAX_RETRY_COUNT = 5
+    // posts.title is VARCHAR(255) and posts.url VARCHAR(2048) in the schema on this branch;
+    // a single over-long value would otherwise fail the whole chunk's insert.
+    private const val MAX_TITLE_LENGTH = 255
+    private const val MAX_URL_LENGTH = 2048
+    private const val INSERT_IGNORING_DUPLICATES_SQL = """
+      INSERT INTO posts (id, title, url, content, published_at, thumbnail, company_id, view_count,
+                         is_summary, preview, is_embedding, summary_failure_count, like_count,
+                         created_at, updated_at)
+      VALUES (:id, :title, :url, :content, :publishedAt, :thumbnail, :companyId, :viewCount,
+              :isSummary, :preview, :isEmbedding, 0, 0, :now, :now)
+      ON CONFLICT (url) DO NOTHING
+    """
   }
 
   override fun saveAll(posts: List<PostDto>): List<PostDto> {
     val entities = posts.map { post -> post.toEntity() }
     return postJpaRepository.saveAll(entities).map { entity -> PostDto.fromEntity(entity) }
+  }
+
+  @Transactional
+  override fun updateSummaryResults(posts: List<PostDto>) {
+    if (posts.isEmpty()) {
+      return
+    }
+
+    val post = QPost.post
+    val now = LocalDateTime.now()
+
+    posts.forEach { dto ->
+      val affected = queryFactory.update(post)
+        .set(post.content, dto.content)
+        .set(post.preview, dto.preview)
+        .set(post.isSummary, dto.isSummary)
+        .set(post.updatedAt, now)
+        .where(post.id.eq(Tsid.decode(dto.id)))
+        .execute()
+
+      if (affected == 0L) {
+        throw PostNotFoundException("Post with ID ${dto.id} not found")
+      }
+    }
+
+    val categoriesById = posts.associate { Tsid.decode(it.id) to it.categories }
+    postJpaRepository.findAllById(categoriesById.keys).forEach { entity ->
+      entity.updateCategories(categoriesById.getValue(entity.id))
+    }
+  }
+
+  @Transactional
+  override fun insertAllIgnoringDuplicates(posts: List<PostDto>): Int {
+    val now = LocalDateTime.now()
+    return posts.sumOf { post ->
+      entityManager.createNativeQuery(INSERT_IGNORING_DUPLICATES_SQL)
+        .setParameter("id", Tsid.decode(post.id))
+        .setParameter("title", post.title.take(MAX_TITLE_LENGTH))
+        .setParameter("url", post.url.take(MAX_URL_LENGTH))
+        .setParameter("content", post.content)
+        .setParameter("publishedAt", post.publishedAt)
+        .setParameter("thumbnail", post.thumbnail)
+        .setParameter("companyId", Tsid.decode(post.company.id))
+        .setParameter("viewCount", post.viewCount)
+        .setParameter("isSummary", post.isSummary)
+        .setParameter("preview", post.preview)
+        .setParameter("isEmbedding", post.isEmbedding)
+        .setParameter("now", now)
+        .executeUpdate()
+    }
   }
 
   override fun findAllByUrlIn(urls: List<String>): List<PostDto> {
