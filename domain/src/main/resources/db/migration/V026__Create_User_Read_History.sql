@@ -1,7 +1,8 @@
 -- ------------------------------------------------------------
 -- 로그인 사용자의 읽기 이력 (추천용). (user_id, post_id) 당 한 행이며 다시 읽으면 read_at 만 갱신한다.
--- 익명 이력(anonymous_user_read_history)과 같은 모양이지만 user_id 에 FK 를 두어
--- 사용자 삭제 시 함께 지워지도록 별도 테이블로 둔다.
+-- 익명 이력(anonymous_user_read_history)과 같은 모양이지만 user_id 에 FK 를 둔 별도 테이블로 둔다.
+-- 사용자는 hard delete 하지 않고 soft delete(deleted_at) 하므로 ON DELETE CASCADE 는 평소 동작하지 않는다.
+-- 운영자가 users 행을 물리 삭제하는 예외 상황에서만 이력이 고아로 남지 않도록 하는 참조 무결성 장치다.
 -- ------------------------------------------------------------
 CREATE TABLE user_read_history (
     id         BIGINT    NOT NULL,
