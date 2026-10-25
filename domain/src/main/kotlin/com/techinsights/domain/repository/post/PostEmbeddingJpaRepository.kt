@@ -23,6 +23,23 @@ interface PostEmbeddingJpaRepository : JpaRepository<PostEmbedding, Long> {
 
   @Query(
     value = """
+    SELECT e.post_id       AS postId,
+           e.company_name  AS companyName,
+           e.categories,
+           e.content,
+           e.embedding_vector::halfvec(3072) <=> CAST(:targetVector AS halfvec) AS distance
+    FROM post_embedding e
+    JOIN posts p ON p.id = e.post_id
+    WHERE p.company_id = :companyId
+    ORDER BY distance
+    LIMIT :limit
+    """,
+    nativeQuery = true
+  )
+  fun findSimilarPostsByCompany(targetVector: String, companyId: Long, limit: Long): List<PostEmbeddingWithDistance>
+
+  @Query(
+    value = """
     SELECT post_id       AS postId,
            company_name  AS companyName,
            categories,

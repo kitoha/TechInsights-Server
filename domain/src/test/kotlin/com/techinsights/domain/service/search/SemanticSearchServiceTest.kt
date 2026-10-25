@@ -142,22 +142,20 @@ class SemanticSearchServiceTest : FunSpec({
             verify(exactly = 1) { postEmbeddingRepository.findSimilarPostsAll(any(), 5L) }
         }
 
-        test("companyId 있을 때 limit은 resolvedSize * 3으로 over-fetch된다") {
+        test("companyId 있을 때는 회사 필터를 SQL 에 위임하고 limit 은 resolvedSize 그대로 전달한다") {
             every { embeddingService.generateQuestionEmbedding(any()) } returns questionVector
-            every { postEmbeddingRepository.findSimilarPostsAll(any(), 15L) } returns emptyList()
+            every { postEmbeddingRepository.findSimilarPostsByCompany(any(), tossId, 5L) } returns emptyList()
 
             service.search(query = "쿠버네티스", size = 5, companyId = tossId)
 
-            verify(exactly = 1) { postEmbeddingRepository.findSimilarPostsAll(any(), 15L) }
+            verify(exactly = 1) { postEmbeddingRepository.findSimilarPostsByCompany(any(), tossId, 5L) }
+            verify(exactly = 0) { postEmbeddingRepository.findSimilarPostsAll(any(), any()) }
         }
 
-        test("companyId 필터가 있으면 해당 회사 게시글만 반환한다") {
-            val otherPost = samplePost.copy(id = "post-2", company = kakaoCompany)
-            val otherEmbedding = sampleEmbedding.copy(postId = "post-2", companyName = "Kakao")
-
+        test("companyId 필터 결과는 그대로 게시글로 변환해 반환한다") {
             every { embeddingService.generateQuestionEmbedding(any()) } returns questionVector
-            every { postEmbeddingRepository.findSimilarPostsAll(any(), any()) } returns listOf(sampleEmbedding, otherEmbedding)
-            every { postRepository.findAllByIdIn(any()) } returns listOf(samplePost, otherPost)
+            every { postEmbeddingRepository.findSimilarPostsByCompany(any(), tossId, 10L) } returns listOf(sampleEmbedding)
+            every { postRepository.findAllByIdIn(listOf("post-1")) } returns listOf(samplePost)
 
             val results = service.search(query = "MSA", size = 10, companyId = tossId)
 
@@ -182,23 +180,6 @@ class SemanticSearchServiceTest : FunSpec({
             results[0].post.id shouldBe "post-1" // embedding 1순위가 rank 1
             results[1].rank shouldBe 2
             results[1].post.id shouldBe "post-2"
-        }
-
-        test("company.id가 다른 회사 id 이거나 TSID 가 아니면 companyId 필터에서 제외된다") {
-            val invalidCompanyPost = samplePost.copy(
-                id = "post-2",
-                company = tossCompany.copy(id = "invalid-id")
-            )
-            val invalidEmbedding = sampleEmbedding.copy(postId = "post-2")
-
-            every { embeddingService.generateQuestionEmbedding(any()) } returns questionVector
-            every { postEmbeddingRepository.findSimilarPostsAll(any(), any()) } returns listOf(sampleEmbedding, invalidEmbedding)
-            every { postRepository.findAllByIdIn(any()) } returns listOf(samplePost, invalidCompanyPost)
-
-            val results = service.search(query = "MSA", size = 10, companyId = tossId)
-
-            results shouldHaveSize 1
-            results[0].post.id shouldBe "post-1"
         }
     }
 })
