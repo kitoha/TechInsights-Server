@@ -44,6 +44,29 @@ class InlineFqnConventionTest : FunSpec({
             InlineFqnScanner.scan(source).shouldBeEmpty()
         }
 
+        test("문자 리터럴 '\"'를 문자열 시작으로 오인하지 않는다") {
+            val source = "val quote = '\"'\n" +
+                "val id = java.util.UUID.randomUUID()\n" +
+                "val escaped = '\\\\'\n" +
+                "val d = java.time.Duration.ZERO\n"
+
+            InlineFqnScanner.scan(source) shouldBe listOf(
+                2 to "java.util.UUID",
+                4 to "java.time.Duration"
+            )
+        }
+
+        test("문자열 템플릿 \${...} 안의 코드는 검사한다") {
+            val source = "val a = \"id=\${java.util.UUID.randomUUID()}\"\n" +
+                "val b = \"\"\"raw \${org.jsoup.Jsoup.parse(\"x\")} org.jsoup.nodes.Element in text\"\"\"\n" +
+                "val c = \"nested \${map[\"k\"]} and java.util.Locale in text\"\n"
+
+            InlineFqnScanner.scan(source) shouldBe listOf(
+                1 to "java.util.UUID",
+                2 to "org.jsoup.Jsoup"
+            )
+        }
+
         test("패키지 경로가 아닌 프로퍼티 접근은 FQN으로 보지 않는다") {
             val source = "val x = properties.cookie.Domain\nval y = request.user.Name\n"
 
@@ -89,37 +112,73 @@ private object InlineFqnScanner {
         }
     }
 
-    private fun blankOutCommentsAndStrings(source: String): String {
-        val out = StringBuilder(source.length)
-        var i = 0
+    /** Blanks comments, char literals and string text; code inside string templates `${...}` is kept. */
+    private fun blankOutCommentsAndStrings(source: String): String = Blanker(source).run()
 
-        fun blank(from: Int, to: Int) {
+    private class Blanker(private val source: String) {
+        private val out = StringBuilder(source.length)
+        private var i = 0
+
+        fun run(): String {
+            scanCode(inTemplate = false)
+            return out.toString()
+        }
+
+        private fun blank(from: Int, to: Int) {
             for (k in from until to) out.append(if (source[k] == '\n') '\n' else ' ')
         }
 
-        while (i < source.length) {
-            when {
-                source.startsWith("//", i) -> {
-                    val end = source.indexOf('\n', i).let { if (it < 0) source.length else it }
-                    blank(i, end); i = end
+        private fun indexOrEnd(index: Int, skip: Int = 0): Int = if (index < 0) source.length else index + skip
+
+        /** Scans code; when [inTemplate], returns (without consuming) at the `}` that closes the template. */
+        private fun scanCode(inTemplate: Boolean) {
+            var depth = 0
+            while (i < source.length) {
+                when {
+                    source.startsWith("//", i) -> {
+                        val end = indexOrEnd(source.indexOf('\n', i)); blank(i, end); i = end
+                    }
+                    source.startsWith("/*", i) -> {
+                        val end = indexOrEnd(source.indexOf("*/", i + 2), 2); blank(i, end); i = end
+                    }
+                    source[i] == '\'' -> scanCharLiteral()
+                    source.startsWith("\"\"\"", i) -> scanString(raw = true)
+                    source[i] == '"' -> scanString(raw = false)
+                    source[i] == '{' -> { depth++; out.append('{'); i++ }
+                    source[i] == '}' -> {
+                        if (inTemplate && depth == 0) return
+                        depth--; out.append('}'); i++
+                    }
+                    else -> { out.append(source[i]); i++ }
                 }
-                source.startsWith("/*", i) -> {
-                    val end = source.indexOf("*/", i + 2).let { if (it < 0) source.length else it + 2 }
-                    blank(i, end); i = end
-                }
-                source.startsWith("\"\"\"", i) -> {
-                    val end = source.indexOf("\"\"\"", i + 3).let { if (it < 0) source.length else it + 3 }
-                    blank(i, end); i = end
-                }
-                source[i] == '"' -> {
-                    var end = i + 1
-                    while (end < source.length && source[end] != '"') end += if (source[end] == '\\') 2 else 1
-                    end = minOf(end + 1, source.length)
-                    blank(i, end); i = end
-                }
-                else -> { out.append(source[i]); i++ }
             }
         }
-        return out.toString()
+
+        private fun scanCharLiteral() {
+            val end = when {
+                source.startsWith("\\", i + 1) -> source.indexOf('\'', i + 3)
+                i + 2 < source.length && source[i + 2] == '\'' -> i + 2
+                else -> -1
+            }
+            if (end < 0) { out.append(source[i]); i++ } else { blank(i, end + 1); i = end + 1 }
+        }
+
+        private fun scanString(raw: Boolean) {
+            val quote = if (raw) 3 else 1
+            blank(i, i + quote); i += quote
+            while (i < source.length) {
+                when {
+                    raw && source.startsWith("\"\"\"", i) -> { blank(i, i + 3); i += 3; return }
+                    !raw && source[i] == '"' -> { blank(i, i + 1); i++; return }
+                    !raw && source[i] == '\\' -> { val end = minOf(i + 2, source.length); blank(i, end); i = end }
+                    source.startsWith("\${", i) -> {
+                        blank(i, i + 2); i += 2
+                        scanCode(inTemplate = true)
+                        if (i < source.length) { blank(i, i + 1); i++ }
+                    }
+                    else -> { blank(i, i + 1); i++ }
+                }
+            }
+        }
     }
 }
