@@ -57,6 +57,12 @@ class SoftDeletedNativeReadTest : RepositoryTestSpec() {
       postEmbeddingJpaRepository.findSimilarPostsExcluding(query, listOf(99L), 10).map { it.postId } shouldBe listOf(1L)
     }
 
+    test("회사별 벡터 유사도 조회(findSimilarPostsByCompany)는 삭제된 게시글과 삭제된 회사의 게시글을 제외한다") {
+      seed()
+      postEmbeddingJpaRepository.findSimilarPostsByCompany(query, 1L, 10).map { it.postId } shouldBe listOf(1L)
+      postEmbeddingJpaRepository.findSimilarPostsByCompany(query, 2L, 10).map { it.postId } shouldBe emptyList()
+    }
+
     test("삭제된 행이 없는 게시글의 임베딩은 계속 조회된다") {
       seed()
 
