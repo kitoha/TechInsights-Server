@@ -37,10 +37,18 @@ data class OAuth2AuthorizationRequestCookiePayload(
                 redirectUri = request.redirectUri,
                 scopes = request.scopes,
                 state = request.state,
-                additionalParameters = request.additionalParameters.mapValues { it.value.toString() },
-                attributes = request.attributes.mapValues { it.value.toString() },
+                additionalParameters = request.additionalParameters.requireStringValues("additionalParameters"),
+                attributes = request.attributes.requireStringValues("attributes"),
                 authorizationRequestUri = request.authorizationRequestUri
             )
         }
+
+        private fun Map<String, Any>.requireStringValues(name: String): Map<String, String> =
+            mapValues { (key, value) ->
+                require(value is String) {
+                    "$name[$key] must be a String to be stored in the cookie, was ${value::class.simpleName}"
+                }
+                value
+            }
     }
 }

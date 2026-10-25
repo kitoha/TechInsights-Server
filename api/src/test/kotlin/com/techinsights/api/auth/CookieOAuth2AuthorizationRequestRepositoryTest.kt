@@ -1,6 +1,7 @@
 package com.techinsights.api.auth
 
 import com.techinsights.api.props.AuthProperties
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import jakarta.servlet.http.Cookie
@@ -247,5 +248,63 @@ class CookieOAuth2AuthorizationRequestRepositoryTest : FunSpec({
 
         loadFrom(valid.substringBeforeLast(".") + ".AAAA") shouldBe null
         loadFrom(valid)?.clientId shouldBe "c"
+    }
+
+    context("문자열이 아닌 attribute / additionalParameter 값") {
+        fun requestWith(attributes: Map<String, Any>, additionalParameters: Map<String, Any>) =
+            OAuth2AuthorizationRequest.authorizationCode()
+                .authorizationUri("https://accounts.google.com/o/oauth2/v2/auth")
+                .clientId("client-id")
+                .redirectUri("https://api.techinsights.shop/login/oauth2/code/google")
+                .state("state")
+                .attributes(attributes)
+                .additionalParameters(additionalParameters)
+                .build()
+
+        test("문자열이 아닌 attribute 값은 toString 으로 바꿔 저장하지 않고 실패한다 (조용한 손상 방지)") {
+            val response = MockHttpServletResponse()
+
+            shouldThrow<IllegalArgumentException> {
+                repository.saveAuthorizationRequest(
+                    requestWith(mapOf("registration_id" to "google", "count" to 1), emptyMap()),
+                    MockHttpServletRequest(),
+                    response
+                )
+            }
+
+            response.getHeader("Set-Cookie") shouldBe null
+        }
+
+        test("문자열이 아닌 additionalParameter 값도 저장하지 않고 실패한다") {
+            shouldThrow<IllegalArgumentException> {
+                repository.saveAuthorizationRequest(
+                    requestWith(emptyMap(), mapOf("prompt" to listOf("a", "b"))),
+                    MockHttpServletRequest(),
+                    MockHttpServletResponse()
+                )
+            }
+        }
+
+        test("서명된 쿠키 안의 숫자 값은 문자열로 강제 변환하지 않고 파싱 불가 쿠키로 취급한다") {
+            val value = signedCookie(
+                """{"authorizationUri":"https://a","clientId":"c","scopes":[],"additionalParameters":{},"attributes":{"count":1}}""".toByteArray()
+            )
+
+            loadFrom(value) shouldBe null
+        }
+
+        test("문자열 값만 있는 요청은 그대로 왕복한다") {
+            val response = MockHttpServletResponse()
+            repository.saveAuthorizationRequest(
+                requestWith(mapOf("registration_id" to "google"), mapOf("nonce" to "abc")),
+                MockHttpServletRequest(),
+                response
+            )
+
+            val loaded = requireNotNull(loadFrom(savedCookieValue(response)))
+
+            loaded.attributes shouldBe mapOf("registration_id" to "google")
+            loaded.additionalParameters shouldBe mapOf("nonce" to "abc")
+        }
     }
 })
