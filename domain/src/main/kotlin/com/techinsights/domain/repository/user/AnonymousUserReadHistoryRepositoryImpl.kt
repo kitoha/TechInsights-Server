@@ -22,7 +22,7 @@ class AnonymousUserReadHistoryRepositoryImpl(
     pageable: Pageable
   ): List<AnonymousUserReadHistoryDto> {
     val anonymousEntity =
-      jpaRepository.findTopNByAnonymousIdOrderByReadAtDesc(anonymousId, pageable)
+      jpaRepository.findByAnonymousIdOrderByReadAtDesc(anonymousId, pageable)
 
     return anonymousEntity.map { AnonymousUserReadHistoryDto.fromEntity(it) }
   }

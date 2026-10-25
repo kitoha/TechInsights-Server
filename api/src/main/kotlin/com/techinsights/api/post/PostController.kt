@@ -56,17 +56,22 @@ class PostController(
     requester: Requester,
     request: HttpServletRequest
   ): ResponseEntity<Unit> {
+    // Writes count only for requests that carried an aid cookie; a freshly minted aid answers 200 but records nothing.
+    if (requester is Requester.Anonymous && !requester.carriedAidCookie) {
+      return ResponseEntity.ok().build()
+    }
+
     val userAgent = request.getHeader("User-Agent")
 
     val identifier = when (requester) {
       is Requester.Authenticated -> "U_${requester.userId}"
-      is Requester.Anonymous -> requester.ip
+      is Requester.Anonymous -> requester.identifier
     }
 
     postViewService.recordView(postId, identifier, userAgent)
 
     if (requester is Requester.Anonymous) {
-      postViewService.trackAnonymousPostRead(requester.ip, postId)
+      postViewService.trackAnonymousPostRead(requester.identifier, postId)
     }
 
     return ResponseEntity.ok().build()

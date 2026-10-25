@@ -29,25 +29,23 @@ class PostViewServiceTest : FunSpec({
     clearMocks(postViewRepository, postRepository, anonymousUserReadHistoryRepository, applicationEventPublisher)
   }
 
-  test("조회 기록 - 첫 방문자") {
-    val userOrIp = "127.0.0.1"
+  test("조회 기록 - 첫 방문자(aid)") {
+    val userOrIp = "aid-1"
     val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     val today = LocalDate.now()
 
-    every {
-      postViewRepository.existsByPostIdAndUserOrIpAndViewedDate(any(), userOrIp, today)
-    } returns false
+    every { postViewRepository.insertIfAbsent(any()) } returns true
     every { postRepository.getCompanyIdByPostId(postId) } returns companyId
-    every { postViewRepository.save(any()) } returns mockk()
     every { applicationEventPublisher.publishEvent(any<ViewCountIncrementEvent>()) } just Runs
 
     postViewService.recordView(postId, userOrIp, userAgent)
 
     verify(exactly = 1) {
-      postViewRepository.existsByPostIdAndUserOrIpAndViewedDate(any(), userOrIp, today)
+      postViewRepository.insertIfAbsent(
+        match { it.postId == postId && it.userOrIp == userOrIp && it.viewedDate == today && it.userAgent == userAgent }
+      )
     }
     verify(exactly = 1) { postRepository.getCompanyIdByPostId(postId) }
-    verify(exactly = 1) { postViewRepository.save(any()) }
     verify(exactly = 1) {
       applicationEventPublisher.publishEvent(
         match<ViewCountIncrementEvent> { it.postId == postId && it.companyId == companyId }
@@ -56,45 +54,32 @@ class PostViewServiceTest : FunSpec({
   }
 
   test("조회 기록 - 이미 오늘 방문한 사용자") {
-    val userOrIp = "127.0.0.1"
+    val userOrIp = "aid-1"
     val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-    val today = LocalDate.now()
 
-    every {
-      postViewRepository.existsByPostIdAndUserOrIpAndViewedDate(any(), userOrIp, today)
-    } returns true
+    every { postViewRepository.insertIfAbsent(any()) } returns false
 
     postViewService.recordView(postId, userOrIp, userAgent)
 
-    verify(exactly = 1) {
-      postViewRepository.existsByPostIdAndUserOrIpAndViewedDate(any(), userOrIp, today)
-    }
+    verify(exactly = 1) { postViewRepository.insertIfAbsent(any()) }
     verify(exactly = 0) { postRepository.getCompanyIdByPostId(any()) }
-    verify(exactly = 0) { postViewRepository.save(any()) }
     verify(exactly = 0) { applicationEventPublisher.publishEvent(any<ViewCountIncrementEvent>()) }
   }
 
-  test("조회 기록 - 다른 IP에서 방문") {
-    val userOrIp1 = "127.0.0.1"
-    val userOrIp2 = "192.168.0.1"
+  test("조회 기록 - 다른 식별자로 방문") {
+    val userOrIp1 = "aid-1"
+    val userOrIp2 = "aid-2"
     val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-    val today = LocalDate.now()
 
-    every {
-      postViewRepository.existsByPostIdAndUserOrIpAndViewedDate(any(), userOrIp1, today)
-    } returns false
-    every {
-      postViewRepository.existsByPostIdAndUserOrIpAndViewedDate(any(), userOrIp2, today)
-    } returns false
+    every { postViewRepository.insertIfAbsent(any()) } returns true
     every { postRepository.getCompanyIdByPostId(postId) } returns companyId
-    every { postViewRepository.save(any()) } returns mockk()
     every { applicationEventPublisher.publishEvent(any<ViewCountIncrementEvent>()) } just Runs
 
     postViewService.recordView(postId, userOrIp1, userAgent)
     postViewService.recordView(postId, userOrIp2, userAgent)
 
     verify(exactly = 2) { postRepository.getCompanyIdByPostId(postId) }
-    verify(exactly = 2) { postViewRepository.save(any()) }
+    verify(exactly = 2) { postViewRepository.insertIfAbsent(any()) }
     verify(exactly = 2) {
       applicationEventPublisher.publishEvent(
         match<ViewCountIncrementEvent> { it.postId == postId && it.companyId == companyId }

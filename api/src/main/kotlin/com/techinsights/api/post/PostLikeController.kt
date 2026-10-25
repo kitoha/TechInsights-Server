@@ -26,6 +26,11 @@ class PostLikeController(
         @PathVariable postId: String,
         requester: Requester
     ): ResponseEntity<LikeResponse> {
+        // Writes count only for requests that carried an aid cookie; a freshly minted aid answers 200 but records nothing.
+        if (requester is Requester.Anonymous && !requester.carriedAidCookie) {
+            return ResponseEntity.ok(LikeResponse(true))
+        }
+
         val liked = postLikeService.toggleLike(postId, requester)
         return ResponseEntity.ok(LikeResponse(liked))
     }
