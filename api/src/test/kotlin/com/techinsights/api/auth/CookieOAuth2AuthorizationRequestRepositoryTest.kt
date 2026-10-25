@@ -9,7 +9,9 @@ import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
 import org.springframework.security.oauth2.core.AuthorizationGrantType
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest
+import java.time.Clock
 import java.time.Duration
+import java.time.Instant
 import java.util.Base64
 
 class CookieOAuth2AuthorizationRequestRepositoryTest : FunSpec({
@@ -244,7 +246,7 @@ class CookieOAuth2AuthorizationRequestRepositoryTest : FunSpec({
     }
 
     test("서명이 유효하지 않으면 페이로드를 파싱하지 않고 없는 것으로 취급해야 한다") {
-        val valid = signedCookie("""{"authorizationUri":"https://a","clientId":"c","scopes":[],"additionalParameters":{},"attributes":{}}""".toByteArray())
+        val valid = signedCookie("""{"authorizationUri":"https://a","clientId":"c","scopes":[],"additionalParameters":{},"attributes":{},"issuedAt":${Instant.now().epochSecond}}""".toByteArray())
 
         loadFrom(valid.substringBeforeLast(".") + ".AAAA") shouldBe null
         loadFrom(valid)?.clientId shouldBe "c"
@@ -305,6 +307,52 @@ class CookieOAuth2AuthorizationRequestRepositoryTest : FunSpec({
 
             loaded.attributes shouldBe mapOf("registration_id" to "google")
             loaded.additionalParameters shouldBe mapOf("nonce" to "abc")
+        }
+    }
+
+    context("발급 시각 (서명된 페이로드 안, 쿠키 Max-Age 와 별개로 서버가 검증)") {
+        fun repositoryAt(offset: Duration) =
+            CookieOAuth2AuthorizationRequestRepository(authProperties, Clock.offset(Clock.systemUTC(), offset))
+
+        fun cookieOf(repo: CookieOAuth2AuthorizationRequestRepository): String {
+            val response = MockHttpServletResponse()
+            repo.saveAuthorizationRequest(authorizationRequest(), MockHttpServletRequest(), response)
+            return savedCookieValue(response)
+        }
+
+        fun load(repo: CookieOAuth2AuthorizationRequestRepository, value: String): OAuth2AuthorizationRequest? {
+            val request = MockHttpServletRequest()
+            request.setCookies(Cookie(cookieName, value))
+            return repo.loadAuthorizationRequest(request)
+        }
+
+        test("Max-Age(3분) 안에서는 로드된다") {
+            val value = cookieOf(repository)
+
+            load(repositoryAt(Duration.ofMinutes(2)), value)?.state shouldBe "state|device-id"
+        }
+
+        test("복사해 둔 쿠키라도 Max-Age 가 지나면 서버가 거부한다") {
+            val value = cookieOf(repository)
+
+            load(repositoryAt(Duration.ofMinutes(10)), value) shouldBe null
+        }
+
+        test("미래 시각으로 발급된 쿠키는 거부한다") {
+            val future = Instant.now().plusSeconds(3600).epochSecond
+            val value = signedCookie(
+                """{"authorizationUri":"https://a","clientId":"c","scopes":[],"additionalParameters":{},"attributes":{},"issuedAt":$future}""".toByteArray()
+            )
+
+            load(repository, value) shouldBe null
+        }
+
+        test("발급 시각이 없는 쿠키는 거부한다") {
+            val value = signedCookie(
+                """{"authorizationUri":"https://a","clientId":"c","scopes":[],"additionalParameters":{},"attributes":{}}""".toByteArray()
+            )
+
+            load(repository, value) shouldBe null
         }
     }
 })
