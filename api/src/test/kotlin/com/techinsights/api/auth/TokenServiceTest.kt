@@ -92,6 +92,17 @@ class TokenServiceTest : FunSpec({
         verify(exactly = 0) { refreshTokenService.deleteAllByUserId(any()) }
     }
 
+    test("방금 폐기된 토큰이 유예 시간 안에 제시되면 액세스 토큰만 발급하고 리프레시 토큰은 내려주지 않으며 세션을 폐기하지 않는다") {
+        givenValidRefreshToken("old-rt")
+        every { refreshTokenService.rotate(any(), any(), any()) } returns RefreshTokenRotationResult.GraceAccessOnly
+
+        val response = tokenService.refresh("old-rt")
+
+        response.accessToken shouldBe "new-at"
+        response.refreshToken shouldBe null
+        verify(exactly = 0) { refreshTokenService.deleteAllByUserId(any()) }
+    }
+
     test("폐기된 토큰이 재사용되면 TokenTamperedException이 발생하고 사용자의 모든 세션을 폐기하지는 않아야 한다 (패밀리 폐기는 회전 내부에서 처리)") {
         givenValidRefreshToken("old-rt")
         every { refreshTokenService.rotate(any(), any(), any()) } returns RefreshTokenRotationResult.ReuseDetected

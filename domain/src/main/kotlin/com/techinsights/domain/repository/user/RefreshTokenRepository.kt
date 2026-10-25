@@ -10,8 +10,8 @@ interface RefreshTokenRepository {
     fun findByHashForUpdate(hash: String): Optional<RefreshToken>
     fun findByFamilyIdForUpdate(familyId: Long): Optional<RefreshToken>
     fun findRetiredByHash(hash: String): Optional<RetiredRefreshToken>
-    /** @return true if this call claimed the (single) grace re-rotation of the retired hash. */
-    fun claimGraceUse(hash: String): Boolean
+    /** The hash retired by the family's most recent rotation (the only one eligible for the grace window). */
+    fun findLatestRetiredHash(familyId: Long): Optional<String>
     fun retireHash(hash: String, familyId: Long, retiredAt: Instant)
     /** 사용자별 세션 생성/정리를 직렬화한다 (트랜잭션 종료 시 해제). */
     fun lockUserSessions(userId: Long)

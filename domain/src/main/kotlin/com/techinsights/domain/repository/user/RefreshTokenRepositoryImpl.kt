@@ -25,7 +25,8 @@ class RefreshTokenRepositoryImpl(
     override fun findRetiredByHash(hash: String): Optional<RetiredRefreshToken> =
         jpaRepository.findRetiredByTokenHash(hash)
 
-    override fun claimGraceUse(hash: String): Boolean = jpaRepository.claimGraceUse(hash) > 0
+    override fun findLatestRetiredHash(familyId: Long): Optional<String> =
+        jpaRepository.findLatestRetiredHash(familyId)
 
     override fun retireHash(hash: String, familyId: Long, retiredAt: Instant) {
         jpaRepository.insertRetired(hash, familyId, retiredAt)

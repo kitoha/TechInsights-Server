@@ -38,13 +38,12 @@ interface RefreshTokenJpaRepository : JpaRepository<RefreshToken, Long> {
         @Param("retiredAt") retiredAt: Instant
     ): Int
 
-    /** Atomically claims the single grace re-rotation of a retired hash; 0 rows means it was already used. */
-    @Modifying
+    /** The hash retired by the family's most recent rotation. */
     @Query(
-        value = "UPDATE refresh_token_retired_hashes SET grace_used = TRUE WHERE token_hash = :tokenHash AND grace_used = FALSE",
+        value = "SELECT token_hash FROM refresh_token_retired_hashes WHERE family_id = :familyId ORDER BY retired_at DESC LIMIT 1",
         nativeQuery = true
     )
-    fun claimGraceUse(@Param("tokenHash") tokenHash: String): Int
+    fun findLatestRetiredHash(@Param("familyId") familyId: Long): Optional<String>
 
     @Modifying
     @Query(

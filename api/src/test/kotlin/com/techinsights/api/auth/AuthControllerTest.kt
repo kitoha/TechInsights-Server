@@ -33,7 +33,7 @@ class AuthControllerTest : FunSpec({
         val cookies = arrayOf(Cookie(authProperties.jwt.refreshTokenCookieName, oldRt))
 
         every { request.cookies } returns cookies
-        every { tokenService.refresh(oldRt) } returns TokenResponse("new-at", "new-rt")
+        every { tokenService.refresh(oldRt) } returns RefreshResponse("new-at", "new-rt")
         every { response.addHeader(any(), any()) } just Runs
 
         val result = controller.refresh(request, response)
@@ -45,13 +45,31 @@ class AuthControllerTest : FunSpec({
         verify { response.addHeader("Set-Cookie", match { it.contains("$rtName=new-rt") && it.contains("Secure") }) }
     }
 
+    test("/refresh 가 액세스 토큰만 돌려주면(유예 시간 내 병렬 갱신) 리프레시 쿠키는 건드리지 않는다") {
+        val request = mockk<HttpServletRequest>()
+        val response = mockk<HttpServletResponse>()
+        val cookies = arrayOf(Cookie(authProperties.jwt.refreshTokenCookieName, "old-rt"))
+        val setCookies = mutableListOf<String>()
+
+        every { request.cookies } returns cookies
+        every { tokenService.refresh("old-rt") } returns RefreshResponse("new-at", null)
+        every { response.addHeader("Set-Cookie", capture(setCookies)) } just Runs
+
+        val result = controller.refresh(request, response)
+
+        result.statusCode.value() shouldBe 200
+        setCookies.size shouldBe 1
+        setCookies.single().contains("${authProperties.jwt.accessTokenCookieName}=new-at") shouldBe true
+        setCookies.none { it.contains(authProperties.jwt.refreshTokenCookieName) } shouldBe true
+    }
+
     test("X-Device-Id 헤더와 무관하게 쿠키의 리프레시 토큰만으로 refresh해야 한다") {
         val request = mockk<HttpServletRequest>()
         val response = mockk<HttpServletResponse>()
         val cookies = arrayOf(Cookie(authProperties.jwt.refreshTokenCookieName, "old-rt"))
 
         every { request.cookies } returns cookies
-        every { tokenService.refresh("old-rt") } returns TokenResponse("new-at", "new-rt")
+        every { tokenService.refresh("old-rt") } returns RefreshResponse("new-at", "new-rt")
         every { response.addHeader(any(), any()) } just Runs
 
         val result = controller.refresh(request, response)
@@ -96,7 +114,7 @@ class AuthControllerTest : FunSpec({
         val setCookieHeaders = mutableListOf<String>()
 
         every { request.cookies } returns cookies
-        every { tokenService.refresh("old-rt") } returns TokenResponse("new-at", "new-rt")
+        every { tokenService.refresh("old-rt") } returns RefreshResponse("new-at", "new-rt")
         every { response.addHeader("Set-Cookie", capture(setCookieHeaders)) } just Runs
 
         // when

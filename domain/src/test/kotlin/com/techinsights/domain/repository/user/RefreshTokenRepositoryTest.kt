@@ -59,14 +59,16 @@ class RefreshTokenRepositoryTest(
     count("refresh_token_retired_hashes") shouldBe 1
   }
 
-  test("유예 재회전 사용권은 폐기 해시당 한 번만 얻을 수 있다") {
+  test("패밀리의 가장 최근에 폐기된 해시를 조회한다") {
     insertUser(1)
     session(1)
-    inTx { repository.retireHash("old", 10, Instant.now()) }
+    session(2, familyId = 20)
+    inTx { repository.retireHash("older", 10, Instant.now().minusSeconds(100)) }
+    inTx { repository.retireHash("newest", 10, Instant.now().minusSeconds(5)) }
+    inTx { repository.retireHash("other-family", 20, Instant.now()) }
 
-    inTx { repository.claimGraceUse("old") } shouldBe true
-    inTx { repository.claimGraceUse("old") } shouldBe false
-    inTx { repository.claimGraceUse("never-retired") } shouldBe false
+    repository.findLatestRetiredHash(10).get() shouldBe "newest"
+    repository.findLatestRetiredHash(30).isPresent shouldBe false
   }
 
   test("세션을 삭제하면 그 패밀리의 폐기 해시도 함께 삭제된다") {

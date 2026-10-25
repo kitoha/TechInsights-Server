@@ -113,70 +113,78 @@ class RefreshTokenServiceTest(
     }
   }
 
-  context("유예 시간") {
-    test("방금 폐기된 토큰을 유예 시간 안에 제시하면 같은 세션이 다시 회전되고 폐기되지 않는다") {
+  context("유예 시간 (방금 폐기된 해시 = 액세스 토큰만 재발급, 회전 없음)") {
+    test("방금 폐기된 토큰을 유예 시간 안에 제시하면 회전 없이 GraceAccessOnly 를 반환한다") {
       insertUser(1)
       login(1, "h0")
       rotate("h0", "h1")
 
-      rotate("h0", "h2") shouldBe RefreshTokenRotationResult.Rotated
+      rotate("h0", "h2") shouldBe RefreshTokenRotationResult.GraceAccessOnly
 
-      currentHash(1) shouldBe listOf("h2")
-      rotate("h1", "h3") shouldBe RefreshTokenRotationResult.Rotated
-      sessionCount(1) shouldBe 1
+      currentHash(1) shouldBe listOf("h1")
+      retiredCount() shouldBe 1
     }
 
-    test("유예 안에서 다시 회전된 뒤에도 더 오래된 토큰 재사용은 패밀리를 폐기한다") {
+    test("유예 시간 안에서는 같은 폐기 해시로 몇 번이든 액세스 토큰만 받을 수 있고 폐기되지 않는다") {
       insertUser(1)
       login(1, "h0")
       rotate("h0", "h1")
-      rotate("h0", "h2")
+
+      repeat(5) { rotate("h0", "unused$it") shouldBe RefreshTokenRotationResult.GraceAccessOnly }
+
+      currentHash(1) shouldBe listOf("h1")
+      rotate("h1", "h2") shouldBe RefreshTokenRotationResult.Rotated
+    }
+
+    test("유예 시간이 지난 뒤 방금 폐기된 토큰을 제시하면 패밀리가 폐기된다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1")
       ageRetired("h0", 120)
 
       rotate("h0", "evil") shouldBe RefreshTokenRotationResult.ReuseDetected
-    }
-  }
-
-  context("유예 시간 재회전은 폐기 해시당 한 번만") {
-    test("같은 폐기 해시를 유예 시간 안에 두 번 제시하면 두 번째는 재사용으로 패밀리를 폐기한다") {
-      insertUser(1)
-      login(1, "h0")
-      rotate("h0", "h1")
-
-      rotate("h0", "h2") shouldBe RefreshTokenRotationResult.Rotated
-      rotate("h0", "h3") shouldBe RefreshTokenRotationResult.ReuseDetected
 
       sessionCount(1) shouldBe 0
       retiredCount() shouldBe 0
     }
 
-    test("서로 다른 폐기 해시는 각각 한 번씩 유예 재회전할 수 있다") {
+    test("방금 폐기된 해시가 아닌 더 오래된 폐기 해시는 유예 시간 안이어도 패밀리를 폐기한다") {
       insertUser(1)
       login(1, "h0")
       rotate("h0", "h1")
-      rotate("h0", "h2") shouldBe RefreshTokenRotationResult.Rotated
+      rotate("h1", "h2")
 
-      rotate("h1", "h3") shouldBe RefreshTokenRotationResult.Rotated
+      rotate("h0", "evil") shouldBe RefreshTokenRotationResult.ReuseDetected
 
-      sessionCount(1) shouldBe 1
+      sessionCount(1) shouldBe 0
     }
 
-    test("유예 재회전을 쓴 폐기 해시는 다른 사용자의 세션에 영향을 주지 않고 해당 패밀리만 폐기한다") {
+    test("유예 중 탈취자가 재생해도 새 리프레시 토큰을 얻지 못하고 정상 사용자의 토큰은 그대로 유효하다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1")
+
+      rotate("h0", "thief-token") shouldBe RefreshTokenRotationResult.GraceAccessOnly
+
+      currentHash(1) shouldBe listOf("h1")
+      rotate("h1", "h2") shouldBe RefreshTokenRotationResult.Rotated
+    }
+
+    test("재사용 폐기는 같은 사용자의 다른 세션에 영향을 주지 않는다") {
       insertUser(1)
       login(1, "a0", deviceId = "dev-a")
       login(1, "b0", deviceId = "dev-b")
       rotate("a0", "a1")
-      rotate("a0", "a2")
+      rotate("a1", "a2")
 
       rotate("a0", "evil") shouldBe RefreshTokenRotationResult.ReuseDetected
 
       currentHash(1) shouldBe listOf("b0")
     }
 
-    test("동시에 같은 폐기 해시로 유예 재회전을 시도하면 정확히 하나만 성공한다") {
+    test("같은 토큰으로 동시에 여러 번 갱신하면 회전은 정확히 한 번이고 나머지는 액세스 토큰만 받으며 폐기되지 않는다") {
       insertUser(1)
       login(1, "h0")
-      rotate("h0", "h1")
       val threads = 6
       val ready = CountDownLatch(threads)
       val pool = Executors.newFixedThreadPool(threads)
@@ -190,7 +198,12 @@ class RefreshTokenServiceTest(
       pool.shutdown()
 
       results.count { it == RefreshTokenRotationResult.Rotated } shouldBe 1
-      results.count { it != RefreshTokenRotationResult.Rotated } shouldBe threads - 1
+      results.count { it == RefreshTokenRotationResult.GraceAccessOnly } shouldBe threads - 1
+      sessionCount(1) shouldBe 1
+      retiredCount() shouldBe 1
+      // 최종 쿠키 상태: 회전에 성공한 토큰이 현재 토큰이며 다음 갱신이 가능하다
+      val winner = currentHash(1).single()
+      rotate(winner, "next") shouldBe RefreshTokenRotationResult.Rotated
     }
   }
 

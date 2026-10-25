@@ -66,12 +66,20 @@ class RefreshTokenService(
         val session = refreshTokenRepository.findByFamilyIdForUpdate(retired.familyId).orElse(null)
             ?: return RefreshTokenRotationResult.NotFound
 
-        // Outside grace, or a second use of the same retired hash even inside grace, is reuse.
-        if (retired.retiredAt.isBefore(now.minus(GRACE_PERIOD)) || !refreshTokenRepository.claimGraceUse(presentedHash)) {
+        // Only the hash retired by the family's latest rotation, and only inside the grace window, is a benign
+        // parallel refresh (the browser does not single-flight refreshes): it gets an access token, no rotation.
+        // Anything else (outside grace, or an older retired hash) is reuse and revokes the family.
+        val justRetired = refreshTokenRepository.findLatestRetiredHash(retired.familyId).orElse(null) == presentedHash
+        val withinGrace = !retired.retiredAt.isBefore(now.minus(GRACE_PERIOD))
+        if (!justRetired || !withinGrace) {
             refreshTokenRepository.delete(session)
             return RefreshTokenRotationResult.ReuseDetected
         }
-        return rotateSession(session, newHash, newExpiryAt, now)
+        if (session.isExpired()) {
+            refreshTokenRepository.delete(session)
+            return RefreshTokenRotationResult.Expired
+        }
+        return RefreshTokenRotationResult.GraceAccessOnly
     }
 
     /**

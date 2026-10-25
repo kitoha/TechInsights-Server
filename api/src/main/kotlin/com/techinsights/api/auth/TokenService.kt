@@ -40,7 +40,7 @@ class TokenService(
     @Transactional(
         noRollbackFor = [TokenTamperedException::class, ExpiredTokenException::class, InvalidTokenException::class]
     )
-    fun refresh(oldRefreshToken: String): TokenResponse {
+    fun refresh(oldRefreshToken: String): RefreshResponse {
         val claims = jwtPlugin.validateRefreshToken(oldRefreshToken)
         val userId = claims.get("userId", Long::class.javaObjectType)
             ?: throw InvalidTokenException("유효하지 않은 토큰입니다.")
@@ -62,7 +62,8 @@ class TokenService(
         )
 
         return when (rotation) {
-            RefreshTokenRotationResult.Rotated -> TokenResponse(accessToken, newRefreshToken)
+            RefreshTokenRotationResult.Rotated -> RefreshResponse(accessToken, newRefreshToken)
+            RefreshTokenRotationResult.GraceAccessOnly -> RefreshResponse(accessToken, null)
             RefreshTokenRotationResult.Expired -> throw ExpiredTokenException()
             RefreshTokenRotationResult.NotFound -> throw InvalidTokenException("유효하지 않은 토큰입니다.")
             RefreshTokenRotationResult.ReuseDetected ->
