@@ -7,7 +7,7 @@ import io.kotest.matchers.shouldNotBe
 
 class MockEmbeddingServiceTest : FunSpec({
 
-    val mockEmbeddingService = MockEmbeddingService()
+    val mockEmbeddingService = MockEmbeddingService(apiResponseTimeMs = 0, perItemResponseTimeMs = 0)
 
     test("generateEmbedding should return 768 dimension vector") {
         // given
