@@ -1,15 +1,25 @@
 package com.techinsights.api.auth
 
 import com.techinsights.api.props.AuthProperties
-import io.kotest.assertions.throwables.shouldThrow
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import jakarta.servlet.http.Cookie
+import java.io.ByteArrayOutputStream
+import java.io.ObjectOutputStream
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
+import org.slf4j.LoggerFactory
+import io.kotest.assertions.throwables.shouldThrow
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
 import org.springframework.security.oauth2.core.AuthorizationGrantType
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest
+import java.time.Clock
 import java.time.Duration
+import java.time.Instant
 import java.util.Base64
 
 class CookieOAuth2AuthorizationRequestRepositoryTest : FunSpec({
@@ -244,7 +254,7 @@ class CookieOAuth2AuthorizationRequestRepositoryTest : FunSpec({
     }
 
     test("서명이 유효하지 않으면 페이로드를 파싱하지 않고 없는 것으로 취급해야 한다") {
-        val valid = signedCookie("""{"authorizationUri":"https://a","clientId":"c","scopes":[],"additionalParameters":{},"attributes":{}}""".toByteArray())
+        val valid = signedCookie("""{"authorizationUri":"https://a","clientId":"c","scopes":[],"additionalParameters":{},"attributes":{},"issuedAt":${Instant.now().epochSecond}}""".toByteArray())
 
         loadFrom(valid.substringBeforeLast(".") + ".AAAA") shouldBe null
         loadFrom(valid)?.clientId shouldBe "c"
@@ -305,6 +315,71 @@ class CookieOAuth2AuthorizationRequestRepositoryTest : FunSpec({
 
             loaded.attributes shouldBe mapOf("registration_id" to "google")
             loaded.additionalParameters shouldBe mapOf("nonce" to "abc")
+        }
+    }
+
+    context("발급 시각 (서명된 페이로드 안, 쿠키 Max-Age 와 별개로 서버가 검증)") {
+        fun repositoryAt(offset: Duration) =
+            CookieOAuth2AuthorizationRequestRepository(authProperties, Clock.offset(Clock.systemUTC(), offset))
+
+        fun cookieOf(repo: CookieOAuth2AuthorizationRequestRepository): String {
+            val response = MockHttpServletResponse()
+            repo.saveAuthorizationRequest(authorizationRequest(), MockHttpServletRequest(), response)
+            return savedCookieValue(response)
+        }
+
+        fun load(repo: CookieOAuth2AuthorizationRequestRepository, value: String): OAuth2AuthorizationRequest? {
+            val request = MockHttpServletRequest()
+            request.setCookies(Cookie(cookieName, value))
+            return repo.loadAuthorizationRequest(request)
+        }
+
+        test("Max-Age(3분) 안에서는 로드된다") {
+            val value = cookieOf(repository)
+
+            load(repositoryAt(Duration.ofMinutes(2)), value)?.state shouldBe "state|device-id"
+        }
+
+        test("복사해 둔 쿠키라도 Max-Age 가 지나면 서버가 거부한다") {
+            val value = cookieOf(repository)
+
+            load(repositoryAt(Duration.ofMinutes(10)), value) shouldBe null
+        }
+
+        test("미래 시각으로 발급된 쿠키는 거부한다") {
+            val future = Instant.now().plusSeconds(3600).epochSecond
+            val value = signedCookie(
+                """{"authorizationUri":"https://a","clientId":"c","scopes":[],"additionalParameters":{},"attributes":{},"issuedAt":$future}""".toByteArray()
+            )
+
+            load(repository, value) shouldBe null
+        }
+
+        test("발급 시각이 없는 쿠키는 파싱 실패가 아니라 만료로 취급해 거부하고, 값 없이 전용 로그를 남긴다") {
+            val logger = LoggerFactory.getLogger(CookieOAuth2AuthorizationRequestRepository::class.java) as Logger
+            val appender = ListAppender<ILoggingEvent>().also { it.start() }
+            logger.addAppender(appender)
+            try {
+                val value = signedCookie(
+                    """{"authorizationUri":"https://a","clientId":"c","scopes":[],"additionalParameters":{},"attributes":{},"state":"secret-state-value"}""".toByteArray()
+                )
+
+                load(repository, value) shouldBe null
+
+                val message = appender.list.single { it.formattedMessage.contains("issuedAt") }.formattedMessage
+                message.contains("expired") shouldBe true
+                message.contains("could not be parsed") shouldBe false
+                message.contains("secret-state-value") shouldBe false
+                message.contains(value) shouldBe false
+            } finally {
+                logger.detachAppender(appender)
+            }
+        }
+
+        test("발급 시각이 있는 정상 쿠키는 계속 로드된다 (필드는 선택 입력이지만 항상 새로 기록한다)") {
+            val value = cookieOf(repository)
+
+            load(repository, value)?.state shouldBe "state|device-id"
         }
     }
 })

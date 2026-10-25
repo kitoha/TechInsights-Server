@@ -8,6 +8,8 @@ import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
 import java.time.Instant
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 
 class RefreshTokenServiceTest(
   repository: RefreshTokenRepository,
@@ -30,7 +32,15 @@ class RefreshTokenServiceTest(
   fun login(userId: Long, hash: String, deviceId: String? = null, maxSessions: Int = 10) =
     inTx { service.startSession(userId, deviceId, hash, expiry(), maxSessions) }
 
-  fun rotate(presented: String, new: String) = inTx { service.rotate(presented, new, expiry()) }
+  // The domain only stores the sealed successor opaquely; the api seals it. Tests use a recognisable stand-in.
+  fun sealed(new: String) = "sealed:$new"
+
+  fun rotate(presented: String, new: String) = inTx { service.rotate(presented, new, expiry(), sealed(new)) }
+
+  fun storedSuccessor(retiredHash: String): String? =
+    jdbcTemplate.queryForList(
+      "SELECT successor_ciphertext FROM refresh_token_retired_hashes WHERE token_hash = ?", String::class.java, retiredHash
+    ).singleOrNull()
 
   fun sessionCount(userId: Long): Int =
     jdbcTemplate.queryForObject("SELECT count(*) FROM refresh_tokens WHERE user_id = ?", Int::class.java, userId)!!
@@ -113,27 +123,129 @@ class RefreshTokenServiceTest(
     }
   }
 
-  context("유예 시간") {
-    test("방금 폐기된 토큰을 유예 시간 안에 제시하면 같은 세션이 다시 회전되고 폐기되지 않는다") {
+  context("유예 시간 (방금 폐기된 해시 = 같은 후속 토큰을 다시 전달, 새 회전 없음)") {
+    test("회전하면 폐기된 해시 행에 후속 토큰의 봉인된 값이 저장된다") {
       insertUser(1)
       login(1, "h0")
+
       rotate("h0", "h1")
 
-      rotate("h0", "h2") shouldBe RefreshTokenRotationResult.Rotated
+      storedSuccessor("h0") shouldBe sealed("h1")
+    }
 
-      currentHash(1) shouldBe listOf("h2")
-      rotate("h1", "h3") shouldBe RefreshTokenRotationResult.Rotated
+    test("응답 유실 복구: 회전 후 응답이 사라져도 유예 시간 안에 같은 폐기 토큰을 다시 제시하면 같은 후속 토큰을 돌려받는다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1") shouldBe RefreshTokenRotationResult.Rotated
+
+      rotate("h0", "unused-a") shouldBe RefreshTokenRotationResult.GraceRedelivery(sealed("h1"))
+      rotate("h0", "unused-b") shouldBe RefreshTokenRotationResult.GraceRedelivery(sealed("h1"))
+
+      currentHash(1) shouldBe listOf("h1")
+      retiredCount() shouldBe 1
+      // 이후 받은 R2(h1)로 정상 갱신되며 폐기되지 않는다
+      rotate("h1", "h2") shouldBe RefreshTokenRotationResult.Rotated
       sessionCount(1) shouldBe 1
     }
 
-    test("유예 안에서 다시 회전된 뒤에도 더 오래된 토큰 재사용은 패밀리를 폐기한다") {
+    test("유예 시간이 지난 뒤 방금 폐기된 토큰을 제시하면 패밀리가 폐기된다") {
       insertUser(1)
       login(1, "h0")
       rotate("h0", "h1")
-      rotate("h0", "h2")
       ageRetired("h0", 120)
 
       rotate("h0", "evil") shouldBe RefreshTokenRotationResult.ReuseDetected
+
+      sessionCount(1) shouldBe 0
+      retiredCount() shouldBe 0
+    }
+
+    test("방금 폐기된 해시가 아닌 더 오래된 폐기 해시는 유예 시간 안이어도 패밀리를 폐기한다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1")
+      rotate("h1", "h2")
+
+      rotate("h0", "evil") shouldBe RefreshTokenRotationResult.ReuseDetected
+
+      sessionCount(1) shouldBe 0
+    }
+
+    test("재사용 폐기는 같은 사용자의 다른 세션에 영향을 주지 않는다") {
+      insertUser(1)
+      login(1, "a0", deviceId = "dev-a")
+      login(1, "b0", deviceId = "dev-b")
+      rotate("a0", "a1")
+      rotate("a1", "a2")
+
+      rotate("a0", "evil") shouldBe RefreshTokenRotationResult.ReuseDetected
+
+      currentHash(1) shouldBe listOf("b0")
+    }
+
+    test("같은 토큰으로 동시에 여러 번 갱신하면 회전은 한 번이고 모든 응답이 같은 후속 토큰을 담는다") {
+      insertUser(1)
+      login(1, "h0")
+      val threads = 6
+      val ready = CountDownLatch(threads)
+      val pool = Executors.newFixedThreadPool(threads)
+      val results = (1..threads).map { i ->
+        pool.submit<RefreshTokenRotationResult> {
+          ready.countDown()
+          ready.await()
+          rotate("h0", "n$i")
+        }
+      }.map { it.get() }
+      pool.shutdown()
+
+      val winner = currentHash(1).single()
+      results.count { it == RefreshTokenRotationResult.Rotated } shouldBe 1
+      results.filterIsInstance<RefreshTokenRotationResult.GraceRedelivery>().map { it.sealedSuccessor }
+        .toSet() shouldBe setOf(sealed(winner))
+      results.count { it is RefreshTokenRotationResult.GraceRedelivery } shouldBe threads - 1
+      sessionCount(1) shouldBe 1
+      retiredCount() shouldBe 1
+      rotate(winner, "next") shouldBe RefreshTokenRotationResult.Rotated
+    }
+
+    test("저장된 후속 토큰이 없는 (이전 버전에서 넘어온) 폐기 행은 재전달할 수 없으므로 패밀리를 폐기한다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1")
+      jdbcTemplate.update("UPDATE refresh_token_retired_hashes SET successor_ciphertext = NULL")
+
+      rotate("h0", "x") shouldBe RefreshTokenRotationResult.ReuseDetected
+
+      sessionCount(1) shouldBe 0
+    }
+  }
+
+  context("봉인된 후속 토큰의 수명") {
+    test("다음 회전 때 유예 시간이 지난 이전 폐기 행의 봉인 값은 지워진다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1")
+      ageRetired("h0", 120)
+
+      rotate("h1", "h2")
+
+      storedSuccessor("h0") shouldBe null
+      storedSuccessor("h1") shouldBe sealed("h2")
+    }
+
+    test("정리 작업은 유예 시간이 지난 봉인 값만 지운다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1")
+      rotate("h1", "h2")
+      ageRetired("h0", 120)
+
+      val cleared = inTx { service.clearExpiredSuccessors() }
+
+      cleared shouldBe 1
+      storedSuccessor("h0") shouldBe null
+      storedSuccessor("h1") shouldBe sealed("h2")
+      retiredCount() shouldBe 2
     }
   }
 
@@ -268,13 +380,24 @@ class RefreshTokenServiceTest(
       sessionCount(1) shouldBe 0
     }
 
-    test("유예 시간이 지난 폐기 해시로는 세션을 종료하지 않는다") {
+    test("유예 시간이 지난 폐기 해시로 로그아웃하면 재사용으로 보고 해당 패밀리를 폐기한다") {
+      insertUser(1)
+      login(1, "a0", deviceId = "dev-a")
+      login(1, "b0", deviceId = "dev-b")
+      rotate("a0", "a1")
+      ageRetired("a0", 120)
+
+      inTx { service.deleteByHash("a0") }
+
+      currentHash(1) shouldBe listOf("b0")
+      retiredCount() shouldBe 0
+    }
+
+    test("알 수 없는 해시로 로그아웃하면 아무 세션도 지우지 않는다") {
       insertUser(1)
       login(1, "h0")
-      rotate("h0", "h1")
-      ageRetired("h0", 120)
 
-      inTx { service.deleteByHash("h0") }
+      inTx { service.deleteByHash("never-issued") }
 
       sessionCount(1) shouldBe 1
     }

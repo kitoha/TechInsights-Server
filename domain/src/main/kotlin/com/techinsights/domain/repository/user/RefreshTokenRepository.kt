@@ -10,7 +10,12 @@ interface RefreshTokenRepository {
     fun findByHashForUpdate(hash: String): Optional<RefreshToken>
     fun findByFamilyIdForUpdate(familyId: Long): Optional<RefreshToken>
     fun findRetiredByHash(hash: String): Optional<RetiredRefreshToken>
-    fun retireHash(hash: String, familyId: Long, retiredAt: Instant)
+    /** The hash retired by the family's most recent rotation (the only one eligible for the grace window). */
+    fun findLatestRetiredHash(familyId: Long): Optional<String>
+    fun retireHash(hash: String, familyId: Long, retiredAt: Instant, sealedSuccessor: String?)
+    fun findSealedSuccessor(retiredHash: String): Optional<String>
+    fun clearSealedSuccessorsInFamilyBefore(familyId: Long, cutoff: Instant): Int
+    fun clearSealedSuccessorsBefore(cutoff: Instant): Int
     /** 사용자별 세션 생성/정리를 직렬화한다 (트랜잭션 종료 시 해제). */
     fun lockUserSessions(userId: Long)
     fun findByUserAndDevice(userId: Long, deviceId: String?): Optional<RefreshToken>

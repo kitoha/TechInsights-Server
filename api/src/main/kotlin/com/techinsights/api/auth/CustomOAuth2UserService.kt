@@ -23,9 +23,9 @@ class CustomOAuth2UserService(
 
     internal fun processOAuth2User(oAuth2User: OAuth2User): OAuth2User {
         val attributes = oAuth2User.attributes
-        val providerId = attributes["sub"] as String
-        val email = attributes["email"] as String
-        val name = attributes["name"] as String
+        val providerId = attributes["sub"] as? String ?: throw invalidUserInfo()
+        val email = attributes["email"] as? String ?: throw invalidUserInfo()
+        val name = attributes["name"] as? String ?: throw invalidUserInfo()
         val profileImage = attributes["picture"] as? String
 
         val authUser = try {
@@ -50,6 +50,9 @@ class CustomOAuth2UserService(
         )
     }
 
+    private fun invalidUserInfo() =
+        OAuth2AuthenticationException(OAuth2Error(INVALID_USER_INFO_ERROR_CODE), "OAuth2 provider returned incomplete user info")
+
     private fun isEmailUniqueViolation(e: DataIntegrityViolationException): Boolean =
         generateSequence<Throwable>(e) { it.cause }
             .filterIsInstance<ConstraintViolationException>()
@@ -58,6 +61,7 @@ class CustomOAuth2UserService(
     companion object {
         const val ACCOUNT_DEACTIVATED_ERROR_CODE = "account_deactivated"
         const val EMAIL_CONFLICT_ERROR_CODE = "email_conflict"
+        const val INVALID_USER_INFO_ERROR_CODE = "invalid_user_info"
         private const val USERS_EMAIL_CONSTRAINT = "users_email_key"
     }
 }

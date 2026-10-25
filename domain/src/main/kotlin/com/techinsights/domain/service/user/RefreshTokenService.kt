@@ -53,12 +53,23 @@ class RefreshTokenService(
     }
 
     @Transactional
-    fun rotate(presentedHash: String, newHash: String, newExpiryAt: Instant): RefreshTokenRotationResult {
+    /**
+     * Idempotent rotation. Presenting the current token rotates it and stores [sealedSuccessor] (the new refresh token,
+     * sealed by the api) on the retired row of the presented hash. Presenting that just-retired hash again inside the
+     * grace window — a retried or parallel refresh whose response was lost — re-delivers the same successor instead of
+     * rotating again. An older retired hash, or any retired hash after the window, revokes the family.
+     */
+    fun rotate(
+        presentedHash: String,
+        newHash: String,
+        newExpiryAt: Instant,
+        sealedSuccessor: String
+    ): RefreshTokenRotationResult {
         val now = Instant.now()
 
         val current = refreshTokenRepository.findByHashForUpdate(presentedHash).orElse(null)
         if (current != null) {
-            return rotateSession(current, newHash, newExpiryAt, now)
+            return rotateSession(current, newHash, newExpiryAt, sealedSuccessor, now)
         }
 
         val retired = refreshTokenRepository.findRetiredByHash(presentedHash).orElse(null)
@@ -66,18 +77,36 @@ class RefreshTokenService(
         val session = refreshTokenRepository.findByFamilyIdForUpdate(retired.familyId).orElse(null)
             ?: return RefreshTokenRotationResult.NotFound
 
-        if (retired.retiredAt.isBefore(now.minus(GRACE_PERIOD))) {
+        // Only the hash retired by the family's latest rotation, and only inside the grace window, is a benign retry /
+        // parallel refresh (the browser does not single-flight refreshes and responses can be lost): it gets the same
+        // successor again. Anything else (outside grace, or an older retired hash) is reuse and revokes the family.
+        val justRetired = refreshTokenRepository.findLatestRetiredHash(retired.familyId).orElse(null) == presentedHash
+        val withinGrace = !retired.retiredAt.isBefore(now.minus(GRACE_PERIOD))
+        if (!justRetired || !withinGrace) {
             refreshTokenRepository.delete(session)
             return RefreshTokenRotationResult.ReuseDetected
         }
-        return rotateSession(session, newHash, newExpiryAt, now)
+        if (session.isExpired()) {
+            refreshTokenRepository.delete(session)
+            return RefreshTokenRotationResult.Expired
+        }
+        // A legacy retired row has no stored successor: it cannot be re-delivered, so fail closed.
+        val sealedSuccessorOfRetired = refreshTokenRepository.findSealedSuccessor(presentedHash).orElse(null)
+        if (sealedSuccessorOfRetired == null) {
+            refreshTokenRepository.delete(session)
+            return RefreshTokenRotationResult.ReuseDetected
+        }
+        return RefreshTokenRotationResult.GraceRedelivery(sealedSuccessorOfRetired)
     }
 
+    /**
+     * Logout. Presenting the current token ends the session; presenting a retired token of a session
+     * (inside or outside grace) is treated like reuse and revokes that session (family).
+     */
     @Transactional
     fun deleteByHash(hash: String) {
         val session = refreshTokenRepository.findByHashForUpdate(hash).orElse(null)
             ?: refreshTokenRepository.findRetiredByHash(hash).orElse(null)
-                ?.takeIf { !it.retiredAt.isBefore(Instant.now().minus(GRACE_PERIOD)) }
                 ?.let { refreshTokenRepository.findByFamilyIdForUpdate(it.familyId).orElse(null) }
         session?.let { refreshTokenRepository.delete(it) }
     }
@@ -90,6 +119,11 @@ class RefreshTokenService(
     @Transactional
     fun deleteExpired(now: Instant = Instant.now()): Int = refreshTokenRepository.deleteExpired(now)
 
+    /** Clears sealed successors whose grace window has passed (they are unusable then and must not linger). */
+    @Transactional
+    fun clearExpiredSuccessors(now: Instant = Instant.now()): Int =
+        refreshTokenRepository.clearSealedSuccessorsBefore(now.minus(GRACE_PERIOD))
+
     @Transactional
     fun deleteRetiredBefore(cutoff: Instant): Int = refreshTokenRepository.deleteRetiredBefore(cutoff)
 
@@ -97,13 +131,16 @@ class RefreshTokenService(
         session: RefreshToken,
         newHash: String,
         newExpiryAt: Instant,
+        sealedSuccessor: String,
         now: Instant
     ): RefreshTokenRotationResult {
         if (session.isExpired()) {
             refreshTokenRepository.delete(session)
             return RefreshTokenRotationResult.Expired
         }
-        refreshTokenRepository.retireHash(session.tokenHash, session.familyId, now)
+        // Older retired rows of this family are past their grace window: drop their sealed successors on this touch.
+        refreshTokenRepository.clearSealedSuccessorsInFamilyBefore(session.familyId, now.minus(GRACE_PERIOD))
+        refreshTokenRepository.retireHash(session.tokenHash, session.familyId, now, sealedSuccessor)
         session.rotateTo(newHash, newExpiryAt)
         refreshTokenRepository.save(session)
         return RefreshTokenRotationResult.Rotated

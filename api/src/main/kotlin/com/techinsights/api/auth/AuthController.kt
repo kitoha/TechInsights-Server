@@ -3,8 +3,6 @@ package com.techinsights.api.auth
 import com.techinsights.api.props.AuthProperties
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import org.springframework.http.HttpHeaders
-import org.springframework.http.ResponseCookie
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
@@ -14,7 +12,8 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/v1/auth")
 class AuthController(
     private val tokenService: TokenService,
-    private val authProperties: AuthProperties
+    private val authProperties: AuthProperties,
+    private val authCookies: AuthCookies
 ) {
 
     @PostMapping("/refresh")
@@ -24,8 +23,8 @@ class AuthController(
 
         val tokenResponse = tokenService.refresh(refreshToken)
 
-        addCookie(response, authProperties.jwt.accessTokenCookieName, tokenResponse.accessToken, authProperties.jwt.accessTokenExpiration.toSeconds())
-        addCookie(response, authProperties.jwt.refreshTokenCookieName, tokenResponse.refreshToken, authProperties.jwt.refreshTokenExpiration.toSeconds())
+        authCookies.add(response, authProperties.jwt.accessTokenCookieName, tokenResponse.accessToken, authProperties.jwt.accessTokenExpiration.toSeconds())
+        authCookies.add(response, authProperties.jwt.refreshTokenCookieName, tokenResponse.refreshToken, authProperties.jwt.refreshTokenExpiration.toSeconds())
 
         return ResponseEntity.ok().build()
     }
@@ -37,37 +36,8 @@ class AuthController(
             tokenService.revoke(refreshToken)
         }
 
-        clearCookie(response, authProperties.jwt.accessTokenCookieName)
-        clearCookie(response, authProperties.jwt.refreshTokenCookieName)
+        authCookies.clearAuthCookies(response)
 
         return ResponseEntity.ok().build()
-    }
-
-    private fun addCookie(response: HttpServletResponse, name: String, value: String, maxAge: Long) {
-        val builder = ResponseCookie.from(name, value)
-            .path("/")
-            .httpOnly(true)
-            .secure(authProperties.jwt.cookieSecure)
-            .sameSite(authProperties.jwt.cookieSameSite)
-            .maxAge(maxAge)
-        applyDomain(builder)
-        response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString())
-    }
-
-    private fun clearCookie(response: HttpServletResponse, name: String) {
-        val builder = ResponseCookie.from(name, "")
-            .path("/")
-            .httpOnly(true)
-            .secure(authProperties.jwt.cookieSecure)
-            .sameSite(authProperties.jwt.cookieSameSite)
-            .maxAge(0)
-        applyDomain(builder)
-        response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString())
-    }
-
-    private fun applyDomain(builder: ResponseCookie.ResponseCookieBuilder) {
-        authProperties.jwt.cookieDomain
-            ?.takeIf { it.isNotBlank() }
-            ?.let { builder.domain(it) }
     }
 }

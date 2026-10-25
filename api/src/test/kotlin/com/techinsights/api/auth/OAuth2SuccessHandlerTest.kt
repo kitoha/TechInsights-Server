@@ -23,7 +23,7 @@ class OAuth2SuccessHandlerTest : FunSpec({
         ),
         oauth2 = AuthProperties.OAuth2(successRedirectUri = "/dashboard")
     )
-    val handler = OAuth2SuccessHandler(tokenService, authProperties)
+    val handler = OAuth2SuccessHandler(tokenService, authProperties, AuthCookies(authProperties))
 
     beforeTest { clearMocks(tokenService) }
 
@@ -87,7 +87,7 @@ class OAuth2SuccessHandlerTest : FunSpec({
             ),
             oauth2 = AuthProperties.OAuth2(successRedirectUri = "/dashboard")
         )
-        val handlerWithDomain = OAuth2SuccessHandler(tokenService, propsWithDomain)
+        val handlerWithDomain = OAuth2SuccessHandler(tokenService, propsWithDomain, AuthCookies(propsWithDomain))
         val request = MockHttpServletRequest()
         val response = MockHttpServletResponse()
         val auth = mockk<Authentication>()

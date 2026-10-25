@@ -25,10 +25,12 @@ class RefreshTokenCleanupTasklet(
     override fun execute(contribution: StepContribution, chunkContext: ChunkContext): RepeatStatus {
         val now = Instant.now()
         val expiredSessions = refreshTokenService.deleteExpired(now)
+        val clearedSuccessors = refreshTokenService.clearExpiredSuccessors(now)
         val oldRetiredHashes = refreshTokenService.deleteRetiredBefore(now.minus(refreshTokenLifetime))
         log.info(
-            "Refresh token cleanup: {} expired sessions deleted, {} retired hashes older than {} deleted",
-            expiredSessions, oldRetiredHashes, refreshTokenLifetime
+            "Refresh token cleanup: {} expired sessions deleted, {} sealed successors cleared, " +
+                "{} retired hashes older than {} deleted",
+            expiredSessions, clearedSuccessors, oldRetiredHashes, refreshTokenLifetime
         )
         return RepeatStatus.FINISHED
     }

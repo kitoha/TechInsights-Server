@@ -92,4 +92,12 @@ class AuthPropertiesTest {
         }.isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContaining("maxSessionsPerUser must be at least 1")
     }
+
+    @Test
+    fun `should not expose the secret key in toString`() {
+        val props = AuthProperties(jwt = AuthProperties.Jwt(secretKey = validBase64Key))
+
+        assertThat(props.jwt.toString()).doesNotContain(validBase64Key)
+        assertThat(props.toString()).doesNotContain(validBase64Key)
+    }
 }

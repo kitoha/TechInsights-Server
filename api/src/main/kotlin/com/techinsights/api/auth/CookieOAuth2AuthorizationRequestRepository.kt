@@ -9,12 +9,14 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import mu.KotlinLogging
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseCookie
 import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest
 import org.springframework.stereotype.Component
 import java.security.MessageDigest
+import java.time.Clock
 import java.time.Duration
 import java.util.Base64
 import javax.crypto.Mac
@@ -22,8 +24,12 @@ import javax.crypto.spec.SecretKeySpec
 
 @Component
 class CookieOAuth2AuthorizationRequestRepository(
-    private val authProperties: AuthProperties
+    private val authProperties: AuthProperties,
+    private val clock: Clock
 ) : AuthorizationRequestRepository<OAuth2AuthorizationRequest> {
+    @Autowired
+    constructor(authProperties: AuthProperties) : this(authProperties, Clock.systemUTC())
+
     private val oauth2Properties = authProperties.oauth2
     private val log = KotlinLogging.logger {}
     // No scalar coercion: a number / boolean where a string belongs is an unparseable cookie, not a silently converted one.
@@ -49,7 +55,18 @@ class CookieOAuth2AuthorizationRequestRepository(
 
         return runCatching {
             objectMapper.readValue<OAuth2AuthorizationRequestCookiePayload>(Base64.getUrlDecoder().decode(payload))
-                .toAuthorizationRequest()
+                .let { parsed ->
+                    val issuedAt = parsed.issuedAt
+                    if (issuedAt == null) {
+                        log.warn {
+                            "OAuth2 authorization request cookie has no issuedAt (issued before issue times were enforced), " +
+                                "treated as expired: uri=${request.requestURI}"
+                        }
+                        return null
+                    }
+                    check(isFresh(issuedAt)) { "OAuth2 authorization request cookie is expired" }
+                    parsed.toAuthorizationRequest()
+                }
         }.onFailure {
             log.warn {
                 "OAuth2 authorization request cookie could not be parsed: " +
@@ -71,7 +88,7 @@ class CookieOAuth2AuthorizationRequestRepository(
         val encoded = Base64.getUrlEncoder()
             .withoutPadding()
             .encodeToString(
-                objectMapper.writeValueAsBytes(OAuth2AuthorizationRequestCookiePayload.from(authorizationRequest))
+                objectMapper.writeValueAsBytes(OAuth2AuthorizationRequestCookiePayload.from(authorizationRequest, clock.instant().epochSecond))
             )
         val signedValue = "$encoded.${sign(encoded)}"
 
@@ -158,6 +175,12 @@ class CookieOAuth2AuthorizationRequestRepository(
         return null
     }
 
+    private fun isFresh(issuedAt: Long): Boolean {
+        val now = clock.instant().epochSecond
+        return issuedAt <= now + CLOCK_SKEW_SECONDS &&
+            now - issuedAt <= oauth2Properties.authorizationRequestCookieMaxAge.seconds + CLOCK_SKEW_SECONDS
+    }
+
     private fun isOAuth2Callback(request: HttpServletRequest): Boolean {
         return request.requestURI.startsWith("/login/oauth2/code/")
     }
@@ -178,6 +201,7 @@ class CookieOAuth2AuthorizationRequestRepository(
     }
 
     companion object {
+        private const val CLOCK_SKEW_SECONDS = 30L
         private const val SIGNATURE_ALGORITHM = "HmacSHA256"
     }
 }

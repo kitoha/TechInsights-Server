@@ -3,8 +3,6 @@ package com.techinsights.api.auth
 import com.techinsights.api.props.AuthProperties
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import org.springframework.http.HttpHeaders
-import org.springframework.http.ResponseCookie
 import org.springframework.security.core.Authentication
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler
 import org.springframework.stereotype.Component
@@ -12,7 +10,8 @@ import org.springframework.stereotype.Component
 @Component
 class OAuth2SuccessHandler(
     private val tokenService: TokenService,
-    private val authProperties: AuthProperties
+    private val authProperties: AuthProperties,
+    private val authCookies: AuthCookies
 ) : SimpleUrlAuthenticationSuccessHandler() {
 
     override fun onAuthenticationSuccess(
@@ -31,23 +30,9 @@ class OAuth2SuccessHandler(
             deviceId = deviceId
         )
 
-        addCookie(response, authProperties.jwt.accessTokenCookieName, tokens.accessToken, authProperties.jwt.accessTokenExpiration.toSeconds())
-        addCookie(response, authProperties.jwt.refreshTokenCookieName, tokens.refreshToken, authProperties.jwt.refreshTokenExpiration.toSeconds())
+        authCookies.add(response, authProperties.jwt.accessTokenCookieName, tokens.accessToken, authProperties.jwt.accessTokenExpiration.toSeconds())
+        authCookies.add(response, authProperties.jwt.refreshTokenCookieName, tokens.refreshToken, authProperties.jwt.refreshTokenExpiration.toSeconds())
 
         redirectStrategy.sendRedirect(request, response, authProperties.oauth2.successRedirectUri)
-    }
-
-    private fun addCookie(response: HttpServletResponse, name: String, value: String, maxAge: Long) {
-        val builder = ResponseCookie.from(name, value)
-            .path("/")
-            .httpOnly(true)
-            .secure(authProperties.jwt.cookieSecure)
-            .sameSite(authProperties.jwt.cookieSameSite)
-            .maxAge(maxAge)
-        authProperties.jwt.cookieDomain
-            ?.takeIf { it.isNotBlank() }
-            ?.let { builder.domain(it) }
-
-        response.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString())
     }
 }

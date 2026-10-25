@@ -181,7 +181,7 @@ class PostControllerTest : FunSpec() {
 
       // when & then
       mockMvc.post("/api/v1/posts/$postId/view") {
-        cookie(Cookie("aid", "aid-1"))
+        cookie(Cookie("aid", "3f2b8c1e-5d4a-4e7b-9c6d-1a2b3c4d5e6f"))
         header("User-Agent", userAgent)
       }.andExpect {
         status { isOk() }
@@ -196,19 +196,19 @@ class PostControllerTest : FunSpec() {
       // given
       val postId = Tsid.encode(1L)
       every { aidProperties.cookie } returns AidProperties.Cookie()
-      every { postViewService.recordView(postId, "aid-123", any()) } just Runs
-      every { postViewService.trackAnonymousPostRead("aid-123", postId) } just Runs
+      every { postViewService.recordView(postId, "8f14e45f-ceea-467a-9575-1e6c2a9a3f10", any()) } just Runs
+      every { postViewService.trackAnonymousPostRead("8f14e45f-ceea-467a-9575-1e6c2a9a3f10", postId) } just Runs
 
       // when & then
       mockMvc.post("/api/v1/posts/$postId/view") {
-        cookie(Cookie("aid", "aid-123"))
+        cookie(Cookie("aid", "8f14e45f-ceea-467a-9575-1e6c2a9a3f10"))
         header("X-Real-IP", "203.0.113.7")
       }.andExpect {
         status { isOk() }
       }
 
-      verify(exactly = 1) { postViewService.recordView(postId, "aid-123", any()) }
-      verify(exactly = 1) { postViewService.trackAnonymousPostRead("aid-123", postId) }
+      verify(exactly = 1) { postViewService.recordView(postId, "8f14e45f-ceea-467a-9575-1e6c2a9a3f10", any()) }
+      verify(exactly = 1) { postViewService.trackAnonymousPostRead("8f14e45f-ceea-467a-9575-1e6c2a9a3f10", postId) }
     }
 
     test("POST /api/v1/posts/{postId}/view - aid 쿠키 없이 방금 발급된 aid 로는 200 이지만 아무것도 기록하지 않는다") {
@@ -275,7 +275,7 @@ class PostControllerTest : FunSpec() {
 
       // when & then
       mockMvc.post("/api/v1/posts/$postId/view") {
-        cookie(Cookie("aid", "aid-1"))
+        cookie(Cookie("aid", "3f2b8c1e-5d4a-4e7b-9c6d-1a2b3c4d5e6f"))
         // User-Agent 헤더 없음
       }.andExpect {
         status { isOk() }
@@ -300,7 +300,7 @@ class PostControllerTest : FunSpec() {
 
       // when & then
       mockMvc.post("/api/v1/posts/$postId/view") {
-        cookie(Cookie("aid", "aid-1"))
+        cookie(Cookie("aid", "3f2b8c1e-5d4a-4e7b-9c6d-1a2b3c4d5e6f"))
         header("User-Agent", mobileUserAgent)
       }.andExpect {
         status { isOk() }

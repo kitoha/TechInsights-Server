@@ -1,5 +1,6 @@
 package com.techinsights.api.config
 
+import com.techinsights.api.auth.CsrfOriginFilter
 import com.techinsights.api.auth.CustomOAuth2UserService
 import com.techinsights.api.auth.CookieOAuth2AuthorizationRequestRepository
 import com.techinsights.api.auth.DeviceAwareOAuth2AuthorizationRequestResolver
@@ -28,6 +29,7 @@ class SecurityConfig(
     private val oAuth2SuccessHandler: OAuth2SuccessHandler,
     private val oAuth2FailureHandler: OAuth2FailureHandler,
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
+    private val csrfOriginFilter: CsrfOriginFilter,
     private val corsProperties: CorsProperties,
     private val clientRegistrationRepository: ClientRegistrationRepository,
     private val cookieOAuth2AuthorizationRequestRepository: CookieOAuth2AuthorizationRequestRepository
@@ -41,6 +43,7 @@ class SecurityConfig(
             .sessionManagement {
                 it.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             }
+            .addFilterBefore(csrfOriginFilter, UsernamePasswordAuthenticationFilter::class.java)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
             .authorizeHttpRequests { auth ->
                 auth

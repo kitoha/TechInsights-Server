@@ -16,7 +16,8 @@ class TokenService(
     private val refreshTokenService: RefreshTokenService,
     private val userService: UserService,
     private val authProperties: AuthProperties,
-    private val tokenHasher: TokenHasher
+    private val tokenHasher: TokenHasher,
+    private val refreshTokenSealer: RefreshTokenSealer
 ) {
     @Transactional
     fun issueTokens(userId: Long, email: String, role: UserRole, deviceId: String?): TokenResponse {
@@ -55,14 +56,19 @@ class TokenService(
         val newRefreshToken = jwtPlugin.generateRefreshToken(user.id)
         val expiryAt = Instant.now().plus(authProperties.jwt.refreshTokenExpiration)
 
+        val presentedHash = tokenHasher.hash(oldRefreshToken)
         val rotation = refreshTokenService.rotate(
-            presentedHash = tokenHasher.hash(oldRefreshToken),
+            presentedHash = presentedHash,
             newHash = tokenHasher.hash(newRefreshToken),
-            newExpiryAt = expiryAt
+            newExpiryAt = expiryAt,
+            sealedSuccessor = refreshTokenSealer.seal(newRefreshToken, presentedHash)
         )
 
         return when (rotation) {
             RefreshTokenRotationResult.Rotated -> TokenResponse(accessToken, newRefreshToken)
+            // A retried / parallel refresh of an already-rotated token: hand back the same successor, no new rotation.
+            is RefreshTokenRotationResult.GraceRedelivery ->
+                TokenResponse(accessToken, openSuccessor(rotation.sealedSuccessor, presentedHash))
             RefreshTokenRotationResult.Expired -> throw ExpiredTokenException()
             RefreshTokenRotationResult.NotFound -> throw InvalidTokenException("유효하지 않은 토큰입니다.")
             RefreshTokenRotationResult.ReuseDetected ->
@@ -75,4 +81,11 @@ class TokenService(
         val refreshTokenHash = tokenHasher.hash(refreshToken)
         refreshTokenService.deleteByHash(refreshTokenHash)
     }
+
+    private fun openSuccessor(sealed: String, presentedHash: String): String =
+        try {
+            refreshTokenSealer.open(sealed, presentedHash)
+        } catch (e: IllegalArgumentException) {
+            throw InvalidTokenException("유효하지 않은 토큰입니다.")
+        }
 }

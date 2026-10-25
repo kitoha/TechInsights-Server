@@ -11,7 +11,12 @@ data class OAuth2AuthorizationRequestCookiePayload(
     val state: String?,
     val additionalParameters: Map<String, String>,
     val attributes: Map<String, String>,
-    val authorizationRequestUri: String?
+    val authorizationRequestUri: String?,
+    /**
+     * Epoch seconds the cookie was issued; inside the signed payload so it cannot be extended by the client.
+     * Optional on read (cookies issued before this field existed); a missing value is treated as expired.
+     */
+    val issuedAt: Long? = null
 ) {
     fun toAuthorizationRequest(): OAuth2AuthorizationRequest {
         val builder = OAuth2AuthorizationRequest.authorizationCode()
@@ -27,7 +32,7 @@ data class OAuth2AuthorizationRequestCookiePayload(
     }
 
     companion object {
-        fun from(request: OAuth2AuthorizationRequest): OAuth2AuthorizationRequestCookiePayload {
+        fun from(request: OAuth2AuthorizationRequest, issuedAt: Long): OAuth2AuthorizationRequestCookiePayload {
             require(request.grantType == AuthorizationGrantType.AUTHORIZATION_CODE) {
                 "Only authorization_code requests are supported"
             }
@@ -39,7 +44,8 @@ data class OAuth2AuthorizationRequestCookiePayload(
                 state = request.state,
                 additionalParameters = request.additionalParameters.requireStringValues("additionalParameters"),
                 attributes = request.attributes.requireStringValues("attributes"),
-                authorizationRequestUri = request.authorizationRequestUri
+                authorizationRequestUri = request.authorizationRequestUri,
+                issuedAt = issuedAt
             )
         }
 

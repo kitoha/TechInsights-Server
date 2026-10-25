@@ -22,6 +22,7 @@ class RefreshTokenCleanupTaskletTest : FunSpec({
         val now = slot<Instant>()
         val cutoff = slot<Instant>()
         every { refreshTokenService.deleteExpired(capture(now)) } returns 3
+        every { refreshTokenService.clearExpiredSuccessors(any()) } returns 2
         every { refreshTokenService.deleteRetiredBefore(capture(cutoff)) } returns 5
 
         val status = tasklet.execute(mockk(relaxed = true), mockk(relaxed = true))
@@ -30,6 +31,7 @@ class RefreshTokenCleanupTaskletTest : FunSpec({
         Duration.between(cutoff.captured, now.captured) shouldBe refreshTokenLifetime
         now.captured shouldNotBe null
         verify(exactly = 1) { refreshTokenService.deleteExpired(any()) }
+        verify(exactly = 1) { refreshTokenService.clearExpiredSuccessors(any()) }
         verify(exactly = 1) { refreshTokenService.deleteRetiredBefore(any()) }
     }
 
