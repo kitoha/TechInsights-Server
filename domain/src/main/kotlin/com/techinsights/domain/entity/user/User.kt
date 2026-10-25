@@ -25,7 +25,8 @@ class User(
     @Column(name = "name", nullable = false)
     var name: String,
 
-    @Column(name = "nickname", unique = true)
+    // Uniqueness is enforced by the partial functional index uk_users_nickname_lower (lower(nickname), active users)
+    @Column(name = "nickname")
     var nickname: String,
 
     @Column(name = "provider", nullable = false)
