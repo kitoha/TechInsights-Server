@@ -55,8 +55,18 @@ class CookieOAuth2AuthorizationRequestRepository(
 
         return runCatching {
             objectMapper.readValue<OAuth2AuthorizationRequestCookiePayload>(Base64.getUrlDecoder().decode(payload))
-                .also { check(isFresh(it.issuedAt)) { "OAuth2 authorization request cookie is expired" } }
-                .toAuthorizationRequest()
+                .let { parsed ->
+                    val issuedAt = parsed.issuedAt
+                    if (issuedAt == null) {
+                        log.warn {
+                            "OAuth2 authorization request cookie has no issuedAt (issued before issue times were enforced), " +
+                                "treated as expired: uri=${request.requestURI}"
+                        }
+                        return null
+                    }
+                    check(isFresh(issuedAt)) { "OAuth2 authorization request cookie is expired" }
+                    parsed.toAuthorizationRequest()
+                }
         }.onFailure {
             log.warn {
                 "OAuth2 authorization request cookie could not be parsed: " +

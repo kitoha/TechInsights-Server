@@ -12,8 +12,11 @@ data class OAuth2AuthorizationRequestCookiePayload(
     val additionalParameters: Map<String, String>,
     val attributes: Map<String, String>,
     val authorizationRequestUri: String?,
-    /** Epoch seconds the cookie was issued; inside the signed payload so it cannot be extended by the client. */
-    val issuedAt: Long
+    /**
+     * Epoch seconds the cookie was issued; inside the signed payload so it cannot be extended by the client.
+     * Optional on read (cookies issued before this field existed); a missing value is treated as expired.
+     */
+    val issuedAt: Long? = null
 ) {
     fun toAuthorizationRequest(): OAuth2AuthorizationRequest {
         val builder = OAuth2AuthorizationRequest.authorizationCode()
