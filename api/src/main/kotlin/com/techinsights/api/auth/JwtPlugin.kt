@@ -21,7 +21,7 @@ class JwtPlugin(
 
     @PostConstruct
     fun init() {
-        this.key = Keys.hmacShaKeyFor(authProperties.jwt.secretKeyBytes)
+        this.key = Keys.hmacShaKeyFor(KeyPurpose.JWT_SIGNING.deriveKey(authProperties.jwt.secretKeyBytes))
     }
 
     fun generateAccessToken(userId: Long, email: String, role: UserRole): String {
@@ -29,6 +29,7 @@ class JwtPlugin(
             userId = userId,
             email = email,
             role = role,
+            type = ACCESS_TYPE,
             expirationMillis = authProperties.jwt.accessTokenExpiration.toMillis()
         )
     }
@@ -38,6 +39,7 @@ class JwtPlugin(
             userId = userId,
             email = null,
             role = null,
+            type = REFRESH_TYPE,
             expirationMillis = authProperties.jwt.refreshTokenExpiration.toMillis()
         )
     }
@@ -46,6 +48,7 @@ class JwtPlugin(
         userId: Long,
         email: String?,
         role: UserRole?,
+        type: String,
         expirationMillis: Long
     ): String {
         val now = Date()
@@ -53,6 +56,7 @@ class JwtPlugin(
 
         val claims = Jwts.claims()
             .add("userId", userId)
+            .add(TYPE_CLAIM, type)
             .apply {
                 email?.let { add("email", it) }
                 role?.let { add("role", it.name) }
@@ -64,9 +68,22 @@ class JwtPlugin(
             .issuedAt(now)
             .expiration(expiration)
             .subject(userId.toString())
+            .id(UUID.randomUUID().toString())
             .claims(claims)
             .signWith(key)
             .compact()
+    }
+
+    fun validateAccessToken(token: String): Claims = validateToken(token, ACCESS_TYPE)
+
+    fun validateRefreshToken(token: String): Claims = validateToken(token, REFRESH_TYPE)
+
+    private fun validateToken(token: String, expectedType: String): Claims {
+        val claims = validateToken(token)
+        if (claims.get(TYPE_CLAIM, String::class.java) != expectedType) {
+            throw InvalidTokenException("토큰 유형이 올바르지 않습니다.")
+        }
+        return claims
     }
 
     fun validateToken(token: String): Claims {
@@ -85,5 +102,11 @@ class JwtPlugin(
         } catch (e: Exception) {
             throw InvalidTokenException()
         }
+    }
+
+    companion object {
+        private const val TYPE_CLAIM = "typ"
+        private const val ACCESS_TYPE = "access"
+        private const val REFRESH_TYPE = "refresh"
     }
 }

@@ -43,7 +43,7 @@ class JwtAuthenticationFilterTest : FunSpec({
         every { claims.get("role", String::class.java) } returns UserRole.USER.name
         every { claims.subject } returns "1"
 
-        every { jwtPlugin.validateToken("valid-at") } returns claims
+        every { jwtPlugin.validateAccessToken("valid-at") } returns claims
         every { chain.doFilter(any(), any()) } just Runs
 
         // when
@@ -68,6 +68,56 @@ class JwtAuthenticationFilterTest : FunSpec({
         filter.doFilter(request, response, chain)
 
         // then
+        SecurityContextHolder.getContext().authentication shouldBe null
+        verify { chain.doFilter(any(), any()) }
+    }
+
+    test("리프레시 토큰이 Access Token 쿠키에 담겨 있으면 인증하지 않고 요청을 통과시켜야 한다") {
+        val request = MockHttpServletRequest()
+        val response = MockHttpServletResponse()
+        val chain = mockk<FilterChain>()
+        request.setCookies(Cookie("at", "refresh-in-at"))
+        every { jwtPlugin.validateAccessToken("refresh-in-at") } throws InvalidTokenException("토큰 유형이 올바르지 않습니다.")
+        every { chain.doFilter(any(), any()) } just Runs
+
+        filter.doFilter(request, response, chain)
+
+        SecurityContextHolder.getContext().authentication shouldBe null
+        verify { chain.doFilter(any(), any()) }
+    }
+
+    test("role 클레임이 없는 토큰은 예외 없이 인증하지 않아야 한다") {
+        val request = MockHttpServletRequest()
+        val response = MockHttpServletResponse()
+        val chain = mockk<FilterChain>()
+        request.setCookies(Cookie("at", "no-role"))
+        val claims = mockk<Claims>()
+        every { claims.get("userId", Long::class.javaObjectType) } returns 1L
+        every { claims.get("email", String::class.java) } returns null
+        every { claims.get("role", String::class.java) } returns null
+        every { jwtPlugin.validateAccessToken("no-role") } returns claims
+        every { chain.doFilter(any(), any()) } just Runs
+
+        filter.doFilter(request, response, chain)
+
+        SecurityContextHolder.getContext().authentication shouldBe null
+        verify { chain.doFilter(any(), any()) }
+    }
+
+    test("알 수 없는 role 값을 가진 토큰은 예외 없이 인증하지 않아야 한다") {
+        val request = MockHttpServletRequest()
+        val response = MockHttpServletResponse()
+        val chain = mockk<FilterChain>()
+        request.setCookies(Cookie("at", "bad-role"))
+        val claims = mockk<Claims>()
+        every { claims.get("userId", Long::class.javaObjectType) } returns 1L
+        every { claims.get("email", String::class.java) } returns "test@example.com"
+        every { claims.get("role", String::class.java) } returns "SUPERUSER"
+        every { jwtPlugin.validateAccessToken("bad-role") } returns claims
+        every { chain.doFilter(any(), any()) } just Runs
+
+        filter.doFilter(request, response, chain)
+
         SecurityContextHolder.getContext().authentication shouldBe null
         verify { chain.doFilter(any(), any()) }
     }

@@ -22,6 +22,10 @@ class CookieOAuth2AuthorizationRequestRepository(
 ) : AuthorizationRequestRepository<OAuth2AuthorizationRequest> {
     private val oauth2Properties = authProperties.oauth2
     private val log = KotlinLogging.logger {}
+    private val signingKey = SecretKeySpec(
+        KeyPurpose.OAUTH_COOKIE_SIGNING.deriveKey(authProperties.jwt.secretKeyBytes),
+        SIGNATURE_ALGORITHM
+    )
 
     override fun loadAuthorizationRequest(request: HttpServletRequest): OAuth2AuthorizationRequest? {
         val cookieValue = request.cookies
@@ -155,7 +159,7 @@ class CookieOAuth2AuthorizationRequestRepository(
 
     private fun sign(value: String): String {
         val mac = Mac.getInstance(SIGNATURE_ALGORITHM)
-        mac.init(SecretKeySpec(authProperties.jwt.secretKeyBytes, SIGNATURE_ALGORITHM))
+        mac.init(signingKey)
         return Base64.getUrlEncoder().withoutPadding().encodeToString(mac.doFinal(value.toByteArray()))
     }
 
