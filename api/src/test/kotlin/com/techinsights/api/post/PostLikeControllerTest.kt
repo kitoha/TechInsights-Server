@@ -1,12 +1,18 @@
 package com.techinsights.api.post
 
+import com.techinsights.api.aid.AidInterceptor
 import com.techinsights.api.aid.AidProperties
+import com.techinsights.api.auth.CustomUserDetails
 import com.techinsights.api.auth.RequesterResolver
+import com.techinsights.domain.enums.UserRole
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.context.SecurityContextHolder
 import com.techinsights.domain.dto.auth.Requester
 import com.techinsights.domain.service.post.PostLikeService
 import com.techinsights.domain.utils.Tsid
 import io.kotest.core.spec.style.FunSpec
 import io.mockk.*
+import jakarta.servlet.http.Cookie
 import org.springframework.http.MediaType
 import com.techinsights.domain.dto.post.LikeStatusResult
 import org.springframework.test.web.servlet.MockMvc
@@ -23,6 +29,7 @@ class PostLikeControllerTest : FunSpec() {
     init {
         beforeTest {
             clearAllMocks()
+            SecurityContextHolder.clearContext()
 
             val controller = PostLikeController(postLikeService)
             val requesterResolver = RequesterResolver(aidProperties)
@@ -32,12 +39,18 @@ class PostLikeControllerTest : FunSpec() {
                 .build()
         }
 
+        afterTest {
+            SecurityContextHolder.clearContext()
+        }
+
         test("POST /api/v1/posts/{postId}/like - Anonymous User - New Like") {
+            every { aidProperties.cookie } returns AidProperties.Cookie()
             val postId = Tsid.generate()
 
             every { postLikeService.toggleLike(postId, any<Requester.Anonymous>()) } returns true
 
             mockMvc.post("/api/v1/posts/$postId/like") {
+                cookie(Cookie("aid", "aid-1"))
                 accept = MediaType.APPLICATION_JSON
             }.andExpect {
                 status { isOk() }
@@ -48,11 +61,13 @@ class PostLikeControllerTest : FunSpec() {
         }
 
         test("POST /api/v1/posts/{postId}/like - Anonymous User - Unlike") {
+            every { aidProperties.cookie } returns AidProperties.Cookie()
             val postId = Tsid.generate()
 
             every { postLikeService.toggleLike(postId, any<Requester.Anonymous>()) } returns false
 
             mockMvc.post("/api/v1/posts/$postId/like") {
+                cookie(Cookie("aid", "aid-1"))
                 accept = MediaType.APPLICATION_JSON
             }.andExpect {
                 status { isOk() }
@@ -62,7 +77,38 @@ class PostLikeControllerTest : FunSpec() {
             verify(exactly = 1) { postLikeService.toggleLike(postId, any<Requester.Anonymous>()) }
         }
 
+        test("POST /api/v1/posts/{postId}/like - 방금 발급된 aid(쿠키 없음)는 200 liked=true 를 주지만 기록하지 않는다") {
+            val postId = Tsid.generate()
+            every { aidProperties.cookie } returns AidProperties.Cookie()
+
+            mockMvc.post("/api/v1/posts/$postId/like") {
+                requestAttr(AidInterceptor.AID_ATTRIBUTE, "just-minted-aid")
+                accept = MediaType.APPLICATION_JSON
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.liked") { value(true) }
+            }
+
+            verify(exactly = 0) { postLikeService.toggleLike(any(), any()) }
+        }
+
+        test("POST /api/v1/posts/{postId}/like - aid 도 쿠키도 없으면(봇 등) 기록하지 않는다") {
+            val postId = Tsid.generate()
+            every { aidProperties.cookie } returns AidProperties.Cookie()
+
+            mockMvc.post("/api/v1/posts/$postId/like") {
+                accept = MediaType.APPLICATION_JSON
+            }.andExpect {
+                status { isOk() }
+            }
+
+            verify(exactly = 0) { postLikeService.toggleLike(any(), any()) }
+        }
+
         test("POST /api/v1/posts/{postId}/like - Authenticated User - New Like") {
+            val userDetails = CustomUserDetails(userId = 1L, email = "test@example.com", role = UserRole.USER)
+            SecurityContextHolder.getContext().authentication =
+                UsernamePasswordAuthenticationToken(userDetails, null, userDetails.authorities)
             val postId = Tsid.generate()
 
             every { postLikeService.toggleLike(postId, any<Requester.Authenticated>()) } returns true
@@ -110,6 +156,9 @@ class PostLikeControllerTest : FunSpec() {
         }
 
         test("POST /api/v1/posts/{postId}/like - Authenticated User - Unlike") {
+            val userDetails = CustomUserDetails(userId = 1L, email = "test@example.com", role = UserRole.USER)
+            SecurityContextHolder.getContext().authentication =
+                UsernamePasswordAuthenticationToken(userDetails, null, userDetails.authorities)
             val postId = Tsid.generate()
 
             every { postLikeService.toggleLike(postId, any<Requester.Authenticated>()) } returns false

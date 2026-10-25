@@ -1,5 +1,6 @@
 package com.techinsights.api.post
 
+import com.techinsights.api.aid.AidInterceptor
 import com.techinsights.api.aid.AidProperties
 import com.techinsights.api.auth.RequesterResolver
 import com.techinsights.domain.service.post.PostService
@@ -167,6 +168,7 @@ class PostControllerTest : FunSpec() {
     }
 
     test("POST /api/v1/posts/{postId}/view - 조회수 증가 성공") {
+      every { aidProperties.cookie } returns AidProperties.Cookie()
       // given
       val postId = Tsid.encode(1L)
       val clientIp = "127.0.0.1"
@@ -178,6 +180,7 @@ class PostControllerTest : FunSpec() {
 
       // when & then
       mockMvc.post("/api/v1/posts/$postId/view") {
+        cookie(Cookie("aid", "aid-1"))
         header("User-Agent", userAgent)
       }.andExpect {
         status { isOk() }
@@ -207,7 +210,38 @@ class PostControllerTest : FunSpec() {
       verify(exactly = 1) { postViewService.trackAnonymousPostRead("aid-123", postId) }
     }
 
+    test("POST /api/v1/posts/{postId}/view - aid 쿠키 없이 방금 발급된 aid 로는 200 이지만 아무것도 기록하지 않는다") {
+      // given
+      val postId = Tsid.encode(1L)
+      every { aidProperties.cookie } returns AidProperties.Cookie()
+
+      // when & then
+      mockMvc.post("/api/v1/posts/$postId/view") {
+        requestAttr(AidInterceptor.AID_ATTRIBUTE, "just-minted-aid")
+      }.andExpect {
+        status { isOk() }
+      }
+
+      verify(exactly = 0) { postViewService.recordView(any(), any(), any()) }
+      verify(exactly = 0) { postViewService.trackAnonymousPostRead(any(), any()) }
+    }
+
+    test("POST /api/v1/posts/{postId}/view - aid 도 쿠키도 없으면(봇 등) 200 이지만 아무것도 기록하지 않는다") {
+      // given
+      val postId = Tsid.encode(1L)
+      every { aidProperties.cookie } returns AidProperties.Cookie()
+
+      // when & then
+      mockMvc.post("/api/v1/posts/$postId/view").andExpect {
+        status { isOk() }
+      }
+
+      verify(exactly = 0) { postViewService.recordView(any(), any(), any()) }
+      verify(exactly = 0) { postViewService.trackAnonymousPostRead(any(), any()) }
+    }
+
     test("POST /api/v1/posts/{postId}/view - User-Agent 없이도 성공") {
+      every { aidProperties.cookie } returns AidProperties.Cookie()
       // given
       val postId = Tsid.encode(1L)
       val clientIp = "192.168.0.1"
@@ -218,6 +252,7 @@ class PostControllerTest : FunSpec() {
 
       // when & then
       mockMvc.post("/api/v1/posts/$postId/view") {
+        cookie(Cookie("aid", "aid-1"))
         // User-Agent 헤더 없음
       }.andExpect {
         status { isOk() }
@@ -229,6 +264,7 @@ class PostControllerTest : FunSpec() {
     }
 
     test("POST /api/v1/posts/{postId}/view - 다양한 User-Agent 처리") {
+      every { aidProperties.cookie } returns AidProperties.Cookie()
       // given
       val postId = Tsid.encode(1L)
       val clientIp = "10.0.0.1"
@@ -241,6 +277,7 @@ class PostControllerTest : FunSpec() {
 
       // when & then
       mockMvc.post("/api/v1/posts/$postId/view") {
+        cookie(Cookie("aid", "aid-1"))
         header("User-Agent", mobileUserAgent)
       }.andExpect {
         status { isOk() }

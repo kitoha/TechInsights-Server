@@ -56,6 +56,11 @@ class PostController(
     requester: Requester,
     request: HttpServletRequest
   ): ResponseEntity<Unit> {
+    // Writes count only for requests that carried an aid cookie; a freshly minted aid answers 200 but records nothing.
+    if (requester is Requester.Anonymous && !requester.carriedAidCookie) {
+      return ResponseEntity.ok().build()
+    }
+
     val userAgent = request.getHeader("User-Agent")
 
     val identifier = when (requester) {

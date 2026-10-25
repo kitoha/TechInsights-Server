@@ -30,3 +30,7 @@ class MyControllerTest : FunSpec({
 ## Cursor Pagination
 
 Use `CursorPageResponse<T>` for cursor-based list endpoints.
+
+## Anonymous writes need a real aid cookie
+
+`Requester.Anonymous.carriedAidCookie` is true only when the request itself carried the `aid` cookie. A request that had none (first visit, `curl`, bots) is given a freshly minted aid by `AidInterceptor`, but that aid is not a proven identity. Write paths — anonymous like/unlike, view recording and read history — must count only when `carriedAidCookie` is true; otherwise they return success to the client and record nothing (so cookie-less clients cannot inflate likes/views). Reads are unaffected. Apply the same guard to any new anonymous write endpoint.

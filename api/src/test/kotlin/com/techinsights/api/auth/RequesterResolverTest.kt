@@ -85,6 +85,7 @@ class RequesterResolverTest : FunSpec({
         result.shouldBeInstanceOf<Requester.Anonymous>()
         (result as Requester.Anonymous).anonymousId shouldBe "anon-uuid-123"
         result.ip shouldBe "127.0.0.1"
+        result.carriedAidCookie shouldBe true
 
         unmockkStatic(SecurityContextHolder::class)
     }
@@ -109,6 +110,7 @@ class RequesterResolverTest : FunSpec({
         result.shouldBeInstanceOf<Requester.Anonymous>()
         (result as Requester.Anonymous).anonymousId shouldBe "issued-aid-1"
         result.identifier shouldBe "issued-aid-1"
+        result.carriedAidCookie shouldBe false
 
         unmockkStatic(SecurityContextHolder::class)
     }
@@ -131,6 +133,7 @@ class RequesterResolverTest : FunSpec({
         val result = resolver.resolveArgument(mockk(), null, webRequest, null)
 
         (result as Requester.Anonymous).anonymousId shouldBe "127.0.0.1"
+        result.carriedAidCookie shouldBe false
 
         unmockkStatic(SecurityContextHolder::class)
     }
