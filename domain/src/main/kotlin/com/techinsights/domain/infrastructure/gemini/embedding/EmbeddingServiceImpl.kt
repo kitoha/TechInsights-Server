@@ -29,11 +29,12 @@ class EmbeddingServiceImpl(
   }
 
   override fun generateEmbedding(request: EmbeddingRequest): List<Float> {
-    if (!dailyQuotaService.tryReserve(DailyQuota.EMBEDDING)) {
-      log.warn { "Daily Gemini embedding quota exhausted" }
-      return emptyList()
-    }
     return rateLimiter.executeSupplier {
+      // RPM permit first, then reserve the daily quota: a limiter rejection must not burn quota
+      if (!dailyQuotaService.tryReserve(DailyQuota.EMBEDDING)) {
+        log.warn { "Daily Gemini embedding quota exhausted" }
+        return@executeSupplier emptyList()
+      }
       val modelName = MODEL.get()
       val combinedInput = request.toPromptString()
 
@@ -82,8 +83,15 @@ class EmbeddingServiceImpl(
     val modelName = MODEL.get()
     val embedContentConfig = buildEmbedConfig()
 
+    var quotaExhausted = false
     return requests.map { request ->
-      generateSingleEmbeddingWithRateLimit(request, modelName, embedContentConfig)
+      if (quotaExhausted) {
+        quotaExhaustedResult(request)
+      } else {
+        generateSingleEmbeddingWithRateLimit(request, modelName, embedContentConfig).also {
+          if (it.error == QUOTA_EXHAUSTED_ERROR) quotaExhausted = true
+        }
+      }
     }
   }
 
@@ -92,12 +100,11 @@ class EmbeddingServiceImpl(
   ): List<List<Float>> {
     if (promptStrings.isEmpty()) return emptyList()
 
-    if (!dailyQuotaService.tryReserve(DailyQuota.EMBEDDING)) {
-      log.warn { "Daily Gemini embedding quota exhausted. texts=${promptStrings.size}" }
-      return promptStrings.map { emptyList() }
-    }
-
     return rateLimiter.executeSupplier {
+      if (!dailyQuotaService.tryReserve(DailyQuota.EMBEDDING)) {
+        log.warn { "Daily Gemini embedding quota exhausted. texts=${promptStrings.size}" }
+        return@executeSupplier promptStrings.map { emptyList<Float>() }
+      }
       val modelName = MODEL.get()
       val config = buildEmbedConfig()
       val response = geminiClient.models.embedContent(modelName, promptStrings, config)
@@ -111,16 +118,11 @@ class EmbeddingServiceImpl(
     modelName: String,
     config: EmbedContentConfig
   ): EmbeddingService.EmbeddingResult {
-    if (!dailyQuotaService.tryReserve(DailyQuota.EMBEDDING)) {
-      return EmbeddingService.EmbeddingResult(
-        request = request,
-        vector = emptyList(),
-        success = false,
-        error = QUOTA_EXHAUSTED_ERROR
-      )
-    }
     return try {
       rateLimiter.executeSupplier {
+        if (!dailyQuotaService.tryReserve(DailyQuota.EMBEDDING)) {
+          return@executeSupplier quotaExhaustedResult(request)
+        }
         val combinedInput = request.toPromptString()
         val response = geminiClient.models.embedContent(modelName, combinedInput, config)
         val vector = extractEmbeddingVector(response)
@@ -149,6 +151,13 @@ class EmbeddingServiceImpl(
       )
     }
   }
+
+  private fun quotaExhaustedResult(request: EmbeddingRequest) = EmbeddingService.EmbeddingResult(
+    request = request,
+    vector = emptyList(),
+    success = false,
+    error = QUOTA_EXHAUSTED_ERROR
+  )
 
   private fun buildEmbedConfig(): EmbedContentConfig {
     return EmbedContentConfig.builder()

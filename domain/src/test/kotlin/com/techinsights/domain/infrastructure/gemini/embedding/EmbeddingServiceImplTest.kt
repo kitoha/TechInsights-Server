@@ -172,4 +172,33 @@ class EmbeddingServiceImplTest : FunSpec({
 
         embeddingService.generateQuestionEmbedding("kotlin") shouldBe vector
     }
+
+    test("RPM limiter가 거절하면 일일 쿼터를 소모하지 않는다") {
+        val models = mockk<Models>()
+        every { models.embedContent(any<String>(), any<List<String>>(), any<EmbedContentConfig>()) } returns embeddingResponse()
+        val properties = RateLimiterProperties(
+            geminiEmbedding = RateLimiterProperties.LimiterConfig(limitForPeriod = 1, refreshPeriodSeconds = 3600, timeoutSeconds = 0)
+        )
+        var reservations = 0
+        val embeddingService = service(models, properties, dailyQuotaService = { reservations++; true })
+
+        embeddingService.batchEmbedTexts(listOf("a"))
+        shouldThrow<RequestNotPermitted> { embeddingService.batchEmbedTexts(listOf("b")) }
+
+        reservations shouldBe 1
+    }
+
+    test("generateEmbeddingBatch는 쿼터가 처음 소진된 뒤에는 DB 예약을 더 호출하지 않는다") {
+        val models = mockk<Models>()
+        every { models.embedContent(any<String>(), any<String>(), any<EmbedContentConfig>()) } returns embeddingResponse()
+        var reservations = 0
+        val embeddingService = service(models, dailyQuotaService = { reservations++; reservations <= 2 })
+
+        val results = embeddingService.generateEmbeddingBatch(List(5) { request })
+
+        results.map { it.success } shouldBe listOf(true, true, false, false, false)
+        results.drop(2).all { it.error == "Daily Gemini quota exhausted" } shouldBe true
+        reservations shouldBe 3
+        verify(exactly = 2) { models.embedContent(any<String>(), any<String>(), any<EmbedContentConfig>()) }
+    }
 })
