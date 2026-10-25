@@ -6,9 +6,11 @@ import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.time.LocalDateTime
+import org.hibernate.annotations.SQLRestriction
 
 @Entity
 @Table(name = "github_repositories")
+@SQLRestriction("deleted_at IS NULL")
 class GithubRepository(
     @Id
     val id: Long,

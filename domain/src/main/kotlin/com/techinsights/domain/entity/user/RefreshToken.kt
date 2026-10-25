@@ -3,12 +3,14 @@ package com.techinsights.domain.entity.user
 import com.techinsights.domain.entity.BaseEntity
 import jakarta.persistence.*
 import java.time.Instant
+import org.hibernate.annotations.SQLRestriction
 
 @Entity
 @Table(name = "refresh_tokens", indexes = [
     Index(name = "idx_rt_hash", columnList = "token_hash", unique = true),
     Index(name = "idx_rt_user_device", columnList = "user_id, device_id")
 ])
+@SQLRestriction("deleted_at IS NULL")
 class RefreshToken(
     @Id
     val id: Long,

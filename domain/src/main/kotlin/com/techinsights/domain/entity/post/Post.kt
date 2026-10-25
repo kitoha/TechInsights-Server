@@ -7,9 +7,11 @@ import com.techinsights.domain.utils.Tsid
 import jakarta.persistence.*
 import org.hibernate.annotations.BatchSize
 import java.time.LocalDateTime
+import org.hibernate.annotations.SQLRestriction
 
 @Entity
 @Table(name = "posts")
+@SQLRestriction("deleted_at IS NULL")
 class Post(
   @Id
   val id: Long,
