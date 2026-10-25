@@ -41,6 +41,10 @@ class PostLikeController(
         @PathVariable postId: String,
         requester: Requester
     ): ResponseEntity<LikeResponse> {
+        if (requester is Requester.Anonymous && !requester.carriedAidCookie) {
+            return ResponseEntity.ok(LikeResponse(true))
+        }
+
         postLikeService.like(postId, requester)
         return ResponseEntity.ok(LikeResponse(true))
     }
@@ -50,6 +54,10 @@ class PostLikeController(
         @PathVariable postId: String,
         requester: Requester
     ): ResponseEntity<LikeResponse> {
+        if (requester is Requester.Anonymous && !requester.carriedAidCookie) {
+            return ResponseEntity.ok(LikeResponse(false))
+        }
+
         postLikeService.unlike(postId, requester)
         return ResponseEntity.ok(LikeResponse(false))
     }
