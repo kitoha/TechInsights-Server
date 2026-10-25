@@ -52,7 +52,7 @@ class PostLikeControllerTest : FunSpec() {
             every { postLikeService.toggleLike(postId, any<Requester.Anonymous>()) } returns true
 
             mockMvc.post("/api/v1/posts/$postId/like") {
-                cookie(Cookie("aid", "aid-1"))
+                cookie(Cookie("aid", "3f2b8c1e-5d4a-4e7b-9c6d-1a2b3c4d5e6f"))
                 accept = MediaType.APPLICATION_JSON
             }.andExpect {
                 status { isOk() }
@@ -69,7 +69,7 @@ class PostLikeControllerTest : FunSpec() {
             every { postLikeService.toggleLike(postId, any<Requester.Anonymous>()) } returns false
 
             mockMvc.post("/api/v1/posts/$postId/like") {
-                cookie(Cookie("aid", "aid-1"))
+                cookie(Cookie("aid", "3f2b8c1e-5d4a-4e7b-9c6d-1a2b3c4d5e6f"))
                 accept = MediaType.APPLICATION_JSON
             }.andExpect {
                 status { isOk() }
@@ -147,7 +147,7 @@ class PostLikeControllerTest : FunSpec() {
             every { postLikeService.like(postId, any<Requester.Anonymous>()) } just Runs
 
             mockMvc.put("/api/v1/posts/$postId/like") {
-                cookie(Cookie("aid", "aid-1"))
+                cookie(Cookie("aid", "3f2b8c1e-5d4a-4e7b-9c6d-1a2b3c4d5e6f"))
                 accept = MediaType.APPLICATION_JSON
             }.andExpect {
                 status { isOk() }
@@ -164,7 +164,7 @@ class PostLikeControllerTest : FunSpec() {
             every { postLikeService.unlike(postId, any<Requester.Anonymous>()) } just Runs
 
             mockMvc.delete("/api/v1/posts/$postId/like") {
-                cookie(Cookie("aid", "aid-1"))
+                cookie(Cookie("aid", "3f2b8c1e-5d4a-4e7b-9c6d-1a2b3c4d5e6f"))
                 accept = MediaType.APPLICATION_JSON
             }.andExpect {
                 status { isOk() }

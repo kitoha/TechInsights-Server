@@ -181,7 +181,7 @@ class PostControllerTest : FunSpec() {
 
       // when & then
       mockMvc.post("/api/v1/posts/$postId/view") {
-        cookie(Cookie("aid", "aid-1"))
+        cookie(Cookie("aid", "3f2b8c1e-5d4a-4e7b-9c6d-1a2b3c4d5e6f"))
         header("User-Agent", userAgent)
       }.andExpect {
         status { isOk() }
@@ -275,7 +275,7 @@ class PostControllerTest : FunSpec() {
 
       // when & then
       mockMvc.post("/api/v1/posts/$postId/view") {
-        cookie(Cookie("aid", "aid-1"))
+        cookie(Cookie("aid", "3f2b8c1e-5d4a-4e7b-9c6d-1a2b3c4d5e6f"))
         // User-Agent 헤더 없음
       }.andExpect {
         status { isOk() }
@@ -300,7 +300,7 @@ class PostControllerTest : FunSpec() {
 
       // when & then
       mockMvc.post("/api/v1/posts/$postId/view") {
-        cookie(Cookie("aid", "aid-1"))
+        cookie(Cookie("aid", "3f2b8c1e-5d4a-4e7b-9c6d-1a2b3c4d5e6f"))
         header("User-Agent", mobileUserAgent)
       }.andExpect {
         status { isOk() }

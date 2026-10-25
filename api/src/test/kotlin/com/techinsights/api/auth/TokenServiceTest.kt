@@ -204,7 +204,7 @@ class TokenServiceTest : FunSpec({
         shouldThrow<InvalidTokenException> { tokenService.refresh("old-rt") }
 
         verify(exactly = 1) { refreshTokenService.deleteAllByUserId(userId) }
-        verify(exactly = 0) { refreshTokenService.rotate(any(), any(), any()) }
+        verify(exactly = 0) { refreshTokenService.rotate(any(), any(), any(), any()) }
         verify(exactly = 0) { jwtPlugin.generateAccessToken(any(), any(), any()) }
     }
 

@@ -8,6 +8,8 @@ import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
 import java.time.Instant
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 
 class RefreshTokenServiceTest(
   repository: RefreshTokenRepository,
