@@ -1,6 +1,7 @@
 -- ============================================================
 -- posts.url 유일성을 DB가 보장하도록 중복 정리 후 UNIQUE 인덱스 추가
--- 남기는 행: 삭제되지 않은 행 우선 → created_at → published_at → id 가 가장 작은 행
+-- 남기는 행: 삭제되지 않은 행 → 요약된 행 → 임베딩된 행 우선, 그다음 created_at → published_at → id 가 가장 작은 행
+-- (요약/임베딩 결과물을 가진 행을 남겨야 재요약 비용과 검색 누락이 생기지 않는다)
 -- ============================================================
 
 CREATE TEMP TABLE post_url_dedup ON COMMIT DROP AS
@@ -12,7 +13,7 @@ FROM (
     FROM posts
     WINDOW w AS (
         PARTITION BY url
-        ORDER BY (deleted_at IS NOT NULL), created_at, published_at, id
+        ORDER BY (deleted_at IS NOT NULL), is_summary DESC, is_embedding DESC, created_at, published_at, id
     )
 ) ranked
 WHERE rn > 1;
