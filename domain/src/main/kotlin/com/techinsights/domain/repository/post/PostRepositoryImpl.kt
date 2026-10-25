@@ -1,5 +1,6 @@
 package com.techinsights.domain.repository.post
 
+import com.querydsl.core.types.OrderSpecifier
 import com.querydsl.core.types.Projections
 import java.time.LocalDateTime
 import com.querydsl.jpa.impl.JPAQueryFactory
@@ -9,6 +10,7 @@ import com.techinsights.domain.entity.company.QCompany
 import com.techinsights.domain.entity.post.QPost
 import com.techinsights.domain.entity.post.QPostCategory
 import com.techinsights.domain.enums.Category
+import com.techinsights.domain.enums.PostSortType
 import com.techinsights.domain.exception.PostNotFoundException
 import com.techinsights.domain.utils.Tsid
 import jakarta.persistence.EntityManager
@@ -27,9 +29,9 @@ class PostRepositoryImpl(
 
   companion object {
     private const val MAX_RETRY_COUNT = 5
-    // posts.title is VARCHAR(255) and posts.url VARCHAR(2048) in the schema on this branch;
+    // Matches the column lengths: posts.title VARCHAR(500) since V022, posts.url VARCHAR(2048).
     // a single over-long value would otherwise fail the whole chunk's insert.
-    private const val MAX_TITLE_LENGTH = 255
+    private const val MAX_TITLE_LENGTH = 500
     private const val MAX_URL_LENGTH = 2048
     private const val INSERT_IGNORING_DUPLICATES_SQL = """
       INSERT INTO posts (id, title, url, content, published_at, thumbnail, company_id, view_count,
@@ -278,7 +280,8 @@ class PostRepositoryImpl(
 
   override fun getAllPosts(
     pageable: Pageable,
-    companyId: String?
+    companyId: String?,
+    sort: PostSortType
   ): Page<PostDto> {
     val postEntity = QPost.post
     val companyEntity = QCompany.company
@@ -290,7 +293,7 @@ class PostRepositoryImpl(
         postEntity.isSummary.isTrue,
         companyIdLong?.let { postEntity.company.id.eq(it) }
       )
-      .orderBy(postEntity.publishedAt.desc())
+      .orderBy(*listOrder(postEntity, sort))
       .offset(pageable.offset)
       .limit(pageable.pageSize.toLong())
       .fetch()
@@ -310,7 +313,8 @@ class PostRepositoryImpl(
   override fun getPostsByCategory(
     pageable: Pageable,
     category: Category,
-    companyId: String?
+    companyId: String?,
+    sort: PostSortType
   ): Page<PostDto> {
     val postEntity = QPost.post
     val companyEntity = QCompany.company
@@ -326,7 +330,7 @@ class PostRepositoryImpl(
         postCategory.category.eq(category),
         companyIdLong?.let { postEntity.company.id.eq(it) }
       )
-      .orderBy(postEntity.publishedAt.desc())
+      .orderBy(*listOrder(postEntity, sort))
       .offset(pageable.offset)
       .limit(pageable.pageSize.toLong())
       .fetch()
@@ -370,6 +374,12 @@ class PostRepositoryImpl(
       .where(post.id.eq(decodedId))
       .execute()
   }
+
+  private fun listOrder(post: QPost, sort: PostSortType): Array<OrderSpecifier<*>> =
+    when (sort) {
+      PostSortType.RECENT -> arrayOf(post.publishedAt.desc(), post.id.desc())
+      PostSortType.POPULAR -> arrayOf(post.viewCount.desc(), post.id.desc())
+    }
 
   private fun buildCursorCondition(
     post: QPost,

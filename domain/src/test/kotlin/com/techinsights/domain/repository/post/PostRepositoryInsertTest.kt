@@ -38,9 +38,9 @@ class PostRepositoryInsertTest : FunSpec({
     }
     every { query.executeUpdate() } returns 1
 
-    repository.insertAllIgnoringDuplicates(listOf(post("t".repeat(400), "https://a.com/" + "u".repeat(3000))))
+    repository.insertAllIgnoringDuplicates(listOf(post("t".repeat(600), "https://a.com/" + "u".repeat(3000))))
 
-    (parameters["title"] as String).length shouldBe 255
+    (parameters["title"] as String).length shouldBe 500
     (parameters["url"] as String).length shouldBe 2048
   }
 })
