@@ -1,6 +1,6 @@
 package com.techinsights.batch.summary.service
 
-import com.techinsights.domain.dto.gemini.SummaryResultWithId
+import com.techinsights.domain.dto.summary.SummaryResultWithId
 import com.techinsights.domain.dto.post.PostDto
 import com.techinsights.domain.enums.Category
 import io.kotest.core.spec.style.FunSpec

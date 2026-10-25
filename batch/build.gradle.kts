@@ -25,6 +25,7 @@ dependencies {
     implementation(libs.spring.boot.starter.batch)
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.flyway.core)
+    runtimeOnly(libs.bundles.aws)
     implementation(libs.spring.boot.starter.webflux)
     implementation(libs.bundles.kotlinx.coroutines)
     implementation(libs.jsoup)
