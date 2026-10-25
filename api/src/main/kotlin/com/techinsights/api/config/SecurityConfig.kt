@@ -51,6 +51,7 @@ class SecurityConfig(
                     .requestMatchers(HttpMethod.PUT, "/api/v1/github/*/bookmark").authenticated()
                     .requestMatchers(HttpMethod.DELETE, "/api/v1/github/*/bookmark").authenticated()
                     .requestMatchers("/api/v1/posts/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/v1/companies/summaries").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/v1/companies/**").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.PUT, "/api/v1/companies/**").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.PATCH, "/api/v1/companies/**").hasRole("ADMIN")
