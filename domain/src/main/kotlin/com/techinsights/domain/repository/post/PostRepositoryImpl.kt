@@ -11,6 +11,7 @@ import com.techinsights.domain.entity.post.QPost
 import com.techinsights.domain.entity.post.QPostCategory
 import com.techinsights.domain.enums.Category
 import com.techinsights.domain.enums.PostSortType
+import com.techinsights.domain.exception.PostAlreadyExistsException
 import com.techinsights.domain.exception.PostNotFoundException
 import com.techinsights.domain.utils.Tsid
 import jakarta.persistence.EntityManager
@@ -44,6 +45,13 @@ class PostRepositoryImpl(
   }
 
   override fun saveAll(posts: List<PostDto>): List<PostDto> {
+    val existingIds = postJpaRepository.findAllById(posts.map { Tsid.decode(it.id) }).map { it.id }
+    if (existingIds.isNotEmpty()) {
+      throw PostAlreadyExistsException(
+        "saveAll only inserts new posts; ids already exist: ${existingIds.map { Tsid.encode(it) }}"
+      )
+    }
+
     val entities = posts.map { post -> post.toEntity() }
     return postJpaRepository.saveAll(entities).map { entity -> PostDto.fromEntity(entity) }
   }
@@ -397,6 +405,15 @@ class PostRepositoryImpl(
         post.publishedAt.eq(lastPublishedAt)
           .and(post.id.gt(lastId))
       )
+  }
+
+  @Transactional
+  override fun incrementViewCount(postId: Long) {
+    val post = QPost.post
+    queryFactory.update(post)
+      .set(post.viewCount, post.viewCount.add(1))
+      .where(post.id.eq(postId))
+      .execute()
   }
 
   @Transactional
