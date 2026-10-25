@@ -29,9 +29,9 @@ class PostRepositoryImpl(
 
   companion object {
     private const val MAX_RETRY_COUNT = 5
-    // posts.title is VARCHAR(255) and posts.url VARCHAR(2048) in the schema on this branch;
+    // Matches the column lengths: posts.title VARCHAR(500) since V022, posts.url VARCHAR(2048).
     // a single over-long value would otherwise fail the whole chunk's insert.
-    private const val MAX_TITLE_LENGTH = 255
+    private const val MAX_TITLE_LENGTH = 500
     private const val MAX_URL_LENGTH = 2048
     private const val INSERT_IGNORING_DUPLICATES_SQL = """
       INSERT INTO posts (id, title, url, content, published_at, thumbnail, company_id, view_count,
