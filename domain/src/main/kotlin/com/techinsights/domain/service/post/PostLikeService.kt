@@ -46,6 +46,32 @@ class PostLikeService(
         }
     }
 
+    /** Idempotent: ensures the like exists. */
+    @Transactional
+    fun like(postId: String, requester: Requester) {
+        val postIdLong = requirePost(postId)
+
+        if (findExistingLike(postIdLong, requester) == null) {
+            handleLike(postIdLong, requester)
+        }
+    }
+
+    /** Idempotent: ensures the like does not exist. */
+    @Transactional
+    fun unlike(postId: String, requester: Requester) {
+        val postIdLong = requirePost(postId)
+
+        handleUnlike(postIdLong, requester)
+    }
+
+    private fun requirePost(postId: String): Long {
+        val postIdLong = postId.decode()
+        if (!postRepository.existsById(postIdLong)) {
+            throw PostNotFoundException("Post not found: $postId")
+        }
+        return postIdLong
+    }
+
     private fun findExistingLike(postId: Long, requester: Requester): PostLike? {
         return when (requester) {
             is Requester.Authenticated -> postLikeRepository.findByPostIdAndUserId(postId, requester.userId)

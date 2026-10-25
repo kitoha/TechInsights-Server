@@ -11,19 +11,16 @@ import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import kotlinx.coroutines.Dispatchers
 import org.springframework.data.domain.PageImpl
 
 class GithubSemanticSearchControllerTest : FunSpec() {
 
     private val githubTrendingService = mockk<GithubTrendingService>(relaxed = true)
     private val githubSemanticSearchService = mockk<GithubSemanticSearchService>()
-    private val ioDispatcher = Dispatchers.Unconfined
 
     private val controller = GithubTrendingController(
         githubTrendingService = githubTrendingService,
-        githubSemanticSearchService = githubSemanticSearchService,
-        ioDispatcher = ioDispatcher,
+        githubSemanticSearchService = githubSemanticSearchService
     )
 
     init {
