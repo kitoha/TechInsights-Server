@@ -99,7 +99,7 @@ class JwtPluginTest : FunSpec({
         val refresh = jwtPlugin.generateRefreshToken(1L)
 
         jwtPlugin.validateAccessToken(access).subject shouldBe "1"
-        shouldThrow<InvalidTokenException> { jwtPlugin.validateAccessToken(refresh) }
+        shouldThrow<WrongTokenTypeException> { jwtPlugin.validateAccessToken(refresh) }
     }
 
     test("validateRefreshToken은 리프레시 토큰만 허용해야 한다") {
@@ -107,7 +107,7 @@ class JwtPluginTest : FunSpec({
         val refresh = jwtPlugin.generateRefreshToken(1L)
 
         jwtPlugin.validateRefreshToken(refresh).subject shouldBe "1"
-        shouldThrow<InvalidTokenException> { jwtPlugin.validateRefreshToken(access) }
+        shouldThrow<WrongTokenTypeException> { jwtPlugin.validateRefreshToken(access) }
     }
 
     test("typ 클레임이 없는 토큰은 두 검증 모두에서 거부되어야 한다") {

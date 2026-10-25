@@ -8,7 +8,7 @@ sealed class AuthException(
 class ExpiredTokenException(message: String = "토큰이 만료되었습니다.") : 
     AuthException(message, "EXPIRED_TOKEN")
 
-class InvalidTokenException(message: String = "유효하지 않은 토큰입니다.") : 
+open class InvalidTokenException(message: String = "유효하지 않은 토큰입니다.") : 
     AuthException(message, "INVALID_TOKEN")
 
 class TokenTamperedException(message: String = "토큰이 변조되었습니다.") : 
@@ -16,3 +16,6 @@ class TokenTamperedException(message: String = "토큰이 변조되었습니다.
 
 class UnauthorizedException(message: String = "인증이 필요한 서비스입니다.") : 
     AuthException(message, "UNAUTHORIZED")
+
+class WrongTokenTypeException(message: String = "토큰 유형이 올바르지 않습니다.") :
+    InvalidTokenException(message)

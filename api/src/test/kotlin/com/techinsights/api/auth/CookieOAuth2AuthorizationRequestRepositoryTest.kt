@@ -1,11 +1,13 @@
 package com.techinsights.api.auth
 
 import com.techinsights.api.props.AuthProperties
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import jakarta.servlet.http.Cookie
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
+import org.springframework.security.oauth2.core.AuthorizationGrantType
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest
 import java.time.Duration
 import java.util.Base64
@@ -142,5 +144,167 @@ class CookieOAuth2AuthorizationRequestRepositoryTest : FunSpec({
         // then
         val setCookie = requireNotNull(response.getHeader("Set-Cookie"))
         setCookie.contains("Domain=") shouldBe false
+    }
+
+    fun realisticAuthorizationRequest(): OAuth2AuthorizationRequest {
+        return OAuth2AuthorizationRequest.authorizationCode()
+            .authorizationUri("https://accounts.google.com/o/oauth2/v2/auth")
+            .clientId("1234567890-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com")
+            .redirectUri("https://api.techinsights.shop/login/oauth2/code/google")
+            .scopes(setOf("openid", "profile", "email"))
+            .state("a".repeat(43) + "|" + "b".repeat(36))
+            .additionalParameters(
+                mapOf(
+                    "nonce" to "n".repeat(43),
+                    "code_challenge" to "c".repeat(43),
+                    "code_challenge_method" to "S256"
+                )
+            )
+            .attributes(
+                mapOf(
+                    "registration_id" to "google",
+                    "code_verifier" to "v".repeat(128)
+                )
+            )
+            .authorizationRequestUri(
+                "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=x&scope=openid%20profile%20email" +
+                    "&state=" + "a".repeat(80) + "&redirect_uri=https://api.techinsights.shop/login/oauth2/code/google" +
+                    "&nonce=" + "n".repeat(43) + "&code_challenge=" + "c".repeat(43) + "&code_challenge_method=S256"
+            )
+            .build()
+    }
+
+    fun signedCookie(payloadBytes: ByteArray): String {
+        val mac = javax.crypto.Mac.getInstance("HmacSHA256")
+        mac.init(
+            javax.crypto.spec.SecretKeySpec(
+                KeyPurpose.OAUTH_COOKIE_SIGNING.deriveKey(authProperties.jwt.secretKeyBytes),
+                "HmacSHA256"
+            )
+        )
+        val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(payloadBytes)
+        return "$encoded." + Base64.getUrlEncoder().withoutPadding().encodeToString(mac.doFinal(encoded.toByteArray()))
+    }
+
+    fun loadFrom(cookieValue: String): OAuth2AuthorizationRequest? {
+        val request = MockHttpServletRequest()
+        request.setCookies(Cookie(cookieName, cookieValue))
+        return repository.loadAuthorizationRequest(request)
+    }
+
+    test("모든 필드(scopes, additionalParameters, attributes, authorizationRequestUri)가 왕복 후 보존되어야 한다") {
+        val original = realisticAuthorizationRequest()
+        val response = MockHttpServletResponse()
+        repository.saveAuthorizationRequest(original, MockHttpServletRequest(), response)
+
+        val loaded = requireNotNull(loadFrom(savedCookieValue(response)))
+
+        loaded.authorizationUri shouldBe original.authorizationUri
+        loaded.clientId shouldBe original.clientId
+        loaded.redirectUri shouldBe original.redirectUri
+        loaded.scopes shouldBe original.scopes
+        loaded.state shouldBe original.state
+        loaded.additionalParameters shouldBe original.additionalParameters
+        loaded.attributes shouldBe original.attributes
+        loaded.authorizationRequestUri shouldBe original.authorizationRequestUri
+        loaded.grantType shouldBe AuthorizationGrantType.AUTHORIZATION_CODE
+    }
+
+    test("현실적인 요청의 Set-Cookie 헤더는 4KB보다 훨씬 작아야 한다") {
+        val response = MockHttpServletResponse()
+        repository.saveAuthorizationRequest(realisticAuthorizationRequest(), MockHttpServletRequest(), response)
+
+        val setCookie = requireNotNull(response.getHeader("Set-Cookie"))
+        (setCookie.length < 3000) shouldBe true
+    }
+
+    test("쿠키 페이로드는 Java 직렬화가 아니라 JSON이어야 한다") {
+        val response = MockHttpServletResponse()
+        repository.saveAuthorizationRequest(authorizationRequest(), MockHttpServletRequest(), response)
+
+        val payload = String(Base64.getUrlDecoder().decode(savedCookieValue(response).substringBefore(".")))
+
+        payload.startsWith("{") shouldBe true
+    }
+
+    test("서명은 유효하지만 Java 직렬화된 구 쿠키는 없는 것으로 취급해야 한다") {
+        val bytes = java.io.ByteArrayOutputStream().also {
+            java.io.ObjectOutputStream(it).use { out -> out.writeObject(authorizationRequest()) }
+        }.toByteArray()
+
+        loadFrom(signedCookie(bytes)) shouldBe null
+    }
+
+    test("서명은 유효하지만 JSON이 아닌 페이로드는 없는 것으로 취급해야 한다") {
+        loadFrom(signedCookie("not json".toByteArray())) shouldBe null
+    }
+
+    test("서명은 유효하지만 필수 필드가 없는 JSON은 없는 것으로 취급해야 한다") {
+        loadFrom(signedCookie("""{"state":"x"}""".toByteArray())) shouldBe null
+    }
+
+    test("서명이 유효하지 않으면 페이로드를 파싱하지 않고 없는 것으로 취급해야 한다") {
+        val valid = signedCookie("""{"authorizationUri":"https://a","clientId":"c","scopes":[],"additionalParameters":{},"attributes":{}}""".toByteArray())
+
+        loadFrom(valid.substringBeforeLast(".") + ".AAAA") shouldBe null
+        loadFrom(valid)?.clientId shouldBe "c"
+    }
+
+    context("문자열이 아닌 attribute / additionalParameter 값") {
+        fun requestWith(attributes: Map<String, Any>, additionalParameters: Map<String, Any>) =
+            OAuth2AuthorizationRequest.authorizationCode()
+                .authorizationUri("https://accounts.google.com/o/oauth2/v2/auth")
+                .clientId("client-id")
+                .redirectUri("https://api.techinsights.shop/login/oauth2/code/google")
+                .state("state")
+                .attributes(attributes)
+                .additionalParameters(additionalParameters)
+                .build()
+
+        test("문자열이 아닌 attribute 값은 toString 으로 바꿔 저장하지 않고 실패한다 (조용한 손상 방지)") {
+            val response = MockHttpServletResponse()
+
+            shouldThrow<IllegalArgumentException> {
+                repository.saveAuthorizationRequest(
+                    requestWith(mapOf("registration_id" to "google", "count" to 1), emptyMap()),
+                    MockHttpServletRequest(),
+                    response
+                )
+            }
+
+            response.getHeader("Set-Cookie") shouldBe null
+        }
+
+        test("문자열이 아닌 additionalParameter 값도 저장하지 않고 실패한다") {
+            shouldThrow<IllegalArgumentException> {
+                repository.saveAuthorizationRequest(
+                    requestWith(emptyMap(), mapOf("prompt" to listOf("a", "b"))),
+                    MockHttpServletRequest(),
+                    MockHttpServletResponse()
+                )
+            }
+        }
+
+        test("서명된 쿠키 안의 숫자 값은 문자열로 강제 변환하지 않고 파싱 불가 쿠키로 취급한다") {
+            val value = signedCookie(
+                """{"authorizationUri":"https://a","clientId":"c","scopes":[],"additionalParameters":{},"attributes":{"count":1}}""".toByteArray()
+            )
+
+            loadFrom(value) shouldBe null
+        }
+
+        test("문자열 값만 있는 요청은 그대로 왕복한다") {
+            val response = MockHttpServletResponse()
+            repository.saveAuthorizationRequest(
+                requestWith(mapOf("registration_id" to "google"), mapOf("nonce" to "abc")),
+                MockHttpServletRequest(),
+                response
+            )
+
+            val loaded = requireNotNull(loadFrom(savedCookieValue(response)))
+
+            loaded.attributes shouldBe mapOf("registration_id" to "google")
+            loaded.additionalParameters shouldBe mapOf("nonce" to "abc")
+        }
     }
 })

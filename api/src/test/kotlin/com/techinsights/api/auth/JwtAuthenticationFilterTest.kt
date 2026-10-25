@@ -11,7 +11,12 @@ import jakarta.servlet.http.Cookie
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
 import org.springframework.security.core.context.SecurityContextHolder
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import io.jsonwebtoken.Claims
+import org.slf4j.LoggerFactory
 import java.util.Base64
 
 class JwtAuthenticationFilterTest : FunSpec({
@@ -120,5 +125,56 @@ class JwtAuthenticationFilterTest : FunSpec({
 
         SecurityContextHolder.getContext().authentication shouldBe null
         verify { chain.doFilter(any(), any()) }
+    }
+
+    context("실패 로깅") {
+        val logger = LoggerFactory.getLogger(JwtAuthenticationFilter::class.java) as Logger
+        val appender = ListAppender<ILoggingEvent>()
+        val previousLevel = logger.level
+
+        beforeTest {
+            appender.list.clear()
+            appender.start()
+            logger.addAppender(appender)
+            logger.level = Level.DEBUG
+        }
+        afterTest {
+            logger.detachAppender(appender)
+            logger.level = previousLevel
+        }
+
+        fun filterWith(token: String, failure: Throwable) {
+            val request = MockHttpServletRequest()
+            request.setCookies(Cookie("at", token))
+            val chain = mockk<FilterChain>()
+            every { jwtPlugin.validateAccessToken(token) } throws failure
+            every { chain.doFilter(any(), any()) } just Runs
+            filter.doFilter(request, MockHttpServletResponse(), chain)
+        }
+
+        mapOf(
+            ExpiredTokenException() to "expired",
+            TokenTamperedException() to "bad_signature",
+            WrongTokenTypeException() to "wrong_typ",
+            InvalidTokenException("형식에 맞지 않는 토큰입니다.") to "malformed"
+        ).forEach { (failure, category) ->
+            test("${failure::class.simpleName}는 $category 카테고리로 DEBUG 로깅되고 토큰 내용은 남기지 않아야 한다") {
+                filterWith("secret.token.value", failure)
+
+                val event = appender.list.single()
+                event.level shouldBe Level.DEBUG
+                event.formattedMessage.contains("category=$category") shouldBe true
+                event.formattedMessage.contains("secret.token.value") shouldBe false
+            }
+        }
+
+        test("예상하지 못한 예외는 WARN으로 로깅되고 토큰 내용은 남기지 않아야 한다") {
+            filterWith("secret.token.value", IllegalStateException("boom secret.token.value"))
+
+            val event = appender.list.single()
+            event.level shouldBe Level.WARN
+            event.formattedMessage.contains("IllegalStateException") shouldBe true
+            event.formattedMessage.contains("secret.token.value") shouldBe false
+        }
     }
 })

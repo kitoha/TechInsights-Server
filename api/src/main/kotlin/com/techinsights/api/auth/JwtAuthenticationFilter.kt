@@ -5,6 +5,7 @@ import com.techinsights.domain.enums.UserRole
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import mu.KotlinLogging
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
@@ -15,6 +16,8 @@ class JwtAuthenticationFilter(
     private val jwtPlugin: JwtPlugin,
     private val authProperties: AuthProperties
 ) : OncePerRequestFilter() {
+
+    private val log = KotlinLogging.logger {}
 
     override fun doFilterInternal(
         request: HttpServletRequest,
@@ -45,12 +48,24 @@ class JwtAuthenticationFilter(
                 )
 
                 SecurityContextHolder.getContext().authentication = authentication
+            } catch (e: AuthException) {
+                SecurityContextHolder.clearContext()
+                log.debug { "JWT authentication failed: uri=${request.requestURI}, category=${category(e)}" }
             } catch (e: Exception) {
                 SecurityContextHolder.clearContext()
+                log.warn { "JWT authentication failed unexpectedly: uri=${request.requestURI}, exception=${e::class.simpleName}" }
             }
         }
 
         filterChain.doFilter(request, response)
+    }
+
+    private fun category(e: AuthException): String = when (e) {
+        is ExpiredTokenException -> "expired"
+        is TokenTamperedException -> "bad_signature"
+        is WrongTokenTypeException -> "wrong_typ"
+        is InvalidTokenException -> "malformed"
+        is UnauthorizedException -> "unauthorized"
     }
 
     private fun extractToken(request: HttpServletRequest): String? {

@@ -3,6 +3,7 @@ package com.techinsights.domain.service.user
 import com.techinsights.domain.entity.user.User
 import com.techinsights.domain.enums.ProviderType
 import com.techinsights.domain.enums.UserRole
+import com.techinsights.domain.enums.UserStatus
 import com.techinsights.domain.exception.user.DuplicateNicknameException
 import com.techinsights.domain.exception.user.InvalidNicknameException
 import com.techinsights.domain.exception.user.UserNotFoundException
@@ -34,6 +35,23 @@ class UserServiceTest : FunSpec({
 
     beforeTest {
         clearMocks(userRepository, nicknameValidator)
+    }
+
+    context("findAuthUserById") {
+        test("성공 - 사용자가 존재하면 상태를 포함한 AuthUserDto를 반환한다") {
+            every { userRepository.findById(1L) } returns Optional.of(createTestUser())
+
+            val result = userService.findAuthUserById(1L)
+
+            result?.id shouldBe 1L
+            result?.status shouldBe UserStatus.ACTIVE
+        }
+
+        test("사용자가 없으면 예외 없이 null을 반환한다 (공유 트랜잭션을 rollback-only로 만들지 않기 위함)") {
+            every { userRepository.findById(1L) } returns Optional.empty()
+
+            userService.findAuthUserById(1L) shouldBe null
+        }
     }
 
     context("getUserById") {
