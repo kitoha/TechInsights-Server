@@ -52,8 +52,45 @@ class UniqueNicknameTest(
       nickname(2L) shouldBe "foo"
       nickname(1L) shouldBe "User_1"
       nickname(3L) shouldBe "User_3"
+      listOf(1L, 3L).forEach { (nickname(it).length <= 20) shouldBe true }
       nickname(4L) shouldBe "bar"
       nickname(5L) shouldBe "Bar"
+    }
+
+    test("renamed losers stay within the nickname length limit, unique and collision-free") {
+      runMigration()
+      // two ids sharing the same last 12 digits, plus an active user already named like the first candidate
+      fixtures.insertUser(1000000000000000001L, "dup", at(1))
+      fixtures.insertUser(2000000000000000001L, "DUP", at(2))
+      fixtures.insertUser(3000000000000000001L, "Dup", at(3))
+      fixtures.insertUser(9L, "User_000000000001", at(1))
+
+      jdbc.execute(script())
+
+      val names = jdbc.queryForList("SELECT nickname FROM users", String::class.java)
+      names.forEach { (it.length <= 20) shouldBe true }
+      names.map { it.lowercase() }.toSet().size shouldBe names.size
+      nickname(1000000000000000001L) shouldBe "dup"
+      nickname(9L) shouldBe "User_000000000001"
+      nickname(2000000000000000001L).startsWith("User_") shouldBe true
+      nickname(3000000000000000001L).startsWith("User_") shouldBe true
+    }
+
+    test("an existing case-sensitive unique constraint or index on nickname is dropped, others are kept") {
+      runMigration()
+      jdbc.execute("ALTER TABLE users ADD CONSTRAINT uk_hibernate_nickname UNIQUE (nickname)")
+      jdbc.execute("CREATE UNIQUE INDEX uq_nickname_plain ON users (nickname)")
+      fixtures.insertUser(1L, "Taken", at(1), deleted = true)
+
+      jdbc.execute(script())
+
+      fun exists(sql: String) = jdbc.queryForObject(sql, Int::class.java)!! > 0
+      exists("SELECT count(*) FROM pg_constraint WHERE conname = 'uk_hibernate_nickname'") shouldBe false
+      exists("SELECT count(*) FROM pg_class WHERE relname = 'uq_nickname_plain'") shouldBe false
+      exists("SELECT count(*) FROM pg_constraint WHERE conname = 'uk_users_provider_provider_id'") shouldBe true
+      exists("SELECT count(*) FROM pg_class WHERE relname = 'uk_users_nickname_lower'") shouldBe true
+      fixtures.insertUser(2L, "Taken", at(2)) // would have violated the old constraint
+      nickname(2L) shouldBe "Taken"
     }
 
     test("the created index rejects case variants but lets a deleted user's nickname be reused") {
