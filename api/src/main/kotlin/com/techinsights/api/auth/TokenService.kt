@@ -46,7 +46,7 @@ class TokenService(
             ?: throw InvalidTokenException("유효하지 않은 토큰입니다.")
 
         val user = userService.findAuthUserById(userId)
-        if (user == null || user.status != UserStatus.ACTIVE) {
+        if (user == null || user.isDeleted || user.status != UserStatus.ACTIVE) {
             refreshTokenService.deleteAllByUserId(userId)
             throw InvalidTokenException("유효하지 않은 토큰입니다.")
         }

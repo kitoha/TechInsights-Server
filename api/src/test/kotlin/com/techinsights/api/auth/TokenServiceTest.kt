@@ -54,7 +54,7 @@ class TokenServiceTest : FunSpec({
     }
 
     val userId = 1L
-    val user = AuthUserDto(id = userId, email = "test@example.com", role = UserRole.USER, status = UserStatus.ACTIVE)
+    val user = AuthUserDto(id = userId, email = "test@example.com", role = UserRole.USER, status = UserStatus.ACTIVE, isDeleted = false)
 
     fun givenValidRefreshToken(token: String) {
         val claims = mockk<Claims>()
@@ -155,6 +155,20 @@ class TokenServiceTest : FunSpec({
             verify(exactly = 0) { refreshTokenService.rotate(any(), any(), any()) }
             verify(exactly = 0) { jwtPlugin.generateAccessToken(any(), any(), any()) }
         }
+    }
+
+    test("soft-delete 된 사용자는 status 가 ACTIVE 여도 토큰을 모두 삭제하고 InvalidTokenException이 발생해야 한다") {
+        val claims = mockk<Claims>()
+        every { claims.get("userId", Long::class.javaObjectType) } returns userId
+        every { jwtPlugin.validateRefreshToken("old-rt") } returns claims
+        every { userService.findAuthUserById(userId) } returns user.copy(status = UserStatus.ACTIVE, isDeleted = true)
+        every { refreshTokenService.deleteAllByUserId(userId) } just Runs
+
+        shouldThrow<InvalidTokenException> { tokenService.refresh("old-rt") }
+
+        verify(exactly = 1) { refreshTokenService.deleteAllByUserId(userId) }
+        verify(exactly = 0) { refreshTokenService.rotate(any(), any(), any()) }
+        verify(exactly = 0) { jwtPlugin.generateAccessToken(any(), any(), any()) }
     }
 
     test("재사용 감지·비활성 사용자로 인한 토큰 삭제와 만료 토큰 삭제는 예외가 발생해도 롤백되지 않아야 한다") {

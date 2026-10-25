@@ -33,6 +33,7 @@ interface UserJpaRepository : JpaRepository<User, Long> {
                 profile_image = EXCLUDED.profile_image,
                 last_login_at = EXCLUDED.last_login_at,
                 updated_at = EXCLUDED.updated_at
+            WHERE users.deleted_at IS NULL AND users.status = 'ACTIVE'
         """,
         nativeQuery = true
     )
@@ -45,4 +46,18 @@ interface UserJpaRepository : JpaRepository<User, Long> {
         @Param("providerId") providerId: String,
         @Param("profileImage") profileImage: String?
     ): Int
+
+    /** Includes soft-deleted rows (native SQL bypasses the entity's soft-delete restriction). */
+    @Query(
+        value = """
+            SELECT count(*) FROM users
+            WHERE provider = :provider AND provider_id = :providerId
+              AND (deleted_at IS NOT NULL OR status <> 'ACTIVE')
+        """,
+        nativeQuery = true
+    )
+    fun countDeactivatedByProvider(
+        @Param("provider") provider: String,
+        @Param("providerId") providerId: String
+    ): Long
 }
