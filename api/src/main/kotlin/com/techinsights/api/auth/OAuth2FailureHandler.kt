@@ -21,17 +21,10 @@ class OAuth2FailureHandler(
         response: HttpServletResponse,
         exception: AuthenticationException
     ) {
-        if (exception is OAuth2AuthenticationException) {
-            log.warn {
-                "OAuth2 login failed: errorCode=${exception.error.errorCode}, " +
-                    "description=${exception.error.description}, uri=${request.requestURI}, " +
-                    "message=${exception.message}"
-            }
-        } else {
-            log.warn {
-                "OAuth2 login failed: exception=${exception::class.simpleName}, " +
-                    "uri=${request.requestURI}, message=${exception.message}"
-            }
+        // Only the error code and exception class: provider descriptions / messages can carry user data.
+        val errorCode = (exception as? OAuth2AuthenticationException)?.error?.errorCode ?: "-"
+        log.warn {
+            "OAuth2 login failed: exception=${exception::class.simpleName}, errorCode=$errorCode, uri=${request.requestURI}"
         }
 
         authCookies.clearAuthCookies(response)
