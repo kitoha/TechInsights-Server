@@ -27,6 +27,10 @@ class PostRepositoryImpl(
 
   companion object {
     private const val MAX_RETRY_COUNT = 5
+    // posts.title is VARCHAR(255) and posts.url VARCHAR(2048) in the schema on this branch;
+    // a single over-long value would otherwise fail the whole chunk's insert.
+    private const val MAX_TITLE_LENGTH = 255
+    private const val MAX_URL_LENGTH = 2048
     private const val INSERT_IGNORING_DUPLICATES_SQL = """
       INSERT INTO posts (id, title, url, content, published_at, thumbnail, company_id, view_count,
                          is_summary, preview, is_embedding, summary_failure_count, like_count,
@@ -77,8 +81,8 @@ class PostRepositoryImpl(
     return posts.sumOf { post ->
       entityManager.createNativeQuery(INSERT_IGNORING_DUPLICATES_SQL)
         .setParameter("id", Tsid.decode(post.id))
-        .setParameter("title", post.title)
-        .setParameter("url", post.url)
+        .setParameter("title", post.title.take(MAX_TITLE_LENGTH))
+        .setParameter("url", post.url.take(MAX_URL_LENGTH))
         .setParameter("content", post.content)
         .setParameter("publishedAt", post.publishedAt)
         .setParameter("thumbnail", post.thumbnail)
