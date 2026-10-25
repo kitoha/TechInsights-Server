@@ -12,7 +12,9 @@ import java.sql.SQLException
 import org.hibernate.exception.ConstraintViolationException
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException
+import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User
+import org.springframework.security.oauth2.core.user.OAuth2User
 
 import com.techinsights.domain.enums.UserRole
 import com.techinsights.domain.enums.UserStatus
@@ -144,6 +146,30 @@ class CustomOAuth2UserServiceTest : FunSpec({
 
             shouldThrow<DataIntegrityViolationException> {
                 customOAuth2UserService.processOAuth2User(oAuth2User)
+            }
+        }
+    }
+
+    context("필수 속성 누락") {
+        listOf(
+            "sub" to mapOf<String, Any>("email" to "a@b.c", "name" to "n"),
+            "email" to mapOf<String, Any>("sub" to "s", "name" to "n"),
+            "name" to mapOf<String, Any>("sub" to "s", "email" to "a@b.c"),
+            "sub 타입 오류" to mapOf<String, Any>("sub" to 123, "email" to "a@b.c", "name" to "n")
+        ).forEach { (label, attributes) ->
+            test("$label: 500 이 아니라 OAuth2AuthenticationException(invalid_user_info)으로 실패한다") {
+                val incomplete = object : OAuth2User {
+                    override fun getAttributes(): Map<String, Any> = attributes
+                    override fun getAuthorities(): Collection<GrantedAuthority> = emptyList()
+                    override fun getName(): String = "incomplete"
+                }
+
+                val thrown = shouldThrow<OAuth2AuthenticationException> {
+                    customOAuth2UserService.processOAuth2User(incomplete)
+                }
+
+                thrown.error.errorCode shouldBe "invalid_user_info"
+                verify(exactly = 0) { userService.upsertGoogleOAuthUser(any(), any(), any(), any()) }
             }
         }
     }
