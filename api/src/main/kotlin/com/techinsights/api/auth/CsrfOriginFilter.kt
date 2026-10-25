@@ -15,12 +15,18 @@ import org.springframework.web.filter.OncePerRequestFilter
 import java.net.URI
 
 /**
- * CSRF defence for the cookie-authenticated API.
+ * CSRF defence in depth for the cookie-authenticated API.
  *
  * Auth cookies are SameSite=Lax, which already keeps browsers from sending them on cross-SITE POSTs, but a sibling
- * subdomain is same-site. So every state-changing request (anything but GET/HEAD/OPTIONS/TRACE) that a browser marks
- * with a foreign Origin (or, without Origin, a foreign Referer) must come from an origin in the CORS allow-list.
+ * subdomain is same-site. In the real chain, Spring Security's CorsFilter (configured for every path from the same allow-list)
+ * already rejects a state-changing request whose `Origin` is not allowed — with a plain-text 403 — before this filter
+ * runs. What this filter adds on top:
+ *  - the **Referer fallback**: a request without `Origin` but with a foreign (or unparseable) `Referer` is rejected, which
+ *    CorsFilter never sees because it only looks at `Origin`;
+ *  - a problem+json 403 (`CSRF_ORIGIN_NOT_ALLOWED`) for those, and a second, independent `Origin` check should the CORS
+ *    configuration ever change.
  * Requests with neither header are not browser requests riding ambient cookies and are let through.
+ * Safe methods (GET/HEAD/OPTIONS/TRACE) are not checked. See `CsrfOriginSecurityChainTest` for the real-chain behaviour.
  */
 @Component
 class CsrfOriginFilter(
