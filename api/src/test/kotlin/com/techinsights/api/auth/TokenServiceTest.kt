@@ -27,7 +27,8 @@ class TokenServiceTest : FunSpec({
         )
     )
     val tokenHasher = TokenHasher(authProperties)
-    val tokenService = TokenService(jwtPlugin, refreshTokenService, userService, authProperties, tokenHasher)
+    val sealer = RefreshTokenSealer(authProperties)
+    val tokenService = TokenService(jwtPlugin, refreshTokenService, userService, authProperties, tokenHasher, sealer)
 
     beforeTest {
         clearMocks(jwtPlugin, refreshTokenService, userService)
@@ -69,7 +70,7 @@ class TokenServiceTest : FunSpec({
         // given
         givenValidRefreshToken("old-rt")
         every {
-            refreshTokenService.rotate(tokenHasher.hash("old-rt"), tokenHasher.hash("new-rt"), any())
+            refreshTokenService.rotate(tokenHasher.hash("old-rt"), tokenHasher.hash("new-rt"), any(), any())
         } returns RefreshTokenRotationResult.Rotated
 
         // when
@@ -84,7 +85,7 @@ class TokenServiceTest : FunSpec({
 
     test("유예 기간 내 직전 토큰으로 요청해도 회전에 성공하면 세션을 유지해야 한다") {
         givenValidRefreshToken("old-rt")
-        every { refreshTokenService.rotate(any(), any(), any()) } returns RefreshTokenRotationResult.Rotated
+        every { refreshTokenService.rotate(any(), any(), any(), any()) } returns RefreshTokenRotationResult.Rotated
 
         val response = tokenService.refresh("old-rt")
 
@@ -92,20 +93,45 @@ class TokenServiceTest : FunSpec({
         verify(exactly = 0) { refreshTokenService.deleteAllByUserId(any()) }
     }
 
-    test("방금 폐기된 토큰이 유예 시간 안에 제시되면 액세스 토큰만 발급하고 리프레시 토큰은 내려주지 않으며 세션을 폐기하지 않는다") {
+    test("회전 시 새 리프레시 토큰을 제시된 해시에 묶어 봉인해서 전달한다 (평문 저장 없음)") {
         givenValidRefreshToken("old-rt")
-        every { refreshTokenService.rotate(any(), any(), any()) } returns RefreshTokenRotationResult.GraceAccessOnly
+        val sealed = slot<String>()
+        every {
+            refreshTokenService.rotate(tokenHasher.hash("old-rt"), tokenHasher.hash("new-rt"), any(), capture(sealed))
+        } returns RefreshTokenRotationResult.Rotated
+
+        tokenService.refresh("old-rt")
+
+        sealed.captured.contains("new-rt") shouldBe false
+        sealer.open(sealed.captured, tokenHasher.hash("old-rt")) shouldBe "new-rt"
+    }
+
+    test("방금 폐기된 토큰이 유예 시간 안에 다시 제시되면 같은 후속 리프레시 토큰을 다시 전달하고 세션을 폐기하지 않는다") {
+        givenValidRefreshToken("old-rt")
+        val sealedOriginal = sealer.seal("successor-rt", tokenHasher.hash("old-rt"))
+        every { refreshTokenService.rotate(any(), any(), any(), any()) } returns
+            RefreshTokenRotationResult.GraceRedelivery(sealedOriginal)
 
         val response = tokenService.refresh("old-rt")
 
         response.accessToken shouldBe "new-at"
-        response.refreshToken shouldBe null
+        response.refreshToken shouldBe "successor-rt"
+        verify(exactly = 0) { refreshTokenService.deleteAllByUserId(any()) }
+    }
+
+    test("재전달할 봉인 값이 변조되었거나 다른 해시용이면 InvalidTokenException 이고 세션을 폐기하지 않는다") {
+        givenValidRefreshToken("old-rt")
+        every { refreshTokenService.rotate(any(), any(), any(), any()) } returns
+            RefreshTokenRotationResult.GraceRedelivery(sealer.seal("successor-rt", "some-other-hash"))
+
+        shouldThrow<InvalidTokenException> { tokenService.refresh("old-rt") }
+
         verify(exactly = 0) { refreshTokenService.deleteAllByUserId(any()) }
     }
 
     test("폐기된 토큰이 재사용되면 TokenTamperedException이 발생하고 사용자의 모든 세션을 폐기하지는 않아야 한다 (패밀리 폐기는 회전 내부에서 처리)") {
         givenValidRefreshToken("old-rt")
-        every { refreshTokenService.rotate(any(), any(), any()) } returns RefreshTokenRotationResult.ReuseDetected
+        every { refreshTokenService.rotate(any(), any(), any(), any()) } returns RefreshTokenRotationResult.ReuseDetected
 
         shouldThrow<TokenTamperedException> { tokenService.refresh("old-rt") }
 
@@ -114,7 +140,7 @@ class TokenServiceTest : FunSpec({
 
     test("저장된 적 없는 해시는 세션 폐기 없이 InvalidTokenException이 발생해야 한다") {
         givenValidRefreshToken("unknown-rt")
-        every { refreshTokenService.rotate(any(), any(), any()) } returns RefreshTokenRotationResult.NotFound
+        every { refreshTokenService.rotate(any(), any(), any(), any()) } returns RefreshTokenRotationResult.NotFound
 
         shouldThrow<InvalidTokenException> { tokenService.refresh("unknown-rt") }
 
@@ -123,7 +149,7 @@ class TokenServiceTest : FunSpec({
 
     test("만료된 리프레시 토큰은 ExpiredTokenException이 발생해야 한다") {
         givenValidRefreshToken("old-rt")
-        every { refreshTokenService.rotate(any(), any(), any()) } returns RefreshTokenRotationResult.Expired
+        every { refreshTokenService.rotate(any(), any(), any(), any()) } returns RefreshTokenRotationResult.Expired
 
         shouldThrow<ExpiredTokenException> { tokenService.refresh("old-rt") }
 
@@ -135,7 +161,7 @@ class TokenServiceTest : FunSpec({
 
         shouldThrow<InvalidTokenException> { tokenService.refresh("access-token") }
 
-        verify(exactly = 0) { refreshTokenService.rotate(any(), any(), any()) }
+        verify(exactly = 0) { refreshTokenService.rotate(any(), any(), any(), any()) }
         verify(exactly = 0) { refreshTokenService.deleteAllByUserId(any()) }
     }
 
@@ -149,7 +175,7 @@ class TokenServiceTest : FunSpec({
         shouldThrow<InvalidTokenException> { tokenService.refresh("old-rt") }
 
         verify(exactly = 1) { refreshTokenService.deleteAllByUserId(userId) }
-        verify(exactly = 0) { refreshTokenService.rotate(any(), any(), any()) }
+        verify(exactly = 0) { refreshTokenService.rotate(any(), any(), any(), any()) }
     }
 
     UserStatus.entries.filter { it != UserStatus.ACTIVE }.forEach { status ->
@@ -163,7 +189,7 @@ class TokenServiceTest : FunSpec({
             shouldThrow<InvalidTokenException> { tokenService.refresh("old-rt") }
 
             verify(exactly = 1) { refreshTokenService.deleteAllByUserId(userId) }
-            verify(exactly = 0) { refreshTokenService.rotate(any(), any(), any()) }
+            verify(exactly = 0) { refreshTokenService.rotate(any(), any(), any(), any()) }
             verify(exactly = 0) { jwtPlugin.generateAccessToken(any(), any(), any()) }
         }
     }

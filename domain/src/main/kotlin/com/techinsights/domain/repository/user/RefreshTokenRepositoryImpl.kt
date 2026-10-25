@@ -28,9 +28,19 @@ class RefreshTokenRepositoryImpl(
     override fun findLatestRetiredHash(familyId: Long): Optional<String> =
         jpaRepository.findLatestRetiredHash(familyId)
 
-    override fun retireHash(hash: String, familyId: Long, retiredAt: Instant) {
-        jpaRepository.insertRetired(hash, familyId, retiredAt)
+    override fun retireHash(hash: String, familyId: Long, retiredAt: Instant, sealedSuccessor: String?) {
+        jpaRepository.insertRetired(hash, familyId, retiredAt, sealedSuccessor)
     }
+
+    override fun findSealedSuccessor(retiredHash: String): Optional<String> =
+        jpaRepository.findSuccessorCiphertext(retiredHash)
+
+    @Transactional
+    override fun clearSealedSuccessorsInFamilyBefore(familyId: Long, cutoff: Instant): Int =
+        jpaRepository.clearSuccessorsInFamilyBefore(familyId, cutoff)
+
+    @Transactional
+    override fun clearSealedSuccessorsBefore(cutoff: Instant): Int = jpaRepository.clearSuccessorsBefore(cutoff)
 
     override fun lockUserSessions(userId: Long) {
         jpaRepository.lockUserSessions(userId)

@@ -24,9 +24,7 @@ class AuthController(
         val tokenResponse = tokenService.refresh(refreshToken)
 
         authCookies.add(response, authProperties.jwt.accessTokenCookieName, tokenResponse.accessToken, authProperties.jwt.accessTokenExpiration.toSeconds())
-        tokenResponse.refreshToken?.let {
-            authCookies.add(response, authProperties.jwt.refreshTokenCookieName, it, authProperties.jwt.refreshTokenExpiration.toSeconds())
-        }
+        authCookies.add(response, authProperties.jwt.refreshTokenCookieName, tokenResponse.refreshToken, authProperties.jwt.refreshTokenExpiration.toSeconds())
 
         return ResponseEntity.ok().build()
     }

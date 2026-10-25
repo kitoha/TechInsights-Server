@@ -30,7 +30,15 @@ class RefreshTokenServiceTest(
   fun login(userId: Long, hash: String, deviceId: String? = null, maxSessions: Int = 10) =
     inTx { service.startSession(userId, deviceId, hash, expiry(), maxSessions) }
 
-  fun rotate(presented: String, new: String) = inTx { service.rotate(presented, new, expiry()) }
+  // The domain only stores the sealed successor opaquely; the api seals it. Tests use a recognisable stand-in.
+  fun sealed(new: String) = "sealed:$new"
+
+  fun rotate(presented: String, new: String) = inTx { service.rotate(presented, new, expiry(), sealed(new)) }
+
+  fun storedSuccessor(retiredHash: String): String? =
+    jdbcTemplate.queryForList(
+      "SELECT successor_ciphertext FROM refresh_token_retired_hashes WHERE token_hash = ?", String::class.java, retiredHash
+    ).singleOrNull()
 
   fun sessionCount(userId: Long): Int =
     jdbcTemplate.queryForObject("SELECT count(*) FROM refresh_tokens WHERE user_id = ?", Int::class.java, userId)!!
@@ -113,27 +121,29 @@ class RefreshTokenServiceTest(
     }
   }
 
-  context("유예 시간 (방금 폐기된 해시 = 액세스 토큰만 재발급, 회전 없음)") {
-    test("방금 폐기된 토큰을 유예 시간 안에 제시하면 회전 없이 GraceAccessOnly 를 반환한다") {
+  context("유예 시간 (방금 폐기된 해시 = 같은 후속 토큰을 다시 전달, 새 회전 없음)") {
+    test("회전하면 폐기된 해시 행에 후속 토큰의 봉인된 값이 저장된다") {
       insertUser(1)
       login(1, "h0")
+
       rotate("h0", "h1")
 
-      rotate("h0", "h2") shouldBe RefreshTokenRotationResult.GraceAccessOnly
+      storedSuccessor("h0") shouldBe sealed("h1")
+    }
+
+    test("응답 유실 복구: 회전 후 응답이 사라져도 유예 시간 안에 같은 폐기 토큰을 다시 제시하면 같은 후속 토큰을 돌려받는다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1") shouldBe RefreshTokenRotationResult.Rotated
+
+      rotate("h0", "unused-a") shouldBe RefreshTokenRotationResult.GraceRedelivery(sealed("h1"))
+      rotate("h0", "unused-b") shouldBe RefreshTokenRotationResult.GraceRedelivery(sealed("h1"))
 
       currentHash(1) shouldBe listOf("h1")
       retiredCount() shouldBe 1
-    }
-
-    test("유예 시간 안에서는 같은 폐기 해시로 몇 번이든 액세스 토큰만 받을 수 있고 폐기되지 않는다") {
-      insertUser(1)
-      login(1, "h0")
-      rotate("h0", "h1")
-
-      repeat(5) { rotate("h0", "unused$it") shouldBe RefreshTokenRotationResult.GraceAccessOnly }
-
-      currentHash(1) shouldBe listOf("h1")
+      // 이후 받은 R2(h1)로 정상 갱신되며 폐기되지 않는다
       rotate("h1", "h2") shouldBe RefreshTokenRotationResult.Rotated
+      sessionCount(1) shouldBe 1
     }
 
     test("유예 시간이 지난 뒤 방금 폐기된 토큰을 제시하면 패밀리가 폐기된다") {
@@ -159,17 +169,6 @@ class RefreshTokenServiceTest(
       sessionCount(1) shouldBe 0
     }
 
-    test("유예 중 탈취자가 재생해도 새 리프레시 토큰을 얻지 못하고 정상 사용자의 토큰은 그대로 유효하다") {
-      insertUser(1)
-      login(1, "h0")
-      rotate("h0", "h1")
-
-      rotate("h0", "thief-token") shouldBe RefreshTokenRotationResult.GraceAccessOnly
-
-      currentHash(1) shouldBe listOf("h1")
-      rotate("h1", "h2") shouldBe RefreshTokenRotationResult.Rotated
-    }
-
     test("재사용 폐기는 같은 사용자의 다른 세션에 영향을 주지 않는다") {
       insertUser(1)
       login(1, "a0", deviceId = "dev-a")
@@ -182,7 +181,7 @@ class RefreshTokenServiceTest(
       currentHash(1) shouldBe listOf("b0")
     }
 
-    test("같은 토큰으로 동시에 여러 번 갱신하면 회전은 정확히 한 번이고 나머지는 액세스 토큰만 받으며 폐기되지 않는다") {
+    test("같은 토큰으로 동시에 여러 번 갱신하면 회전은 한 번이고 모든 응답이 같은 후속 토큰을 담는다") {
       insertUser(1)
       login(1, "h0")
       val threads = 6
@@ -197,13 +196,54 @@ class RefreshTokenServiceTest(
       }.map { it.get() }
       pool.shutdown()
 
+      val winner = currentHash(1).single()
       results.count { it == RefreshTokenRotationResult.Rotated } shouldBe 1
-      results.count { it == RefreshTokenRotationResult.GraceAccessOnly } shouldBe threads - 1
+      results.filterIsInstance<RefreshTokenRotationResult.GraceRedelivery>().map { it.sealedSuccessor }
+        .toSet() shouldBe setOf(sealed(winner))
+      results.count { it is RefreshTokenRotationResult.GraceRedelivery } shouldBe threads - 1
       sessionCount(1) shouldBe 1
       retiredCount() shouldBe 1
-      // 최종 쿠키 상태: 회전에 성공한 토큰이 현재 토큰이며 다음 갱신이 가능하다
-      val winner = currentHash(1).single()
       rotate(winner, "next") shouldBe RefreshTokenRotationResult.Rotated
+    }
+
+    test("저장된 후속 토큰이 없는 (이전 버전에서 넘어온) 폐기 행은 재전달할 수 없으므로 패밀리를 폐기한다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1")
+      jdbcTemplate.update("UPDATE refresh_token_retired_hashes SET successor_ciphertext = NULL")
+
+      rotate("h0", "x") shouldBe RefreshTokenRotationResult.ReuseDetected
+
+      sessionCount(1) shouldBe 0
+    }
+  }
+
+  context("봉인된 후속 토큰의 수명") {
+    test("다음 회전 때 유예 시간이 지난 이전 폐기 행의 봉인 값은 지워진다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1")
+      ageRetired("h0", 120)
+
+      rotate("h1", "h2")
+
+      storedSuccessor("h0") shouldBe null
+      storedSuccessor("h1") shouldBe sealed("h2")
+    }
+
+    test("정리 작업은 유예 시간이 지난 봉인 값만 지운다") {
+      insertUser(1)
+      login(1, "h0")
+      rotate("h0", "h1")
+      rotate("h1", "h2")
+      ageRetired("h0", 120)
+
+      val cleared = inTx { service.clearExpiredSuccessors() }
+
+      cleared shouldBe 1
+      storedSuccessor("h0") shouldBe null
+      storedSuccessor("h1") shouldBe sealed("h2")
+      retiredCount() shouldBe 2
     }
   }
 

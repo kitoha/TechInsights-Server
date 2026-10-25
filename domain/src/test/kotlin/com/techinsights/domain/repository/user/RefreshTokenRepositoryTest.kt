@@ -50,8 +50,8 @@ class RefreshTokenRepositoryTest(
     session(1)
     val at = Instant.now().minusSeconds(5)
 
-    inTx { repository.retireHash("old", 10, at) }
-    inTx { repository.retireHash("old", 10, Instant.now()) }
+    inTx { repository.retireHash("old", 10, at, null) }
+    inTx { repository.retireHash("old", 10, Instant.now(), null) }
 
     val retired = inTx { repository.findRetiredByHash("old").get() }
     retired.familyId shouldBe 10L
@@ -63,9 +63,9 @@ class RefreshTokenRepositoryTest(
     insertUser(1)
     session(1)
     session(2, familyId = 20)
-    inTx { repository.retireHash("older", 10, Instant.now().minusSeconds(100)) }
-    inTx { repository.retireHash("newest", 10, Instant.now().minusSeconds(5)) }
-    inTx { repository.retireHash("other-family", 20, Instant.now()) }
+    inTx { repository.retireHash("older", 10, Instant.now().minusSeconds(100), null) }
+    inTx { repository.retireHash("newest", 10, Instant.now().minusSeconds(5), null) }
+    inTx { repository.retireHash("other-family", 20, Instant.now(), null) }
 
     repository.findLatestRetiredHash(10).get() shouldBe "newest"
     repository.findLatestRetiredHash(30).isPresent shouldBe false
@@ -75,8 +75,8 @@ class RefreshTokenRepositoryTest(
     insertUser(1)
     val s1 = session(1)
     session(2, familyId = 20)
-    inTx { repository.retireHash("a", 10, Instant.now()) }
-    inTx { repository.retireHash("b", 20, Instant.now()) }
+    inTx { repository.retireHash("a", 10, Instant.now(), null) }
+    inTx { repository.retireHash("b", 20, Instant.now(), null) }
 
     inTx { repository.delete(repository.findByHashForUpdate(s1.tokenHash).get()) }
 
@@ -129,12 +129,42 @@ class RefreshTokenRepositoryTest(
   test("기준 시각보다 오래된 폐기 해시만 삭제한다") {
     insertUser(1)
     session(1)
-    inTx { repository.retireHash("old", 10, Instant.now().minusSeconds(86400 * 40)) }
-    inTx { repository.retireHash("recent", 10, Instant.now()) }
+    inTx { repository.retireHash("old", 10, Instant.now().minusSeconds(86400 * 40), null) }
+    inTx { repository.retireHash("recent", 10, Instant.now(), null) }
 
     val deleted = repository.deleteRetiredBefore(Instant.now().minusSeconds(86400 * 30))
 
     deleted shouldBe 1
     inTx { repository.findRetiredByHash("recent").isPresent } shouldBe true
+  }
+
+  test("봉인된 후속 토큰을 폐기 해시 행에 저장하고 조회한다 (재기록은 무시)") {
+    insertUser(1)
+    session(1)
+
+    inTx { repository.retireHash("old", 10, Instant.now(), "sealed-1") }
+    inTx { repository.retireHash("old", 10, Instant.now(), "sealed-2") }
+
+    inTx { repository.findSealedSuccessor("old").get() } shouldBe "sealed-1"
+    inTx { repository.findSealedSuccessor("unknown").isPresent } shouldBe false
+  }
+
+  test("봉인 값 지우기는 기준 시각 이전 행만, 패밀리 범위 또는 전체 범위로 NULL 처리하고 행은 남긴다") {
+    insertUser(1)
+    session(1)
+    session(2, familyId = 20)
+    inTx { repository.retireHash("a-old", 10, Instant.now().minusSeconds(120), "s-a-old") }
+    inTx { repository.retireHash("a-new", 10, Instant.now(), "s-a-new") }
+    inTx { repository.retireHash("b-old", 20, Instant.now().minusSeconds(120), "s-b-old") }
+    val cutoff = Instant.now().minusSeconds(30)
+
+    repository.clearSealedSuccessorsInFamilyBefore(10, cutoff) shouldBe 1
+    inTx { repository.findSealedSuccessor("a-old").isPresent } shouldBe false
+    inTx { repository.findSealedSuccessor("b-old").isPresent } shouldBe true
+
+    repository.clearSealedSuccessorsBefore(cutoff) shouldBe 1
+    inTx { repository.findSealedSuccessor("b-old").isPresent } shouldBe false
+    inTx { repository.findSealedSuccessor("a-new").get() } shouldBe "s-a-new"
+    count("refresh_token_retired_hashes") shouldBe 3
   }
 })

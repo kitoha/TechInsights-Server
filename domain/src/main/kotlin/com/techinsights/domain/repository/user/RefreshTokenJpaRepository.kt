@@ -26,8 +26,8 @@ interface RefreshTokenJpaRepository : JpaRepository<RefreshToken, Long> {
     @Modifying
     @Query(
         value = """
-            INSERT INTO refresh_token_retired_hashes (token_hash, family_id, retired_at)
-            VALUES (:tokenHash, :familyId, :retiredAt)
+            INSERT INTO refresh_token_retired_hashes (token_hash, family_id, retired_at, successor_ciphertext)
+            VALUES (:tokenHash, :familyId, :retiredAt, :successorCiphertext)
             ON CONFLICT (token_hash) DO NOTHING
         """,
         nativeQuery = true
@@ -35,8 +35,30 @@ interface RefreshTokenJpaRepository : JpaRepository<RefreshToken, Long> {
     fun insertRetired(
         @Param("tokenHash") tokenHash: String,
         @Param("familyId") familyId: Long,
-        @Param("retiredAt") retiredAt: Instant
+        @Param("retiredAt") retiredAt: Instant,
+        @Param("successorCiphertext") successorCiphertext: String?
     ): Int
+
+    /** Reads the stored sealed successor of a retired hash (null once cleared). */
+    @Query(value = "SELECT successor_ciphertext FROM refresh_token_retired_hashes WHERE token_hash = :tokenHash", nativeQuery = true)
+    fun findSuccessorCiphertext(@Param("tokenHash") tokenHash: String): Optional<String>
+
+    @Modifying
+    @Query(
+        value = """
+            UPDATE refresh_token_retired_hashes SET successor_ciphertext = NULL
+            WHERE family_id = :familyId AND retired_at < :cutoff AND successor_ciphertext IS NOT NULL
+        """,
+        nativeQuery = true
+    )
+    fun clearSuccessorsInFamilyBefore(@Param("familyId") familyId: Long, @Param("cutoff") cutoff: Instant): Int
+
+    @Modifying
+    @Query(
+        value = "UPDATE refresh_token_retired_hashes SET successor_ciphertext = NULL WHERE retired_at < :cutoff AND successor_ciphertext IS NOT NULL",
+        nativeQuery = true
+    )
+    fun clearSuccessorsBefore(@Param("cutoff") cutoff: Instant): Int
 
     /** The hash retired by the family's most recent rotation. */
     @Query(
