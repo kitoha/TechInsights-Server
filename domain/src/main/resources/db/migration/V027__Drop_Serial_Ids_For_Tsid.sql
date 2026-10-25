@@ -1,6 +1,10 @@
 -- ------------------------------------------------------------
 -- AGENTS.md: ID 는 자동 증가가 아닌 Tsid(애플리케이션 할당). 기존 id 값은 그대로 유지
 -- ------------------------------------------------------------
+-- BIGSERIAL(기본값 nextval) 과 IDENTITY(Hibernate 가 Flyway 이전에 만든 경우) 두 형태 모두 처리한다.
+ALTER TABLE anonymous_user_read_history ALTER COLUMN id DROP IDENTITY IF EXISTS;
+ALTER TABLE post_summary_failures       ALTER COLUMN id DROP IDENTITY IF EXISTS;
+
 ALTER TABLE anonymous_user_read_history ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE post_summary_failures       ALTER COLUMN id DROP DEFAULT;
 
