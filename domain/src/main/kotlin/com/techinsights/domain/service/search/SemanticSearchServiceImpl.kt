@@ -62,6 +62,7 @@ class SemanticSearchServiceImpl(
         return post.company.id.toLongOrNull() == companyId
     }
 
+    /** Cosine distance is in [0, 2], so the score is in [1/3, 1]; 1.0 means identical direction. */
     private fun toSimilarityScore(distance: Double): Double =
         1.0 / (1.0 + distance)
 

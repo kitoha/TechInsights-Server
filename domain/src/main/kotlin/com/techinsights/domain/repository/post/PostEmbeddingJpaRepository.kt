@@ -12,7 +12,7 @@ interface PostEmbeddingJpaRepository : JpaRepository<PostEmbedding, Long> {
            company_name  AS companyName,
            categories,
            content,
-           embedding_vector <-> CAST(:targetVector AS vector) AS distance
+           embedding_vector::halfvec(3072) <=> CAST(:targetVector AS halfvec) AS distance
     FROM post_embedding
     ORDER BY distance
     LIMIT :limit
@@ -27,7 +27,7 @@ interface PostEmbeddingJpaRepository : JpaRepository<PostEmbedding, Long> {
            company_name  AS companyName,
            categories,
            content,
-           embedding_vector <-> CAST(:targetVector AS vector) AS distance
+           embedding_vector::halfvec(3072) <=> CAST(:targetVector AS halfvec) AS distance
     FROM post_embedding
     WHERE post_id NOT IN :excludeIds
     ORDER BY distance

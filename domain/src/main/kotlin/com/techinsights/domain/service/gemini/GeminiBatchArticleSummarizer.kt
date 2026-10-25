@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.techinsights.domain.service.quota.DailyQuota
+import com.techinsights.domain.service.quota.DailyQuotaService
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import kotlin.coroutines.CoroutineContext
@@ -30,13 +32,13 @@ class GeminiBatchArticleSummarizer(
     private val mapper: ObjectMapper,
     rateLimiterRegistry: RateLimiterRegistry,
     circuitBreakerRegistry: CircuitBreakerRegistry,
+    private val dailyQuotaService: DailyQuotaService,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO
 ) : BatchArticleSummarizer {
 
     private val log = LoggerFactory.getLogger(javaClass)
 
     private val rpmLimiter = rateLimiterRegistry.rateLimiter("geminiBatchRpm")
-    private val rpdLimiter = rateLimiterRegistry.rateLimiter("geminiBatchRpd")
     private val circuitBreaker = circuitBreakerRegistry.circuitBreaker("geminiBatch")
 
     override fun summarizeBatch(
@@ -89,7 +91,13 @@ class GeminiBatchArticleSummarizer(
         val prompt = promptBuilder.buildPrompt(articles, categories)
         val config = buildGeminiConfig(categories)
 
-        acquireRateLimiterPermission(rpdLimiter)
+        if (!dailyQuotaService.tryReserve(DailyQuota.BATCH_SUMMARY)) {
+            log.warn("Daily Gemini quota exhausted for article summary. Articles: ${articles.map { it.id }}")
+            articles.forEach { article ->
+                send(SummaryResultWithId(article.id, false, error = "Daily Gemini quota exhausted", errorType = ErrorType.QUOTA_EXHAUSTED))
+            }
+            return@channelFlow
+        }
         acquireRateLimiterPermission(rpmLimiter)
 
         try {

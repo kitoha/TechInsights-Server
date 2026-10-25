@@ -20,4 +20,12 @@ class CompanySearchQueryRepository(
       .limit(limit.toLong())
       .fetch()
   }
+
+  fun findIdsByNameContaining(query: String): List<Long> {
+    return jpaQueryFactory
+      .select(company.id)
+      .from(company)
+      .where(company.name.containsIgnoreCase(query))
+      .fetch()
+  }
 }

@@ -38,6 +38,22 @@ class FailurePostMapperTest : FunSpec({
         val mappedPost3 = result.find { it.id == "3" }!!
         mappedPost3.failureErrorMessage shouldBe null
     }
+
+    test("mapFailuresToPosts should leave quota-exhausted posts out so they are not counted as failures") {
+        val exhausted = createMockPost("1")
+        val failed = createMockPost("2")
+
+        val result = mapper.mapFailuresToPosts(
+            originalPosts = listOf(exhausted, failed),
+            successes = emptyList(),
+            failures = listOf(
+                BatchFailure(exhausted, "Daily Gemini quota exhausted", false, ErrorType.QUOTA_EXHAUSTED),
+                BatchFailure(failed, "Validation Error", true, ErrorType.VALIDATION_ERROR)
+            )
+        )
+
+        result.map { it.id } shouldBe listOf("2")
+    }
 })
 
 private fun createMockPost(id: String): PostDto {

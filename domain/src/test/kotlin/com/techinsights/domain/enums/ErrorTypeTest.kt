@@ -17,12 +17,13 @@ class ErrorTypeTest : FunSpec({
     errorTypes shouldContain ErrorType.UNKNOWN
     errorTypes shouldContain ErrorType.SAFETY_BLOCKED
     errorTypes shouldContain ErrorType.LENGTH_LIMIT
+    errorTypes shouldContain ErrorType.QUOTA_EXHAUSTED
   }
 
-  test("should have exactly 8 error types") {
+  test("should have exactly 9 error types") {
     val errorTypes = ErrorType.entries
 
-    errorTypes.size shouldBe 8
+    errorTypes.size shouldBe 9
   }
 
   test("should convert from string correctly") {
@@ -47,6 +48,7 @@ class ErrorTypeTest : FunSpec({
     errorTypes[5] shouldBe ErrorType.CONTENT_ERROR
     errorTypes[6] shouldBe ErrorType.SAFETY_BLOCKED
     errorTypes[7] shouldBe ErrorType.LENGTH_LIMIT
+    errorTypes[8] shouldBe ErrorType.QUOTA_EXHAUSTED
   }
 
   test("인프라 오류는 재시도 가능하다") {
@@ -61,6 +63,10 @@ class ErrorTypeTest : FunSpec({
     ErrorType.CONTENT_ERROR.isRetryable shouldBe false
     ErrorType.SAFETY_BLOCKED.isRetryable shouldBe false
     ErrorType.VALIDATION_ERROR.isRetryable shouldBe false
+  }
+
+  test("일일 쿼터 소진은 재시도 대상이 아니다") {
+    ErrorType.QUOTA_EXHAUSTED.isRetryable shouldBe false
   }
 
   test("RETRYABLE_TYPES는 재시도 가능한 5개 타입만 포함한다") {

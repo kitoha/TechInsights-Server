@@ -10,7 +10,7 @@ data class PostEmbeddingDto(
     val categories: String,
     val content: String,
     val embeddingVector: FloatArray,
-    /** pgvector cosine distance (<->). Null when not retrieved from a similarity query. */
+    /** pgvector cosine distance (<=>), in [0, 2]. Null when not retrieved from a similarity query. */
     val distance: Double? = null,
 ) {
     companion object {

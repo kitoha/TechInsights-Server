@@ -2,6 +2,7 @@ package com.techinsights.domain.config.resilience
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldNotContain
 
 class ResilienceConfigTest : FunSpec({
 
@@ -16,8 +17,14 @@ class ResilienceConfigTest : FunSpec({
 
         registeredNames shouldContain "githubApi"
         registeredNames shouldContain "geminiReadmeRpm"
-        registeredNames shouldContain "geminiReadmeRpd"
         registeredNames shouldContain "geminiBatchRpm"
-        registeredNames shouldContain "geminiBatchRpd"
+    }
+
+    test("일일 쿼터는 DB로 관리하므로 RPD RateLimiter는 등록되지 않는다") {
+        val registeredNames = config.rateLimiterRegistry().allRateLimiters.map { it.name }
+
+        registeredNames shouldNotContain "geminiBatchRpd"
+        registeredNames shouldNotContain "geminiReadmeRpd"
+        registeredNames shouldNotContain "geminiCommunityRpd"
     }
 })

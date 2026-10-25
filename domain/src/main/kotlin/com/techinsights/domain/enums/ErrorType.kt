@@ -8,7 +8,10 @@ enum class ErrorType {
     UNKNOWN,
     CONTENT_ERROR,
     SAFETY_BLOCKED,
-    LENGTH_LIMIT;
+    LENGTH_LIMIT,
+
+    /** 일일 Gemini 쿼터 소진. 재시도 대상이 아니며 게시글 실패(summary_failure_count)로 집계하지 않는다. */
+    QUOTA_EXHAUSTED;
 
     /** 인프라 오류(토큰 부족, API 장애 등)는 재시도 가능. 콘텐츠/정책 오류는 영구 실패. */
     val isRetryable: Boolean get() = this in RETRYABLE_TYPES

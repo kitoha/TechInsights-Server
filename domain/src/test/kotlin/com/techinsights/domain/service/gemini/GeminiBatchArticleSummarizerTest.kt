@@ -7,6 +7,8 @@ import com.techinsights.domain.dto.gemini.ArticleInput
 import com.techinsights.domain.dto.gemini.SummaryResultWithId
 import com.techinsights.domain.enums.ErrorType
 import com.techinsights.domain.enums.GeminiModelType
+import com.techinsights.domain.service.quota.DailyQuota
+import com.techinsights.domain.service.quota.DailyQuotaService
 import io.github.resilience4j.circuitbreaker.CircuitBreaker
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
 import io.github.resilience4j.ratelimiter.RateLimiter
@@ -27,6 +29,7 @@ class GeminiBatchArticleSummarizerTest : FunSpec({
     val circuitBreakerRegistry = mockk<CircuitBreakerRegistry>(relaxed = true)
     
     val rateLimiter = mockk<RateLimiter>(relaxed = true)
+    val dailyQuotaService = mockk<DailyQuotaService>()
     val circuitBreaker = mockk<CircuitBreaker>(relaxed = true)
 
     lateinit var summarizer: GeminiBatchArticleSummarizer
@@ -34,7 +37,8 @@ class GeminiBatchArticleSummarizerTest : FunSpec({
     beforeTest {
         clearAllMocks()
 
-        every { rateLimiterRegistry.rateLimiter(or("geminiBatchRpm", "geminiBatchRpd")) } returns rateLimiter
+        every { rateLimiterRegistry.rateLimiter("geminiBatchRpm") } returns rateLimiter
+        every { dailyQuotaService.tryReserve(any()) } returns true
         every { circuitBreakerRegistry.circuitBreaker(any()) } returns circuitBreaker
 
         summarizer = GeminiBatchArticleSummarizer(
@@ -43,7 +47,8 @@ class GeminiBatchArticleSummarizerTest : FunSpec({
             promptBuilder,
             jacksonObjectMapper(),
             rateLimiterRegistry,
-            circuitBreakerRegistry
+            circuitBreakerRegistry,
+            dailyQuotaService
         )
     }
 
@@ -121,5 +126,17 @@ class GeminiBatchArticleSummarizerTest : FunSpec({
         val resultFlow = spySummarizer.summarizeBatch(emptyList(), GeminiModelType.GEMINI_2_5_FLASH_LITE)
         val results = resultFlow.toList()
         results shouldHaveSize 0
+    }
+
+    test("summarizeBatch should not call Gemini when the daily quota is exhausted") {
+        every { dailyQuotaService.tryReserve(DailyQuota.BATCH_SUMMARY) } returns false
+        val articles = (1..2).map { ArticleInput("id-$it", "T", "C") }
+
+        val results = summarizer.summarizeBatch(articles, GeminiModelType.GEMINI_2_5_FLASH_LITE).toList()
+
+        results shouldHaveSize 2
+        results.all { !it.success && it.errorType == ErrorType.QUOTA_EXHAUSTED } shouldBe true
+        verify(exactly = 0) { circuitBreaker.executeCallable<Any>(any()) }
+        verify(exactly = 0) { rateLimiter.acquirePermission() }
     }
 })
