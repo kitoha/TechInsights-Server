@@ -49,7 +49,15 @@ interface RefreshTokenJpaRepository : JpaRepository<RefreshToken, Long> {
     @Query(value = "DELETE FROM refresh_tokens WHERE expiry_at < :now", nativeQuery = true)
     fun deleteExpiredBefore(@Param("now") now: Instant): Int
 
-    @Query(value = "SELECT 1 FROM (SELECT pg_advisory_xact_lock(:userId)) AS locked", nativeQuery = true)
+    /**
+     * Two-int advisory lock: namespace 1414681427 ('TISS', fixed for user-session serialization) + a 32-bit hash of the
+     * user id, so it never shares the single-bigint key space with any other advisory lock. User ids are 64-bit Tsids and
+     * do not fit an int; a hash collision only makes two users' logins briefly serialize (never a correctness issue).
+     */
+    @Query(
+        value = "SELECT 1 FROM (SELECT pg_advisory_xact_lock(1414681427, hashtext(CAST(:userId AS text)))) AS locked",
+        nativeQuery = true
+    )
     fun lockUserSessions(@Param("userId") userId: Long): Int
 
     fun findByUserIdOrderByUpdatedAtDesc(userId: Long): List<RefreshToken>
