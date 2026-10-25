@@ -55,6 +55,10 @@ class UserUpsertRepositoryTest(
     row["name"] shouldBe "New Name"
     row["profile_image"] shouldBe "new.png"
     (row["last_login_at"] != null) shouldBe true
+    // the existing row keeps its identity: no new row, original id and nickname
+    jdbcTemplate.queryForObject("SELECT count(*) FROM users", Int::class.java) shouldBe 1
+    jdbcTemplate.queryForObject("SELECT id FROM users WHERE provider_id = 'g-1'", Long::class.java) shouldBe 1L
+    jdbcTemplate.queryForObject("SELECT nickname FROM users WHERE provider_id = 'g-1'", String::class.java) shouldBe "nick1"
   }
 
   test("soft-delete 된 사용자의 행은 upsert 로 변경되지 않는다") {
@@ -84,6 +88,17 @@ class UserUpsertRepositoryTest(
     upsert("g-new")
 
     row("g-new")["email"] shouldBe "new@example.com"
+    jdbcTemplate.queryForObject("SELECT id FROM users WHERE provider_id = 'g-new'", Long::class.java) shouldBe 999L
+    jdbcTemplate.queryForObject("SELECT nickname FROM users WHERE provider_id = 'g-new'", String::class.java) shouldBe "User_new"
+  }
+
+  test("provider_id 가 다른 계정의 upsert 는 서로 다른 사용자를 만든다") {
+    insertUser(1, "g-1")
+
+    upsert("g-2")
+
+    jdbcTemplate.queryForObject("SELECT count(*) FROM users", Int::class.java) shouldBe 2
+    row("g-1")["email"] shouldBe "old1@example.com"
   }
 
   test("isDeactivatedAccount - soft-delete 된 계정은 true") {
