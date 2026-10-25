@@ -14,13 +14,15 @@ LEFT JOIN (
 WHERE p.id = target.id
   AND p.view_count <> COALESCE(v.cnt, 0);
 
--- 회사 총 조회수는 소속 게시글 조회수의 합 (조회마다 게시글/회사 카운터가 함께 증가)
+-- 회사 총 조회수는 소속 게시글 조회수의 합 (조회마다 게시글/회사 카운터가 함께 증가).
+-- 삭제된 게시글은 더 이상 노출되지 않으므로 합산에서 제외한다.
 UPDATE company c
 SET total_view_count = COALESCE(s.total, 0)
 FROM company target
 LEFT JOIN (
     SELECT company_id, SUM(view_count) AS total
     FROM posts
+    WHERE deleted_at IS NULL
     GROUP BY company_id
 ) s ON s.company_id = target.id
 WHERE c.id = target.id

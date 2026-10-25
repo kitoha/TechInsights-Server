@@ -23,12 +23,16 @@ class ViewCountRecountMigrationTest(
   fun viewCount(postId: Long) = jdbc.queryForObject("SELECT view_count FROM posts WHERE id = ?", Long::class.java, postId)
   fun companyTotal(companyId: Long) = jdbc.queryForObject("SELECT total_view_count FROM company WHERE id = ?", Long::class.java, companyId)
 
-  test("recount sets view_count to the number of post_view rows and rebuilds company totals") {
+  test("recount sets view_count to the number of post_view rows and rebuilds company totals from active posts only") {
     fixtures.insertCompany(1L)
     fixtures.insertCompany(2L)
     fixtures.insertPost(1L, companyId = 1L, viewCount = 10)
     fixtures.insertPost(2L, companyId = 1L, viewCount = 3)
     fixtures.insertPost(3L, companyId = 2L, viewCount = 5)
+    fixtures.insertPost(4L, companyId = 1L, viewCount = 7)
+    jdbc.update("UPDATE posts SET deleted_at = now() WHERE id = 4") // soft-deleted: not part of the company total
+    insertView(5, 4, "a", "2024-01-01")
+    insertView(6, 4, "b", "2024-01-01")
     insertView(1, 1, "a", "2024-01-01")
     insertView(2, 1, "b", "2024-01-01")
     insertView(3, 1, "a", "2024-01-02")
@@ -42,6 +46,7 @@ class ViewCountRecountMigrationTest(
     viewCount(1L) shouldBe 3L
     viewCount(2L) shouldBe 1L
     viewCount(3L) shouldBe 0L
+    viewCount(4L) shouldBe 2L
     companyTotal(1L) shouldBe 4L
     companyTotal(2L) shouldBe 0L
   }
