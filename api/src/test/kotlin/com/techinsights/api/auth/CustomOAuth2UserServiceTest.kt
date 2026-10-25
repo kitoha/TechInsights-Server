@@ -42,7 +42,8 @@ class CustomOAuth2UserServiceTest : FunSpec({
             id = 100L,
             email = "test@example.com",
             role = UserRole.USER,
-            status = UserStatus.ACTIVE
+            status = UserStatus.ACTIVE,
+            isDeleted = false
         )
 
         // when
@@ -75,7 +76,8 @@ class CustomOAuth2UserServiceTest : FunSpec({
             id = 1L,
             email = "test@example.com",
             role = UserRole.USER,
-            status = UserStatus.ACTIVE
+            status = UserStatus.ACTIVE,
+            isDeleted = false
         )
 
         // when

@@ -119,7 +119,7 @@ class UserService(
                 }
                 throw IllegalStateException("User not found after upsert: providerId=$providerId")
             }
-        if (user.status != UserStatus.ACTIVE) {
+        if (user.isDeleted || user.status != UserStatus.ACTIVE) {
             throw AccountDeactivatedException()
         }
 

@@ -48,6 +48,22 @@ class UserServiceTest : FunSpec({
             result?.status shouldBe UserStatus.ACTIVE
         }
 
+        test("soft-delete 된 행이 로드되면(@SQLRestriction 에 의존하지 않고) isDeleted 로 드러낸다") {
+            val deleted = createTestUser().apply { delete() }
+            every { userRepository.findById(1L) } returns Optional.of(deleted)
+
+            val result = userService.findAuthUserById(1L)
+
+            result?.status shouldBe UserStatus.ACTIVE
+            result?.isDeleted shouldBe true
+        }
+
+        test("삭제되지 않은 사용자는 isDeleted 가 false 이다") {
+            every { userRepository.findById(1L) } returns Optional.of(createTestUser())
+
+            userService.findAuthUserById(1L)?.isDeleted shouldBe false
+        }
+
         test("사용자가 없으면 예외 없이 null을 반환한다 (공유 트랜잭션을 rollback-only로 만들지 않기 위함)") {
             every { userRepository.findById(1L) } returns Optional.empty()
 
@@ -225,6 +241,19 @@ class UserServiceTest : FunSpec({
             every {
                 userRepository.findByProviderAndProviderId(ProviderType.GOOGLE, "google-123")
             } returns Optional.of(inactive)
+
+            shouldThrow<AccountDeactivatedException> {
+                userService.upsertGoogleOAuthUser("google-123", "new@example.com", "New Name", null)
+            }
+        }
+
+        test("재조회된 행이 status 는 ACTIVE 여도 soft-delete 되어 있으면 거부한다") {
+            val deleted = createTestUser().apply { delete() }
+            every { userRepository.isDeactivatedAccount(ProviderType.GOOGLE, "google-123") } returns false
+            every { userRepository.upsertByProvider(any(), any(), any(), any(), any(), any(), any()) } returns Unit
+            every {
+                userRepository.findByProviderAndProviderId(ProviderType.GOOGLE, "google-123")
+            } returns Optional.of(deleted)
 
             shouldThrow<AccountDeactivatedException> {
                 userService.upsertGoogleOAuthUser("google-123", "new@example.com", "New Name", null)
