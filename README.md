@@ -122,6 +122,7 @@ Crawling Sequence Diagram
 
 - 만료된 리프레시 토큰 정리 tasklet(`RefreshTokenCleanupTasklet`)은 있지만 아직 스케줄에 등록되지 않았습니다. 유예 시간은 조회 시점에 검사하므로 보안이 아니라 저장 공간의 문제입니다.
 - 클라이언트 IP가 Vercel BFF를 거쳐 전달되지 않아 nginx는 BFF/Cloudflare의 IP를 보게 되고, IP 기준 제한은 거칠게 동작합니다.
+- Actuator는 `health`만 공개되고 나머지(`prometheus`, `metrics` 등)는 로그인만 요구하므로, 로그인한 사용자라면 누구나 읽을 수 있고 관리자 전용으로 제한되어 있지 않습니다.
 
 ---
 
