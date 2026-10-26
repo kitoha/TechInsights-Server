@@ -85,7 +85,7 @@ Tech Insights는 최신 IT 기술 관련 회사들의 기술 블로그 게시글
 
 <img src="./img/architecture/techinsights-aws.drawio.png" alt="TechInsights AWS 인프라 구성도" width="100%">
 
-배포 환경의 전체 구성입니다. 클라이언트 요청이 nginx를 거쳐 API 서버에 도달하는 경로와, 배치 서버·DB의 위치를 확인할 수 있습니다.
+배포 환경의 전체 구성입니다. 브라우저 트래픽은 Vercel BFF와 Cloudflare를 거쳐 nginx로 들어오며, nginx를 거쳐 API 서버에 도달하는 경로와, 배치 서버·DB의 위치를 확인할 수 있습니다.
 
 ### API 서버 요청 흐름
 
@@ -143,19 +143,21 @@ RSS 크롤링, Gemini 요약, 임베딩 생성, GitHub 트렌딩 수집이 이�
 
 ## ERD
 
-콘텐츠
+스키마를 콘텐츠, 사용자·인증, GitHub 트렌딩의 세 영역으로 나누어 그렸습니다(`B001`~`V032` 마이그레이션 기준).
+
+### 콘텐츠
 
 <img src="./img/diagrams/erd-content.png" alt="콘텐츠 ERD: 회사, 게시글, 임베딩, 좋아요, 조회" width="100%">
 
 회사, 게시글, 임베딩, 조회·좋아요 등 기술 블로그 콘텐츠 관련 테이블입니다.
 
-사용자·인증
+### 사용자·인증
 
 <img src="./img/diagrams/erd-users-auth.png" alt="사용자·인증 ERD: 사용자, 리프레시 토큰, 북마크" width="100%">
 
 사용자, 리프레시 토큰 패밀리, 북마크 관련 테이블입니다.
 
-GitHub 트렌딩
+### GitHub 트렌딩
 
 <img src="./img/diagrams/erd-github.png" alt="GitHub 트렌딩 ERD: 저장소, README, 커뮤니티" width="100%">
 
