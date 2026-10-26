@@ -12,7 +12,7 @@ Tech Insights는 최신 IT 기술 관련 회사들의 기술 블로그 게시글
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.0-6DB33F?logo=spring-boot&logoColor=white)](https://spring.io/projects/spring-boot)
 [![Spring Batch](https://img.shields.io/badge/Spring%20Batch-5.2-6DB33F?logo=spring&logoColor=white)](https://spring.io/projects/spring-batch)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![pgvector](https://img.shields.io/badge/pgvector-0.8.x-4169E1?logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
+[![pgvector](https://img.shields.io/badge/pgvector-0.8+-4169E1?logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![JDK](https://img.shields.io/badge/JDK-21-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
 
@@ -106,15 +106,22 @@ Crawling Sequence Diagram
 
 ## 주요 설계
 
-- **DB가 보장하는 데이터 무결성**: `posts.url` UNIQUE(`V016`), 조회 `(post_id, user_or_ip, viewed_date)` UNIQUE(`V018`), 익명 좋아요 `(post_id, anonymous_id)` 부분 UNIQUE(`V019`). 조회 후 삽입(check-then-insert)의 경쟁 상태를 애플리케이션 코드가 아닌 제약조건으로 막고, 쓰기는 `ON CONFLICT DO NOTHING`으로 멱등하게 처리합니다.
-- **`aid` 쿠키 기반 익명 식별**: 비로그인 사용자의 조회·좋아요·읽기 이력·추천은 IP가 아니라 서버가 발급한 `aid` 쿠키로 식별합니다. 요청이 `aid` 쿠키를 실제로 들고 오지 않았다면(첫 방문, curl, 봇) 쓰기는 성공 응답만 돌려주고 기록하지 않아 조회수·좋아요 부풀리기를 막습니다.
+- **DB가 보장하는 데이터 무결성**: `posts.url` UNIQUE(`V016`), 조회 `(post_id, user_or_ip, viewed_date)` UNIQUE(`V018`), 익명 좋아요 `(post_id, anonymous_id)` 부분 UNIQUE(`V019`). 조회 후 삽입(check-then-insert)의 경쟁 상태를 애플리케이션 코드가 아닌 제약조건으로 막고, 게시글 저장(`posts.url`)과 조회 기록은 `ON CONFLICT DO NOTHING`으로, 익명 좋아요는 부분 UNIQUE 인덱스로 중복을 막습니다.
+- **`aid` 쿠키 기반 익명 식별**: 비로그인 사용자의 조회·좋아요·읽기 이력·추천은 IP가 아니라 서버가 발급한 `aid` 쿠키로 식별합니다. 요청이 `aid` 쿠키를 실제로 들고 오지 않았다면(첫 방문, curl, 봇) 익명 조회 기록과 좋아요는 성공 응답만 돌려주고 아무것도 기록하지 않아, 조회수·좋아요 부풀리기를 막습니다.
 - **재시도에 안전한 좋아요·북마크**: `PUT`(설정)/`DELETE`(해제) 엔드포인트는 결과 상태를 반환하며 몇 번을 호출해도 같은 결과입니다. 더블 클릭 시 좋아요가 취소되던 토글식 `POST`는 `@Deprecated`로 남겨 두었습니다.
 - **리프레시 토큰 패밀리와 멱등 회전**: 로그인 1회가 패밀리(세션) 1개이고, 회전으로 폐기된 토큰의 해시를 패밀리별로 보관해 오래된 토큰이 재사용되면 해당 세션만 폐기합니다. 응답이 유실돼 브라우저가 이전 토큰을 다시 보내도, 유예 시간 안이면 AES-GCM으로 봉인해 둔 같은 후속 토큰을 다시 전달합니다(`V025`, `V032`).
-- **HKDF 키 분리**: 하나의 `JWT_SECRET_KEY`에서 JWT 서명, 리프레시 토큰 해싱, 후속 토큰 암호화용 키를 용도별로 따로 유도해, 키를 용도 간에 재사용하지 않습니다(`KeyPurpose`).
-- **RFC 7807 에러 계약**: 모든 에러 응답이 `application/problem+json`이며, 클라이언트가 분기에 쓸 안정적인 `code` 필드를 포함합니다. Spring Security의 401/403도 같은 형식입니다.
+- **HKDF 키 분리**: 하나의 `JWT_SECRET_KEY`에서 JWT 서명, 리프레시 토큰 해싱, OAuth2 요청 쿠키 서명, 후속 토큰 암호화의 네 가지 키를 용도별로 따로 유도해, 키를 용도 간에 재사용하지 않습니다(`KeyPurpose`).
+- **RFC 7807 에러 계약**: 애플리케이션 예외, Spring MVC 표준 예외(400/404/405/406/415 등), Spring Security의 401/403은 `application/problem+json`으로 응답하며 클라이언트가 분기에 쓸 안정적인 `code` 필드를 포함합니다. 허용되지 않은 Origin을 CORS 필터가 거절하는 경우만 일반 텍스트 403입니다.
 - **DB 기반 Gemini 일일 쿼터**: 일일(RPD) 사용량을 JVM 메모리가 아닌 `gemini_daily_usage` 테이블에서 원자적 upsert로 차감하므로, 서버를 재시작하거나 인스턴스가 여럿이어도 한도가 유지됩니다(`V020`). 호출 속도 제한과 서킷 브레이커는 Resilience4j가 맡습니다.
 - **코사인 거리 + HNSW 벡터 검색**: 임베딩(3072차원)을 `halfvec`로 캐스팅한 `halfvec_cosine_ops` HNSW 인덱스를 두고 `<=>` 연산자로 유사도 검색을 합니다(`V011`, `V021`).
-- **Testcontainers와 convention test**: 리포지토리·마이그레이션 테스트는 실제 PostgreSQL + pgvector 컨테이너에서 실제 Flyway 마이그레이션으로 실행합니다. 인라인 FQN 금지 같은 코딩 규칙은 `InlineFqnConventionTest`가 검사합니다.
+- **CSRF 이중 방어**: 상태를 바꾸는 요청은 `Origin`(없으면 `Referer`)을 CORS 허용 목록과 비교하고, 맞지 않으면 403 `CSRF_ORIGIN_NOT_ALLOWED`로 거절합니다. 인증 쿠키의 SameSite=Lax 위에 얹은 추가 방어입니다(`CsrfOriginFilter`).
+- **소프트 삭제 필터 보장**: Hibernate 6.6은 `@MappedSuperclass`에 선언한 `@SQLRestriction`을 상속하지 않으므로 각 엔티티가 직접 선언하고, `SoftDeleteRestrictionConventionTest`가 이를 검사합니다. 네이티브 유사도 쿼리는 `deleted_at`을 명시적으로 필터링합니다.
+- **Testcontainers와 convention test**: `domain` 모듈의 리포지토리·마이그레이션 테스트는 실제 PostgreSQL + pgvector 컨테이너에서 실제 Flyway 마이그레이션으로 실행합니다. 인라인 FQN 금지 같은 코딩 규칙은 `InlineFqnConventionTest`가 검사합니다.
+
+**알려진 한계**
+
+- 만료된 리프레시 토큰 정리 tasklet(`RefreshTokenCleanupTasklet`)은 있지만 아직 스케줄에 등록되지 않았습니다. 유예 시간은 조회 시점에 검사하므로 보안이 아니라 저장 공간의 문제입니다.
+- 클라이언트 IP가 Vercel BFF를 거쳐 전달되지 않아 nginx는 BFF/Cloudflare의 IP를 보게 되고, IP 기준 제한은 거칠게 동작합니다.
 
 ---
 
@@ -148,14 +155,15 @@ Crawling Sequence Diagram
 
 ### 환경 설정
 
-API 서버를 로컬에서 띄우려면 아래 환경 변수가 필요합니다. `application.yml`/`application-local.yml`에 기본값이 없어, 정의되어 있지 않으면 서버가 시작되지 않습니다.
+API 서버를 로컬에서 띄우려면 아래 환경 변수가 필요합니다. 기본값이 없어(`application.yml`, `application-local.yml`), 정의되어 있지 않으면 서버가 시작되지 않습니다.
 
 | 변수 | 설명 |
 |------|------|
-| `DB_PASSWORD` | 로컬 DB 비밀번호. `docker-compose.db.yml`과 서버가 같은 값을 써야 합니다 (서버 기본값: `local_password`) |
 | `JWT_SECRET_KEY` | Base64 문자열. 디코딩한 길이가 32바이트(256비트) 이상이어야 합니다. 예: `openssl rand -base64 32` |
 | `GEMINI_API_KEY` | Google Gemini API 키 |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google OAuth2 로그인용 클라이언트 정보 |
+
+`DB_PASSWORD`는 서버 쪽에는 기본값(`local_password`)이 있지만 `docker-compose.db.yml`에서는 필수입니다. 컨테이너와 서버가 같은 값을 써야 하므로 둘 다 같은 값으로 맞추세요.
 
 Spring Boot는 `.env`를 읽지 않습니다. Docker Compose는 프로젝트 루트의 `.env`에서 `DB_PASSWORD`를 읽으므로 `.env`에 적어 두고, `bootRun`을 실행하는 셸에는 `export`로 같은 값을 지정하세요.
 
@@ -269,7 +277,7 @@ docker build -t techinsights-batch ./batch
 ./gradlew jacocoTestReport
 ```
 
-커버리지 리포트: `build/reports/jacoco/test/html/index.html`
+커버리지 리포트: `<모듈>/build/reports/jacoco/test/html/index.html` (예: `api/build/reports/jacoco/test/html/index.html`)
 
 ### 테스트 스택
 - **JUnit 5** - 테스트 프레임워크
