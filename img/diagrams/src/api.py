@@ -28,7 +28,7 @@ s.arrow([(cx(5), mid(C)), (cx(4) + NW, mid(C))], color="accent")
 s.label(cx(6) - 22, mid(C) - 18, "MISS")
 
 N = s.node
-N(cx(1), A, NW, NH, "Client", ["web browser", "JWT + aid cookies"], "ext")
+N(cx(1), A, NW, NH, "Vercel BFF", ["browser → /api/bff", "forwards JWT + aid", "adds x-auth-secret"], "ext")
 N(cx(2), A, NW, NH, "Cloudflare", ["TLS · proxy", "CF-Connecting-IP"], "ext")
 N(cx(3), A, NW, NH, "nginx", ["auth/refresh: 10 r/m", "search: 30 r/m", "502/504 → 503 page"], "step")
 N(cx(4), A, NW, NH, "Security chain", ["CorsFilter", "CsrfOriginFilter", "JwtAuthenticationFilter", "authorizeHttpRequests"], "focal")
@@ -50,7 +50,8 @@ rows = [("Gemini limiter rejects", "429 TOO_MANY_REQUESTS"),
         ("Circuit breaker open", "503 SERVICE_UNAVAILABLE"),
         ("nginx auth / search limit", "429 TOO_MANY_REQUESTS"),
         ("Upstream 502 / 504", "503 maintenance body"),
-        ("Foreign Origin / Referer", "403 CSRF_ORIGIN_NOT_ALLOWED"),
+        ("Foreign Origin", "403 CorsFilter, plain text"),
+        ("Foreign Referer, no Origin", "403 CSRF_ORIGIN_NOT_ALLOWED"),
         ("Missing or invalid JWT", "401 via authentication entry point"),
         ("Domain exception", "404 / 400 ProblemDetail")]
 for i, (a, b) in enumerate(rows):
