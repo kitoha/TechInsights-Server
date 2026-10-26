@@ -85,7 +85,7 @@ Tech Insights는 최신 IT 기술 관련 회사들의 기술 블로그 게시글
 
 <img src="./img/architecture/techinsights-aws.drawio.png" alt="TechInsights AWS 인프라 구성도" width="100%">
 
-배포 환경의 전체 구성입니다. 브라우저 트래픽은 Vercel BFF와 Cloudflare를 거쳐 nginx로 들어오며, nginx를 거쳐 API 서버에 도달하는 경로와, 배치 서버·DB의 위치를 확인할 수 있습니다.
+배포 환경의 전체 구성입니다. 브라우저 트래픽은 Vercel BFF와 Cloudflare를 거쳐 nginx로 들어옵니다. nginx에서 API 서버에 도달하는 경로와 배치 서버·DB의 위치를 확인할 수 있습니다.
 
 ### API 서버 요청 흐름
 
