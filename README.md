@@ -81,48 +81,87 @@ Tech Insights는 최신 IT 기술 관련 회사들의 기술 블로그 게시글
 
 ## 시스템 아키텍처
 
-전체 인프라 (AWS)
+### 전체 인프라 (AWS)
 
-![TechInsights AWS 아키텍처](./img/architecture/techinsights-aws.drawio.png)
+<img src="./img/architecture/techinsights-aws.drawio.png" alt="TechInsights AWS 인프라 구성도" width="100%">
 
-API Server
+배포 환경의 전체 구성입니다. 클라이언트 요청이 nginx를 거쳐 API 서버에 도달하는 경로와, 배치 서버·DB의 위치를 확인할 수 있습니다.
 
-![API 서버 아키텍처](./img/diagrams/api-server.png)
+### API 서버 요청 흐름
 
-Batch Server
+<img src="./img/diagrams/api-server.png" alt="API 서버 요청 처리 흐름도" width="100%">
 
-![Batch 서버 아키텍처](./img/diagrams/batch-server.png)
+요청이 nginx, 보안 필터 체인, 컨트롤러, 도메인 서비스를 거쳐 DB와 Gemini API에 이르는 흐름입니다. 에러가 어느 계층에서 어떤 응답으로 바뀌는지는 아래 표에 정리했습니다.
 
-Crawling Sequence Diagram
+**에러 응답 매핑**
 
-![크롤링 시퀀스 다이어그램](./img/diagrams/crawling-sequence.png)
+| 상황 | 발생 위치 | 응답 |
+|------|----------|------|
+| Gemini 호출 속도 제한 초과 (Resilience4j `RequestNotPermitted`) | `GlobalExceptionHandler` | 429 `TOO_MANY_REQUESTS` (problem+json) |
+| 서킷 브레이커 open (`CallNotPermittedException`) | `GlobalExceptionHandler` | 503 `SERVICE_UNAVAILABLE` (problem+json) |
+| `/api/v1/auth/refresh`·`logout` 요청 제한 초과 (IP당 분당 10회, burst 5) | `nginx.prod.conf` | 429 `TOO_MANY_REQUESTS` (problem+json) |
+| `/api/v1/search` 요청 제한 초과 (IP당 분당 30회, burst 10) | `nginx.prod.conf` | 429 (nginx 기본 응답 본문, problem+json 아님) |
+| 업스트림 502/504 | `nginx.prod.conf` | 503 `SERVICE_UNAVAILABLE` 점검 안내 (problem+json) |
+| 허용되지 않은 `Origin`의 상태 변경 요청 | Spring Security `CorsFilter` | 403 (일반 텍스트) |
+| `Origin` 없이 허용되지 않은 `Referer`로 온 상태 변경 요청 | `CsrfOriginFilter` | 403 `CSRF_ORIGIN_NOT_ALLOWED` (problem+json) |
+| 액세스 토큰 없음·만료·위조 | `ProblemDetailAuthenticationEntryPoint` | 401 `UNAUTHORIZED` / `EXPIRED_TOKEN` / `INVALID_TOKEN` / `TOKEN_TAMPERED` |
+| 권한 부족 | `ProblemDetailAccessDeniedHandler` | 403 `FORBIDDEN` |
+| 도메인 예외 (예: 게시글·사용자 없음, 닉네임 중복) | `GlobalExceptionHandler` | 404 / 409 / 400 등 4xx (problem+json) |
+
+### 배치 데이터 파이프라인
+
+<img src="./img/diagrams/batch-pipeline.png" alt="배치 데이터 파이프라인 흐름도" width="100%">
+
+RSS 크롤링, Gemini 요약, 임베딩 생성, GitHub 트렌딩 수집이 이어지는 파이프라인입니다. 각 단계의 결과가 다음 단계(요약 → 임베딩)의 입력이 되는 순서를 확인할 수 있습니다.
+
+<details>
+<summary>배치 Job 일정</summary>
+
+실행 시각은 `.github/workflows/batch-*.yml`의 cron(UTC)이며, 앱 안에서 스케줄링하지 않습니다.
+
+| Job | 일정 (UTC) | reader → processor → writer | 비고 |
+|-----|-----------|----------------------------|------|
+| `githubTrendingJob` | 매일 00:00 | `GithubRepoReader` → `GithubRepoProcessor` → `GithubRepoWriter` | `DataIntegrityViolationException` 건너뛰기(최대 10) |
+| `githubReadmeSummaryJob` | 매일 01:00 | `UnsummarizedRepoReader` → `GithubReadmeFetchProcessor` → `GithubReadmeBatchSummaryWriter` | 쿼터 키 `geminiReadmeRpd`. fault-tolerant 설정 없음 |
+| `githubReadmeEmbeddingJob` | 매일 05:00 | `UnembeddedRepoReader` → `GithubReadmeEmbeddingProcessor` → `GithubReadmeEmbeddingWriter` | 쿼터 키 `geminiEmbeddingRpd`. 재시도 3회, 건너뛰기 최대 10 |
+| `crawlPostJob` | 매일 06:00 | `CompanyReader` → `RawPostProcessor` → `RawPostWriter` | 재시도 3회(`batch.post-crawling.retry-limit`), 건너뛰기 최대 10 |
+| `optimizedSummaryJob` | 매일 07:00 | `BatchAwarePostReader` → `AsyncBatchPostSummaryProcessor` → `FlatteningPostWriter`, 이어서 `CompanyPostCountReconcileTasklet` | 쿼터 키 `geminiBatchRpd`. 건너뛰기 최대 20 |
+| `postVectorEmbeddingJob` | 매일 08:00 | `BatchSummarizedPostReader` → `BatchPostEmbeddingProcessor` → `BatchPostEmbeddingWriter` | 쿼터 키 `geminiEmbeddingRpd`. 재시도 3회, 건너뛰기 최대 10 |
+| `communityCollectJob` | 워크플로 없음 | `CommunityCollectReader` → `CommunityCollectProcessor` → `CommunityCollectWriter` | fault-tolerant 설정 없음 |
+| `communityAnalyzeJob` | 워크플로 없음 | `CommunityAnalyzeReader` → `CommunityAnalyzeProcessor` → `CommunityAnalyzeWriter` | 쿼터 키 `geminiCommunityRpd` |
+| `refreshTokenCleanupJob` | 워크플로 없음 | `RefreshTokenCleanupTasklet` (tasklet) | 만료된 리프레시 토큰의 폐기 해시 정리 |
+
+</details>
+
+### 크롤링 시퀀스
+
+<img src="./img/diagrams/crawling-sequence.png" alt="게시글 크롤링 시퀀스 다이어그램" width="100%">
+
+`crawlPostJob`이 회사 목록을 읽어 게시글을 수집하고 저장하는 순서입니다. 호출 주체와 저장소 사이의 메시지 순서를 확인할 수 있습니다.
 
 ---
 
 ## ERD
-![ERD](./img/diagrams/erd.png)
 
----
+콘텐츠
 
-## 주요 설계
+<img src="./img/diagrams/erd-content.png" alt="콘텐츠 ERD: 회사, 게시글, 임베딩, 좋아요, 조회" width="100%">
 
-- **DB가 보장하는 데이터 무결성**: `posts.url` UNIQUE(`V016`), 조회 `(post_id, user_or_ip, viewed_date)` UNIQUE(`V018`), 익명 좋아요 `(post_id, anonymous_id)` 부분 UNIQUE(`V019`). 조회 후 삽입(check-then-insert)의 경쟁 상태를 애플리케이션 코드가 아닌 제약조건으로 막고, 게시글 저장(`posts.url`)과 조회 기록은 `ON CONFLICT DO NOTHING`으로, 익명 좋아요는 부분 UNIQUE 인덱스로 중복을 막습니다.
-- **`aid` 쿠키 기반 익명 식별**: 비로그인 사용자의 조회·좋아요·읽기 이력·추천은 IP가 아니라 서버가 발급한 `aid` 쿠키로 식별합니다. 요청이 `aid` 쿠키를 실제로 들고 오지 않았다면(첫 방문, curl, 봇) 익명 조회 기록과 좋아요는 성공 응답만 돌려주고 아무것도 기록하지 않아, 조회수·좋아요 부풀리기를 막습니다.
-- **재시도에 안전한 좋아요·북마크**: `PUT`(설정)/`DELETE`(해제) 엔드포인트는 결과 상태를 반환하며 몇 번을 호출해도 같은 결과입니다. 더블 클릭 시 좋아요가 취소되던 토글식 `POST`는 `@Deprecated`로 남겨 두었습니다.
-- **리프레시 토큰 패밀리와 멱등 회전**: 로그인 1회가 패밀리(세션) 1개이고, 회전으로 폐기된 토큰의 해시를 패밀리별로 보관해 오래된 토큰이 재사용되면 해당 세션만 폐기합니다. 응답이 유실돼 브라우저가 이전 토큰을 다시 보내도, 유예 시간 안이면 AES-GCM으로 봉인해 둔 같은 후속 토큰을 다시 전달합니다(`V025`, `V032`).
-- **HKDF 키 분리**: 하나의 `JWT_SECRET_KEY`에서 JWT 서명, 리프레시 토큰 해싱, OAuth2 요청 쿠키 서명, 후속 토큰 암호화의 네 가지 키를 용도별로 따로 유도해, 키를 용도 간에 재사용하지 않습니다(`KeyPurpose`).
-- **RFC 7807 에러 계약**: 애플리케이션 예외, Spring MVC 표준 예외(400/404/405/406/415 등), Spring Security의 401/403은 `application/problem+json`으로 응답하며 클라이언트가 분기에 쓸 안정적인 `code` 필드를 포함합니다. 허용되지 않은 Origin을 CORS 필터가 거절하는 경우만 일반 텍스트 403입니다.
-- **DB 기반 Gemini 일일 쿼터**: 일일(RPD) 사용량을 JVM 메모리가 아닌 `gemini_daily_usage` 테이블에서 원자적 upsert로 차감하므로, 서버를 재시작하거나 인스턴스가 여럿이어도 한도가 유지됩니다(`V020`). 호출 속도 제한과 서킷 브레이커는 Resilience4j가 맡습니다.
-- **코사인 거리 + HNSW 벡터 검색**: 임베딩(3072차원)을 `halfvec`로 캐스팅한 `halfvec_cosine_ops` HNSW 인덱스를 두고 `<=>` 연산자로 유사도 검색을 합니다(`V011`, `V021`).
-- **CSRF 이중 방어**: 상태를 바꾸는 요청은 `Origin`(없으면 `Referer`)을 CORS 허용 목록과 비교하고, 맞지 않으면 403 `CSRF_ORIGIN_NOT_ALLOWED`로 거절합니다. 인증 쿠키의 SameSite=Lax 위에 얹은 추가 방어입니다(`CsrfOriginFilter`).
-- **소프트 삭제 필터 보장**: Hibernate 6.6은 `@MappedSuperclass`에 선언한 `@SQLRestriction`을 상속하지 않으므로 각 엔티티가 직접 선언하고, `SoftDeleteRestrictionConventionTest`가 이를 검사합니다. 네이티브 유사도 쿼리는 `deleted_at`을 명시적으로 필터링합니다.
-- **Testcontainers와 convention test**: `domain` 모듈의 리포지토리·마이그레이션 테스트는 실제 PostgreSQL + pgvector 컨테이너에서 실제 Flyway 마이그레이션으로 실행합니다. 인라인 FQN 금지 같은 코딩 규칙은 `InlineFqnConventionTest`가 검사합니다.
+회사, 게시글, 임베딩, 조회·좋아요 등 기술 블로그 콘텐츠 관련 테이블입니다.
 
-**알려진 한계**
+사용자·인증
 
-- 만료된 리프레시 토큰 정리 tasklet(`RefreshTokenCleanupTasklet`)은 있지만 아직 스케줄에 등록되지 않았습니다. 유예 시간은 조회 시점에 검사하므로 보안이 아니라 저장 공간의 문제입니다.
-- 클라이언트 IP가 Vercel BFF를 거쳐 전달되지 않아 nginx는 BFF/Cloudflare의 IP를 보게 되고, IP 기준 제한은 거칠게 동작합니다.
-- Actuator는 `health`만 공개되고 나머지(`prometheus`, `metrics` 등)는 로그인만 요구하므로, 로그인한 사용자라면 누구나 읽을 수 있고 관리자 전용으로 제한되어 있지 않습니다.
+<img src="./img/diagrams/erd-users-auth.png" alt="사용자·인증 ERD: 사용자, 리프레시 토큰, 북마크" width="100%">
+
+사용자, 리프레시 토큰 패밀리, 북마크 관련 테이블입니다.
+
+GitHub 트렌딩
+
+<img src="./img/diagrams/erd-github.png" alt="GitHub 트렌딩 ERD: 저장소, README, 커뮤니티" width="100%">
+
+GitHub 저장소, README 요약·임베딩, 커뮤니티 언급 관련 테이블입니다.
+
+다이어그램에 그리지 않은 보조 테이블: `post_summary_failures`, `summary_retry_queue`, `anonymous_user_read_history`, `gemini_daily_usage`, Spring Batch 메타 테이블.
 
 ---
 
